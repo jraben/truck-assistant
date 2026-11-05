@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Slate Cockpit</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,6 +155,40 @@ th { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; color: var
   .strip .hide-sm { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* 12.3" bar screen (1920x720, 8:3) in the dash opening. Same rules twice: once for the real panel, once for the BAR preview button. */
+@media (min-aspect-ratio: 2/1) and (min-width: 821px) {
+  .app { grid-template-rows: 44px 1fr; --rail: 96px; --hit: 60px; }
+  .strip .brand { font-size: 17px; } .strip .clock { font-size: 20px; }
+  .rail { gap: 4px; padding: 6px; } .rail button { font-size: 12px; } .rail button svg { width: 24px; height: 24px; }
+  .stage { padding: 10px; }
+  .view { gap: 10px; }
+  .drive { grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: 1fr; }
+  .speedo { grid-row: auto; }
+  .speed { font-size: clamp(90px, 22vh, 200px); }
+  .gear { min-height: 52px; font-size: 26px; }
+  .batt { grid-template-columns: 1fr; justify-items: start; align-content: center; }
+  .ring { width: 120px; height: 120px; }
+  .cp { grid-template-columns: 1fr 260px; } .side { grid-template-columns: 1fr; }
+  .cams { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; }
+  .tile { min-height: 104px; }
+}
+body.preview-bar { display: grid; place-items: center; background: #000; }
+body.preview-bar .app { width: min(100vw, calc(100vh * 1920 / 720)); height: auto; aspect-ratio: 1920 / 720; outline: 1px solid var(--line); background: var(--bg); overflow: hidden; }
+body.preview-bar .app { grid-template-rows: 44px 1fr; --rail: 96px; --hit: 56px; }
+body.preview-bar .strip .brand { font-size: 17px; } body.preview-bar .strip .clock { font-size: 20px; }
+body.preview-bar .rail { gap: 4px; padding: 6px; } body.preview-bar .rail button { font-size: 12px; } body.preview-bar .rail button svg { width: 22px; height: 22px; }
+body.preview-bar .stage { padding: 10px; }
+body.preview-bar .view { gap: 10px; }
+body.preview-bar .drive { grid-template-columns: 1.2fr 1fr 1fr; grid-template-rows: 1fr; }
+body.preview-bar .speedo { grid-row: auto; }
+body.preview-bar .speed { font-size: clamp(64px, 9vw, 180px); }
+body.preview-bar .gear { min-height: 44px; font-size: 22px; }
+body.preview-bar .batt { grid-template-columns: 1fr; justify-items: start; align-content: center; }
+body.preview-bar .ring { width: 100px; height: 100px; }
+body.preview-bar .cp { grid-template-columns: 1fr 240px; }
+body.preview-bar .cams { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; }
+body.preview-bar .tile { min-height: 96px; }
 </style>
 
 <div class="app">
@@ -164,6 +199,7 @@ th { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; color: var
     <span class="sp"></span>
     <span class="hide-sm num" id="outside">72°F outside</span>
     <span class="clock num" id="clock">--:--</span>
+    <button class="daybtn hide-sm" id="barBtn" type="button" aria-pressed="false">12.3" BAR</button>
     <button class="daybtn" id="dayBtn" type="button">DAY</button>
   </header>
 
@@ -397,6 +433,12 @@ th { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; color: var
     const cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
     setTheme(cur === 'light' ? 'dark' : 'light');
   });
+
+  // 12.3" bar preview (1920x720) on a normal screen
+  function setBar(on) { document.body.classList.toggle('preview-bar', on); $('#barBtn').setAttribute('aria-pressed', String(on)); try { localStorage.setItem('slate.bar', on ? '1' : '0'); } catch (e) {} }
+  let barSaved = null; try { barSaved = localStorage.getItem('slate.bar'); } catch (e) {}
+  if (barSaved === '1') setBar(true);
+  $('#barBtn').addEventListener('click', () => setBar(!document.body.classList.contains('preview-bar')));
 
   // toast
   let tt; function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 1800); }

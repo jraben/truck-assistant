@@ -16,8 +16,8 @@ and its print settings.
 
 | Part | Purpose | Blocked on |
 |---|---|---|
-| Dash panel insert for a 12.3" bar screen | Mount a wide screen in a dash opening (13 7/8 × 5 1/4 in, forum-measured) | Depth behind the panel |
-| Screen shell for the Slate Tablet Mount | Hold a bare touch panel where a tablet would go | Measuring the mount |
+| **Dash insert + sun hood for the 12.3" bar (main screen)** | Hold a 301.2 × 123.35 × 12.4 mm panel in a 352 × 133 mm opening; driver board and cable exit behind | Depth behind the panel, panel drawing |
+| ESP32-P4 panel shell (optional second screen) | Small gauge/switch screen | Where it goes |
 | Brain enclosure | Pi / controller box under the dash, vented | Final board choice |
 | Camera brackets ×4 | 360° cams on mirrors, tailgate, front | Camera choice |
 | Hitch camera mount | Clips to the 2" receiver | Receiver delivery |

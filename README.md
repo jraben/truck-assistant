@@ -10,8 +10,13 @@ Built for Jeff's truck first, published for other Slate owners later.
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
 - **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a
-  10.1" HDMI touch panel (CarPlay, cameras, browser) and/or a cheap ESP32-P4
-  panel (gauges, switches). Android head unit ruled out. Pi 4 vs Pi 5 is
+  **12.3" 1920×720 bar touchscreen set into a dash panel opening** (CarPlay,
+  cameras, browser) and/or a cheap ESP32-P4 panel (gauges, switches).
+  Candidate: Waveshare 12.3" HDMI capacitive, 301.2 × 123.35 × 12.4 mm, into
+  an opening forum-measured at 13 7/8 × 5 1/4 in (352 × 133 mm). Its 600-nit
+  rating is unverified (one listing says 300) and low for Phoenix sun, so it
+  gets a printed hood. Depth behind the dash panel is unmeasured. The
+  prototype has a 12.3" BAR preview button. Android head unit ruled out. Pi 4 vs Pi 5 is
   settled on the bench. Comparison: `docs/options.html`.
   - `docs/plans/plan-pi5.md`: the main-screen half
   - `docs/plans/plan-pi-esp32.md`: the small-screen half
