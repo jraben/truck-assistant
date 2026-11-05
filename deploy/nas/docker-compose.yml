@@ -14,6 +14,9 @@ services:
     image: ghcr.io/jraben/slate-cockpit:${SLATE_IMAGE_TAG:-latest}
     container_name: slate-cockpit
     restart: unless-stopped
+    # Docker's default address pools are used up on the NAS (one network per
+    # stack), so this joins the built-in bridge instead of making its own.
+    network_mode: bridge
     ports:
       - "3950:8080"
     environment:

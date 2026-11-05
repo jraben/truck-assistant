@@ -117,3 +117,19 @@ Hands Free Bluetooth Controller, Tablet Mount, Classic Level 2 Wall Charger,
 Anything that mounts in the cab gets printed in **ASA or PETG-CF**, not PLA.
 A parked Phoenix dash gets hot enough to warp PLA in an afternoon. See
 `print/README.md`.
+
+## Running it on the homelab (NAS)
+
+A copy runs on the NAS at **http://192.168.1.20:3950** (LAN only; port 3950 is
+not forwarded and must not be). It uses the image GitHub builds on every push
+to main (`ghcr.io/jraben/slate-cockpit`) and `deploy/nas/docker-compose.yml`,
+copied to `~/slate-cockpit/` on the NAS. With no truck, `SIM=1` drives a
+simulated one. To update after a push, once the "Build image" action is green:
+
+```sh
+cd ~/slate-cockpit && sudo -n /usr/local/bin/docker-compose pull && sudo -n /usr/local/bin/docker-compose up -d
+```
+
+Data lives in the `slate-cockpit_slate-data` Docker volume. The compose file
+uses the built-in bridge network because the NAS has no free address pools for
+a new one.
