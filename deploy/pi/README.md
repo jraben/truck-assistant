@@ -123,3 +123,34 @@ nmcli -f NAME,TYPE,DEVICE,AUTOCONNECT-PRIORITY connection show   # slate-ap on w
 nmcli device wifi list ifname wlan1                               # what the client radio can see
 journalctl -u slate-brain | grep '\[net\]'                        # switches the brain made
 ```
+
+## Cameras, dashcam and remote (Track C)
+
+`install.sh` also installs **ffmpeg**, **v4l-utils** and **go2rtc** (pinned,
+`cams/install-go2rtc.sh`, version in `GO2RTC_VERSION`; set `GO2RTC_SHA256` to
+check the download), adds the `slate` user to `video`, and installs
+`power/51-slate-power.rules` so the brain may power the Pi off after a remote
+wake. The brain writes `/var/lib/slate-cockpit/go2rtc.yaml` from
+`/settings > Cameras` and runs go2rtc itself; the dashcam loop lives in
+`/var/lib/slate-cockpit/dashcam` (the SSD).
+
+```sh
+v4l2-ctl --list-devices                   # which /dev/video* is which
+ls -l /dev/v4l/by-id/                     # stable names for /settings > Cameras
+v4l2-ctl -d /dev/video0 --list-formats-ext   # MJPG / YUYV sizes the device offers
+curl -s localhost:8080/api/cams | jq '.backend, .cameras[] | {id, live, error}'
+```
+
+A capture stick usually offers YUYV at 720x480 (NTSC) or 720x576 (PAL); a
+UVC webcam MJPEG at 1280x720 or more. Pick those in settings.
+
+Optional, by hand:
+
+| Script | Does |
+|---|---|
+| `sudo ./deploy/pi/lte/setup-lte.sh [apn]` | ModemManager + a NetworkManager `slate-lte` gsm profile for a USB Cat-4 modem (Quectel EC25/EG25-G). APN from `/settings > Remote` unless given. Route metric 900: Wi-Fi wins whenever it is up. |
+| `sudo ./deploy/pi/tailscale/setup-tailscale.sh` | Tailscale from its apt repo, then `tailscale up` with an auth key typed at the prompt (or `TS_AUTHKEY=` in the environment). The key is never written anywhere. Hostname `slate-truck`. |
+
+Then the Truck page is `http://slate-truck:8080/truck?token=…` from any phone on
+your tailnet (the link is on `/settings > Remote`). Disable key expiry for the
+truck in the Tailscale admin console, or it drops off the tailnet after 180 days.

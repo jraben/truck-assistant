@@ -6,11 +6,31 @@
 #   watch: "S?"          box: "S r=010000 ign=1 rev=0 v=12.61 t=78.2 lv=0"
 #   watch: "R3=1"        box: relay_3 on, through the same gate as every ON
 #                        (low-voltage lockout, compressor interlock); "R3=0" off.
+#   watch: "W1" / "W0"   Wi-Fi on / allowed off: the watch woke the Pi (or let it sleep).
+#
+# Parked Wi-Fi off: with the ignition off for parked_wifi_off_minutes and no
+# "W1", the box turns its Wi-Fi off (the Pi and its access point are off then
+# anyway). That takes the box from ~1.2 W to ~0.3 W; relays, the safety logic
+# and this link keep working. Ignition on or "W1" turns it back on. 0 = never.
 # Wiring: README "Tier 1 watch link". GPIO39 is input-only with no pull-up:
 # fit a 10k pull-up to 3V3 so a sleeping watch doesn't leave it floating.
 substitutions:
   pin_watch_tx: GPIO5      # strapping pin, idles HIGH as a UART TX: fine at boot
   pin_watch_rx: GPIO39     # input-only (VN): external 10k pull-up to 3V3
+  parked_wifi_off_minutes: "15"
+
+globals:
+  - id: watch_wants_wifi
+    type: bool
+    initial_value: "false"
+
+script:
+  - id: watch_wifi_on
+    then:
+      - wifi.enable:
+  - id: watch_wifi_off
+    then:
+      - wifi.disable:
 
 uart:
   - id: watch_uart
@@ -48,7 +68,30 @@ interval:
                 ESP_LOGI("watch", "relay_%d OFF from the watch", idx);
                 outs[idx - 1]->turn_off();
               }
+            } else if (line == "W1" || line == "W0") {
+              id(watch_wants_wifi) = line == "W1";
+              if (id(watch_wants_wifi)) id(watch_wifi_on).execute();
             } else if (!line.empty()) {
               ESP_LOGW("watch", "ignored line from the watch: %s", line.c_str());
             }
+          }
+
+  # Parked Wi-Fi off / back on (see the top of this file).
+  - interval: 30s
+    then:
+      - lambda: |-
+          static uint32_t off_since = 0;
+          static bool wifi_off = false;
+          const float mins = ${parked_wifi_off_minutes};
+          bool keep = id(ignition).state || id(watch_wants_wifi) || mins <= 0;
+          if (keep) {
+            off_since = 0;
+            if (wifi_off) { ESP_LOGI("watch", "Wi-Fi back on"); id(watch_wifi_on).execute(); wifi_off = false; }
+            return;
+          }
+          if (off_since == 0) off_since = millis();
+          if (!wifi_off && millis() - off_since >= (uint32_t)(mins * 60000.0f)) {
+            ESP_LOGI("watch", "parked %.0f min: Wi-Fi off until ignition or the watch wants it", mins);
+            id(watch_wifi_off).execute();
+            wifi_off = true;
           }

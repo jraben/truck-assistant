@@ -406,3 +406,120 @@ order above, and switches with `nmcli connection up`. Data use is read from
   the repo or `.env`.
 - **Simulation:** `SIM=1` makes the brain invent GPS, speed and truck-box
   data so everything runs on a desk.
+
+## Track C: Cameras and remote
+
+Design: `docs/remote.md`. Code: `brain/src/cams/`, `brain/src/remote/`,
+`ui/src/components/cams.tsx` + `camplayer.tsx`, `ui/src/truck/`,
+`ui/src/settings/RemoteSection.tsx`, `firmware/watch/`. Types:
+`brain/src/remote/types.ts`.
+
+### Settings: `DATA_DIR/remote.json` (its own file and route, not `Settings`)
+
+`GET /api/remote/settings` → `RemoteSettings` (secrets masked like keys);
+`PUT /api/remote/settings` partial merge (arrays replace; a masked secret =
+unchanged, `""`/`null` removes it; `{"remote":{"token":"new"}}` makes a new
+remote token). 400 with a message on anything invalid.
+
+```ts
+type RemoteSettings = {
+  cams: { cameras: CameraConfig[]; guides: GuideSettings; autoRear: boolean; defaultLayout: 'grid' | 'single' };
+  dashcam: { enabled: boolean; segmentSec: number; capGb: number; preSec: number; postSec: number; parkedMotion: boolean; sceneThreshold: number };
+  alerts: { rules: Record<AlertKind, { enabled: boolean; threshold: number | null; holdSec: number; cooldownMin: number }>;
+            geofence: { zones: { name; lat; lon; radiusM }[]; quietStart: 'HH:MM'; quietEnd: 'HH:MM' };
+            chargeTargetSoc: number; chargerPlugEntity: string | null;
+            delivery: { ha: { service: string | null }; ntfy: { server: string; topic: string | null; token?: string } } };
+  power: { sleepAfterMin: number; maxAwakeMin: number };
+  lte: { apn: string; user: string | null; password?: string };   // read by deploy/pi/lte/setup-lte.sh
+  watch: { prefix: string };                                      // default "slate/watch"
+  remote: { token?: string };                                     // the Truck page / remote API token
+};
+type CameraConfig = { id: string; name: string; role: 'rear'|'front'|'bed'|'hitch'|'360'|'cabin'|'other';
+  source: 'uvc' | 'capture' | 'rtsp' | 'test'; device: string | null; url: string | null;
+  width: number; height: number; fps: number; inputFormat: 'mjpeg' | 'yuyv422' | 'auto';
+  enabled: boolean; record: boolean; guides: boolean; mirror: boolean };
+type AlertKind = 'cabinHot' | 'low12v' | 'motionParked' | 'theft' | 'geofence' | 'chargeStopped' | 'chargeDone' | 'unplugged' | 'tirePressure' | 'truckboxOffline';
+```
+
+### Access
+
+Everything below is behind one check (`brain/src/remote/auth.ts`, meant to be
+swapped for a real login later): requests from `REMOTE_TRUSTED_NETS` (default
+loopback: the cockpit on the bar) are in; anyone else sends the remote token as
+`x-slate-token`, `Authorization: Bearer`, `?token=` (links, iframes,
+WebSockets) or the `slate_remote` cookie that `/truck?token=…` sets. Else 401.
+
+### HTTP
+
+- `GET  /truck` → the Truck page (phone-first; iframe-friendly).
+- `GET  /api/truck` → `TruckSnapshot` (position from GPS or the watch, charge,
+  12V, cabin, ignition, relays, `watch: WatchStatus`, `power: PowerStatus`,
+  the last 20 alerts, the last 12 clips, place).
+- `POST /api/truck/relay` `{id, on}` → `{ok, via: 'truckbox' | 'watch'}`: through
+  the truck box when it is online, else queued to the watch; 409 otherwise.
+- `GET  /api/remote/link` → `{token, path, url}` (the Truck link for a phone).
+- `POST /api/remote/viewer` `{id}` → `PowerStatus`: a page heartbeat (every 20 s
+  while a camera page is visible); `POST /api/remote/wake` `{id}` (Wake & view);
+  `POST /api/remote/sleep`; `GET /api/remote/power`.
+- `GET  /api/alerts?limit=` → `Alert[]` (newest first); `POST /api/alerts/test`.
+- `GET  /api/cams` → `CamStatus` + `serverTime` (ms): `backend: 'go2rtc' |
+  'fallback' | 'off'`, `why`, each camera with `live`/`error`, recording
+  stats, guides, autoRear, defaultLayout.
+- `GET  /api/cams/ws?src=<id>` → WebSocket, proxied to go2rtc's `/api/ws`
+  (WebRTC signalling and MSE); `GET /go2rtc/video-stream.js`, `/go2rtc/video-rtc.js`:
+  go2rtc's player, proxied. go2rtc backend only.
+- `GET  /api/cams/:id/mjpeg` → `multipart/x-mixed-replace; boundary=frame`,
+  each part with `Content-Length` and `X-Frame-Time` (ms, brain clock) for the
+  latency badge. The fallback backend's live view.
+- `GET  /api/cams/:id/snapshot.jpg` → the current picture.
+- `POST /api/cams/clip` `{camera?}` → 202 `Clip[]` (one per recorded camera,
+  `state: 'recording'` until cut); `GET /api/cams/clips?limit=` → `Clip[]`;
+  `GET /api/cams/clips/<id>.mp4` (Range supported); `DELETE /api/cams/clips/:id`.
+- `POST /api/cams/motion` `{camera?, how?}`: report motion (tests, HA).
+
+```ts
+type Clip = { id: string; camera: string; startedAt: string; durationS: number; reason: 'manual' | 'motion'; bytes: number; state: 'recording' | 'ready' | 'error'; error: string | null };
+type Alert = { id: number; at: string; kind: AlertKind; title: string; message: string; source: 'brain' | 'watch'; delivered: string[]; error: string | null };
+type PowerStatus = { awakeReason: 'ignition' | 'remote' | 'unknown'; viewers: number; sleepAt: string | null; sleeping: boolean; why: string };
+```
+
+### Files (`DASHCAM_DIR`, default `DATA_DIR/dashcam`)
+
+- `loop/<camera>/YYYYMMDD-HHMMSS.mp4`: fragmented-MP4 segments, local start time.
+- `clips/<YYYYMMDD-HHMMSS>-<camera>.mp4` + `.json` (the `Clip`). Never deleted automatically.
+- `DATA_DIR/go2rtc.yaml`: generated from `cams.cameras`; edits are overwritten.
+
+### MQTT
+
+| Topic | Who | Payload |
+|---|---|---|
+| `slate/truckbox/binary_sensor/vibration/state` | truck box (`packages/vibration.yaml`) | `ON`/`OFF`, only with the ignition off |
+| `slate/watch/status` | watch | `online` / `offline` (will), retained |
+| `slate/watch/state` | watch | `{"ts","fix","lat","lon","gps_at","v12","cabin_f","vib","moved","ign","relays","parked","pi","rssi","batt_mv","interval_s","fw"}`, retained |
+| `slate/watch/alert` | watch | `{"kind","title","message","ts"}` (HA automation → push) |
+| `slate/watch/command` | HA, the brain | `{"pi":"wake"}` `{"pi":"sleep"}` `{"relay":"relay_1","on":true}` `{"interval_s":300}`, QoS 1, persistent session |
+| `homeassistant/<component>/slate_watch/<id>/config` | watch | HA discovery: the **Slate Watch** device (location, 12V, cabin, signal, cell, moved, Pi awake, Wake/Sleep Pi buttons) |
+
+The watch prefix is `remote.watch.prefix`. The brain subscribes to
+`<prefix>/#` (through the Pi's Mosquitto bridge) and publishes the sleep
+command when a remote wake has no viewer.
+
+### Truck box ↔ watch UART (`packages/watch_link.yaml`, 9600 8N1, one line each)
+
+`S?` → `S r=010000 ign=1 rev=0 v=12.61 t=78.2 lv=0`; `R<1-6>=<0|1>` (ON goes
+through the truck box's safety gate); `W1`/`W0` (keep Wi-Fi on for a woken Pi /
+allow parked Wi-Fi off).
+
+### Env (plumbing only)
+
+`GO2RTC_BIN` (go2rtc), `GO2RTC_API` (127.0.0.1:1984), `GO2RTC_RTSP`
+(127.0.0.1:8554), `GO2RTC_WEBRTC` (:8555), `GO2RTC_EXTERNAL=1` (someone else
+runs it), `FFMPEG_BIN`, `DASHCAM_DIR`, `CAMS_DISABLED=1`, `POWEROFF_CMD`
+(`systemctl poweroff` on Linux; empty = never), `REMOTE_TRUSTED_NETS`
+(`127.0.0.0/8,::1`).
+
+### Layout widgets
+
+`cams`: the whole Cams view (grid/single, reverse → rear with guides, save
+clip, clips). `cam` `{camera?: id, label?, guides?}`: one camera (older saved
+layouts keep working). The default layout's Cams view is one `cams` widget.

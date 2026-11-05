@@ -11,6 +11,8 @@ to the Pi's Mosquitto broker, using the topics in `docs/contract.md`.
 | `truckbox.yaml` | The device. Every pin and safety default is a `substitution` at the top. |
 | `packages/env_sht31.yaml` / `env_bme280.yaml` | Cabin climate sensor; include one. |
 | `packages/tpms_ble.yaml` + `tpms_decode.h` | BLE TPMS scanner and decoder (unverified, see TPMS). |
+| `packages/vibration.yaml` | "Vibration" while parked, from the MPU-6050: dashcam motion clips and the parked-motion alert. |
+| `packages/watch_link.yaml` | UART link to the tier 1 LTE-M watch (`firmware/watch`), and Wi-Fi off when parked. |
 | `secrets.example.yaml` | Copy to `secrets.yaml` (gitignored) and fill in. |
 
 **Status:** `esphome config` validates and `esphome compile` builds with
@@ -359,3 +361,40 @@ No delivered truck has been probed. All of this is from `docs/forum-findings.md`
      capacitors are commodity parts, and their ratings are unknown.
    - Mount the box low and out of the sun (under a seat), not on the dash.
    - Conformal-coat the board against condensation.
+
+---
+
+## Tier 1 watch link and parked Wi-Fi off
+
+The always-on watch (`firmware/watch`, a LilyGO T-SIM7080G-S3 on LTE-M) is a
+separate board; see `docs/remote.md` for why. It reaches the truck box over
+three wires:
+
+| Truck box | Watch | Notes |
+|---|---|---|
+| GPIO5 (TX) | GPIO17 (RX) | GPIO5 is a strapping pin; idling HIGH as a TX is what it wants at boot |
+| GPIO39 / VN (RX) | GPIO18 (TX) | input-only, no internal pull-up: **10k from GPIO39 to 3V3** so a sleeping watch leaves it HIGH |
+| GND | GND | |
+
+9600 baud, 3.3 V both sides, one line per message (`packages/watch_link.yaml`):
+`S?` → `S r=010000 ign=1 rev=0 v=12.61 t=78.2 lv=0`; `R3=1` / `R3=0` switch a
+relay through the same gate as every ON (low-voltage lockout, compressor
+interlock); `W1` / `W0` keep Wi-Fi on while the watch has the Pi awake, or let
+it go again.
+
+**Parked Wi-Fi off:** with the ignition off for `parked_wifi_off_minutes`
+(default 15, 0 = never) and no `W1`, the box turns its Wi-Fi off. The Pi and
+its access point are off by then anyway, so nothing is lost: relays, the safety
+logic, TPMS scanning and the watch link keep running. This takes the box from
+about 1.2 W to about 0.3 W (an estimate: measure it), which matters more for
+the 12V battery than anything else in the truck while parked (open question 4
+above). Ignition on or `W1` brings Wi-Fi back.
+
+**Vibration:** `packages/vibration.yaml` compares the size of the
+acceleration between 100 ms samples. A change above `vibration_threshold`
+(0.6 m/s²: a door slam, someone climbing into the bed) with the ignition off
+turns **Vibration** on for 5 s. Tune it parked in wind before trusting it.
+
+Both packages validate and compile with the rest (ESPHome 2026.10.2: RAM 61.5 %,
+flash 73.3 % with TPMS, vibration and the watch link). Comment them out in
+`truckbox.yaml` if there's no watch.
