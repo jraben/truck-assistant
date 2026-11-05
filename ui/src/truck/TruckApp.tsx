@@ -24,7 +24,7 @@ function MapBox({ pos }: { pos: TruckSnapshot['position'] }) {
   const t = tileView(pos.lat, pos.lon);
   return (
     <a class="map" href={`https://www.openstreetmap.org/?mlat=${pos.lat}&mlon=${pos.lon}#map=17/${pos.lat}/${pos.lon}`} target="_blank" rel="noreferrer" title="Open in a map">
-      <div class="tiles" style={{ left: `calc(50% - ${t.offX}px)`, top: `calc(50% - ${t.offY}px)` }}>{t.tiles.map((u) => <img src={u} alt="" loading="lazy" />)}</div>
+      <div class="osm-tiles" style={{ left: `calc(50% - ${t.offX}px)`, top: `calc(50% - ${t.offY}px)` }}>{t.tiles.map((u) => <img src={u} alt="" loading="lazy" />)}</div>
       <span class="pin" />
       <span class="credit">© OpenStreetMap</span>
     </a>

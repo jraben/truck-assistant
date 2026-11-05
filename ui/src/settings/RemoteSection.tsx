@@ -6,6 +6,7 @@ import type { AlertKind, CameraConfig, RemoteSettings } from '../../../brain/src
 import { ALERT_META as ALERT_META_UI } from '../../../brain/src/remote/alertMeta.ts';
 import { rapi } from '../lib/cams.ts';
 import { Guides } from '../components/camplayer.tsx';
+import '../cams.css';
 
 type Secrets = { lte: string; ntfy: string };
 const ROLES: CameraConfig['role'][] = ['rear', 'front', 'bed', 'hitch', '360', 'cabin', 'other'];
@@ -180,7 +181,8 @@ export function RemoteSection() {
         <p class="help">The APN is applied on the Pi by <code>sudo deploy/pi/lte/setup-lte.sh</code>, which reads it from here.</p>
       </section>
 
-      <div class="savebar">
+      {/* Not sticky: the truck settings' bar is the one pinned to the bottom of the page. */}
+      <div class="row wrap remote-save">
         <button class="btn big primary" type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save cameras, alerts and remote'}</button>
         <button class="btn big" type="button" onClick={() => { setD(structuredClone(saved)); setSec({ lte: '', ntfy: '' }); setMsg(null); }}>Undo</button>
         {msg && <span class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</span>}
