@@ -6,6 +6,8 @@ import { activeDriver, settingsStore, stateStore, useStore, type Driver, type Se
 import { allThemes } from '../lib/theme.ts';
 
 export const truckOf = (s: Settings | null): TruckLook => (s as (Settings & { truck?: TruckLook }) | null)?.truck ?? defaultTruck();
+/** The truck photo's URL (versioned, so it caches), or null without one. */
+export const truckPhotoUrl = (t: TruckLook | null | undefined): string | null => t?.photo ? `/api/vehicle/photo?v=${encodeURIComponent(t.photo.updatedAt)}` : null;
 export const driverDrive = (d: Driver | null): DriverDrive => (d as (Driver & { drive?: DriverDrive }) | null)?.drive ?? defaultDriverDrive();
 
 /** The style to draw: the driver's pick, or with "auto" the shown theme's pairing, else digital. */

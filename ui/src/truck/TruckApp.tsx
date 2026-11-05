@@ -37,6 +37,8 @@ export function TruckApp() {
   const [view, setView] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [clip, setClip] = useState<Clip | null>(null);
+  // The owner's photo (open route, 404 without one): shown above the header when there is one.
+  const [photo, setPhoto] = useState<string | null>('/api/vehicle/photo');
   const load = () => rapi<TruckSnapshot>('/api/truck').then((s) => { setSnap(s); setErr(null); }).catch((e) => setErr((e as Error).message));
   useEffect(() => { void load(); const id = setInterval(load, 5000); return () => clearInterval(id); }, []);
   useEffect(() => { paintTheme(pickTheme(undefined, snap?.position ?? null)); }, [snap?.position?.lat]);
@@ -54,6 +56,7 @@ export function TruckApp() {
   const w = snap.watch;
   return (
     <div class="truck">
+      {photo && <img class="truckphoto" src={photo} alt="The truck" onError={() => setPhoto(null)} />}
       <div class="head">
         <h1>SLATE TRUCK</h1>
         <span class="sp" />

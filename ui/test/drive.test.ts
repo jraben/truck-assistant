@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { overLimit, pickCards } from '../src/drive/logic.ts';
+import { overLimit, pickCards, showTruckPhoto } from '../src/drive/logic.ts';
 import type { State } from '../../brain/src/types.ts';
 
 const st = (o: { locked?: boolean; tilt?: 'ok' | 'warn' | 'danger' | null; trip?: boolean }): State => ({
@@ -29,5 +29,20 @@ describe('over-limit warning', () => {
     expect(overLimit(60, 35, { ...dd, overLimitWarn: false })).toBe(false);
     expect(overLimit(60, null, dd)).toBe(false);
     expect(overLimit(null, 35, dd)).toBe(false);
+  });
+});
+
+describe('truck photo on the tilt card', () => {
+  const at = (mph: number | null, tilt: 'ok' | 'warn' | 'danger' | null = 'ok', locked = false) => ({ ...st({ tilt, locked }), speedMph: mph } as unknown as State);
+  it('parked and level: the photo', () => {
+    expect(showTruckPhoto(at(0), true)).toBe(true);
+    expect(showTruckPhoto(at(null, null), true)).toBe(true);
+  });
+  it('moving, steep or no photo: the live drawing', () => {
+    expect(showTruckPhoto(at(0), false)).toBe(false);
+    expect(showTruckPhoto(at(12), true)).toBe(false);
+    expect(showTruckPhoto(at(0, 'warn'), true)).toBe(false);
+    expect(showTruckPhoto(at(0, 'danger'), true)).toBe(false);
+    expect(showTruckPhoto(at(0, 'ok', true), true)).toBe(false);
   });
 });

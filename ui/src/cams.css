@@ -36,6 +36,7 @@ body.truckpage { margin: 0; background: var(--bg); color: var(--fg); font-family
 .truck h1 { font-family: var(--display, var(--mono)); font-size: 20px; letter-spacing: .12em; margin: 0; }
 .truck .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .truck .head .sp { flex: 1; }
+.truck .truckphoto { display: block; width: 100%; max-height: 240px; object-fit: contain; border-radius: calc(14px * var(--r)); background: var(--panel-2); }
 .truck .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 .truck .stat { background: var(--panel); border: 1px solid var(--line); border-radius: calc(12px * var(--r)); padding: 10px 12px; }
 .truck .stat b { display: block; font-size: 26px; font-family: var(--mono); }

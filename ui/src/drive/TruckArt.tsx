@@ -1,4 +1,4 @@
-// Jeff's truck as configured, flat SVG, for the tilt gauge (docs/drive-v2.md §2).
+// The owner's truck as configured (Settings.truck), flat SVG, for the tilt gauge (docs/drive-v2.md §2).
 // A compact 2-door regular-cab Slate: 174.6 in long on a 108.9 in wheelbase,
 // about 68 in tall and 70.6 in wide, short 5 ft bed, upright raked windshield,
 // short flat-faced nose with round lamps on plates, squared plastic wheel
@@ -7,6 +7,11 @@
 import type { TruckLook } from '../../../brain/src/drive/types.ts';
 
 const mix = (a: string, b: string, pct: number) => `color-mix(in srgb, ${a} ${100 - pct}%, ${b})`;
+/** Tar Pit: glass, tyres, the steel wheels, shading. Fixed, so a "none" logo leaves nothing undrawn. */
+const INK = '#1c1d1f';
+/** The round amber lamps on Slate's Synthwave front lamp plates. */
+const AMBER = '#f0a21a';
+const hasLogo = (t: TruckLook) => t.colors.logo !== 'none';
 
 function Defs({ id, t }: { id: string; t: TruckLook }) {
   const c = t.colors;
@@ -16,35 +21,37 @@ function Defs({ id, t }: { id: string; t: TruckLook }) {
       <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color={mix(c.body, c.roof, sheen)} />
         <stop offset=".45" stop-color={c.body} />
-        <stop offset="1" stop-color={mix(c.body, c.logo, 22)} />
+        <stop offset="1" stop-color={mix(c.body, INK, 22)} />
       </linearGradient>
       <linearGradient id={`${id}-lamp`} x1="0" y1="0" x2="1" y2="1">
         {c.lampPlates === 'synthwave'
-          ? <><stop offset="0" stop-color="#ff3fb4" /><stop offset=".55" stop-color="#7b2ff7" /><stop offset="1" stop-color="#2de2e6" /></>
-          : <><stop offset="0" stop-color={c.lampPlates} /><stop offset="1" stop-color={mix(c.lampPlates, c.logo, 25)} /></>}
+          ? <><stop offset="0" stop-color={mix(INK, '#ffffff', 12)} /><stop offset="1" stop-color={INK} /></>
+          : <><stop offset="0" stop-color={c.lampPlates} /><stop offset="1" stop-color={mix(c.lampPlates, INK, 25)} /></>}
       </linearGradient>
       <linearGradient id={`${id}-glass`} x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color={mix(c.logo, c.roof, 30)} /><stop offset=".6" stop-color={c.logo} />
+        <stop offset="0" stop-color={mix(INK, c.roof, 30)} /><stop offset=".6" stop-color={INK} />
       </linearGradient>
     </defs>
   );
 }
 
+/** 17" black steel wheel with Slate's single-colour ring decal (wheelDecal). */
 function Wheel({ cx, cy, t }: { cx: number; cy: number; t: TruckLook }) {
   const c = t.colors;
+  const steel = mix(INK, '#ffffff', 6);
   const holes = [0, 60, 120, 180, 240, 300].map((a) => {
     const r = (a * Math.PI) / 180;
-    return <ellipse cx={cx + 13 * Math.cos(r)} cy={cy + 13 * Math.sin(r)} rx="3.2" ry="4.2" transform={`rotate(${a + 90} ${cx + 13 * Math.cos(r)} ${cy + 13 * Math.sin(r)})`} fill={mix(c.logo, c.trim, 30)} />;
+    return <ellipse cx={cx + 12 * Math.cos(r)} cy={cy + 12 * Math.sin(r)} rx="2.4" ry="3.4" transform={`rotate(${a + 90} ${cx + 12 * Math.cos(r)} ${cy + 12 * Math.sin(r)})`} fill={INK} />;
   });
   return (
     <g>
-      <circle cx={cx} cy={cy} r="33" fill={mix(c.logo, c.trim, 15)} />
-      <circle cx={cx} cy={cy} r="29" fill="none" stroke={mix(c.logo, c.trim, 35)} stroke-width="1.5" />
-      <circle cx={cx} cy={cy} r="21" fill={c.wheelDecal} />
-      <circle cx={cx} cy={cy} r="21" fill="none" stroke={mix(c.wheelDecal, c.logo, 35)} stroke-width="1.2" />
+      <circle cx={cx} cy={cy} r="33" fill={mix(INK, c.trim, 15)} />
+      <circle cx={cx} cy={cy} r="29" fill="none" stroke={mix(INK, '#ffffff', 14)} stroke-width="1.5" />
+      <circle cx={cx} cy={cy} r="22" fill={steel} />
+      <circle cx={cx} cy={cy} r="18.5" fill="none" stroke={c.wheelDecal} stroke-width="3.6" />
       {holes}
-      <circle cx={cx} cy={cy} r="6.5" fill={mix(c.wheelDecal, c.logo, 30)} />
-      <circle cx={cx} cy={cy} r="2.4" fill={c.logo} />
+      <circle cx={cx} cy={cy} r="6.5" fill={mix(steel, '#ffffff', 10)} />
+      <circle cx={cx} cy={cy} r="2.4" fill={INK} />
     </g>
   );
 }
@@ -67,27 +74,28 @@ export function TruckSide({ t, id = 'ts', bedLightsOn = false }: { t: TruckLook;
       <path d="M228 42 L284 42 Q290 42 293 47 L322 86 L228 86 Z" fill={`url(#${id}-glass)`} />
       <path d="M236 46 L252 46 L240 70 Z" fill={c.roof} opacity=".18" />
       {/* door cut, handle, mirror */}
-      <path d="M226 90 L226 152 M334 92 L334 150" stroke={mix(c.body, c.logo, 45)} stroke-width="1.4" fill="none" />
-      <path d="M226 90 L330 90" stroke={mix(c.body, c.logo, 30)} stroke-width="1" />
-      <rect x="236" y="98" width="16" height="4" rx="2" fill={mix(c.body, c.logo, 45)} />
+      <path d="M226 90 L226 152 M334 92 L334 150" stroke={mix(c.body, INK, 45)} stroke-width="1.4" fill="none" />
+      <path d="M226 90 L330 90" stroke={mix(c.body, INK, 30)} stroke-width="1" />
+      <rect x="236" y="98" width="16" height="4" rx="2" fill={mix(c.body, INK, 45)} />
       <path d="M318 84 L330 80 L334 92 L322 94 Z" fill={c.trim} />
       {/* bed: side panel line, SLATE decal */}
-      <path d="M24 98 L210 98" stroke={mix(c.body, c.logo, 30)} stroke-width="1" />
-      <text x="266" y="140" text-anchor="middle" class="truck-logo sm" fill={c.logo}>SLATE</text>
+      <path d="M24 98 L210 98" stroke={mix(c.body, INK, 30)} stroke-width="1" />
+      {hasLogo(t) && <text x="266" y="140" text-anchor="middle" class="truck-logo sm" fill={c.logo}>SLATE</text>}
       {/* tonneau: NEXUS flip-up hard cover, flush on the bed rails */}
       {t.accessories.tonneau === 'nexus-flip' && <>
-        <path d="M19 84 L214 84 L214 91 L19 91 Z" fill={mix(c.logo, c.trim, 20)} />
-        <path d="M84 84 L84 91 M149 84 L149 91" stroke={mix(c.trim, c.logo, 10)} stroke-width="1" />
+        <path d="M19 84 L214 84 L214 91 L19 91 Z" fill={mix(INK, c.trim, 20)} />
+        <path d="M84 84 L84 91 M149 84 L149 91" stroke={mix(c.trim, INK, 10)} stroke-width="1" />
       </>}
       {/* bed lights: a warm strip under the rail, lit when the bed lights relay is on */}
-      {t.accessories.bedLights && <path d="M28 94 L208 94" stroke={bedLightsOn ? 'var(--warn)' : mix(c.trim, c.logo, 40)} stroke-width={bedLightsOn ? 2.5 : 1.5} stroke-linecap="round" class={bedLightsOn ? 'bedlit' : undefined} />}
+      {t.accessories.bedLights && <path d="M28 94 L208 94" stroke={bedLightsOn ? 'var(--warn)' : mix(c.trim, INK, 40)} stroke-width={bedLightsOn ? 2.5 : 1.5} stroke-linecap="round" class={bedLightsOn ? 'bedlit' : undefined} />}
       {/* front: lamp plate with its round lamp, bumper; rear: tail lamp, bumper, hitch */}
       <path d="M409 100 Q418 101 419 108 L420 128 L408 128 Z" fill={`url(#${id}-lamp)`} />
-      <circle cx="414" cy="114" r="5" fill={c.roof} opacity=".9" />
+      <circle cx="414" cy="114" r="5.2" fill={c.lampPlates === 'synthwave' ? AMBER : '#f4f1e6'} />
+      <circle cx="414" cy="114" r="5.2" fill="none" stroke={INK} stroke-width="1" />
       <path d="M402 136 L424 136 Q428 136 428 141 L428 156 Q428 162 422 162 L398 162 Z" fill={c.trim} />
       <rect x="15" y="96" width="5" height="26" rx="1.5" fill="var(--bad)" />
       <path d="M12 140 L30 140 L30 162 L16 162 Q12 162 12 158 Z" fill={c.trim} />
-      {t.accessories.hitch && <><rect x="2" y="152" width="14" height="9" rx="1" fill={mix(c.trim, c.logo, 45)} /><circle cx="7" cy="156.5" r="1.6" fill={c.roof} /></>}
+      {t.accessories.hitch && <><rect x="2" y="152" width="14" height="9" rx="1" fill={mix(c.trim, INK, 45)} /><circle cx="7" cy="156.5" r="1.6" fill={c.roof} /></>}
       {flare(RA)}{flare(FA)}
       <Wheel cx={RA} cy={WY} t={t} /><Wheel cx={FA} cy={WY} t={t} />
     </svg>
@@ -101,8 +109,8 @@ export function TruckRear({ t, id = 'tr' }: { t: TruckLook; id?: string }) {
     <svg class="truck-art" viewBox="0 0 220 200" role="img" aria-label="Truck, rear view">
       <Defs id={id} t={t} />
       {/* tyres */}
-      <rect x="27" y="124" width="26" height="62" rx="7" fill={mix(c.logo, c.trim, 15)} />
-      <rect x="167" y="124" width="26" height="62" rx="7" fill={mix(c.logo, c.trim, 15)} />
+      <rect x="27" y="124" width="26" height="62" rx="7" fill={mix(INK, c.trim, 15)} />
+      <rect x="167" y="124" width="26" height="62" rx="7" fill={mix(INK, c.trim, 15)} />
       {/* cab behind the bed */}
       <path d="M52 86 L58 36 Q60 29 68 29 L152 29 Q160 29 162 36 L168 86 Z" fill={`url(#${id}-body)`} />
       {t.roofWrap && <path d="M57.5 40 L58 36 Q60 29 68 29 L152 29 Q160 29 162 36 L162.5 40 Z" fill={c.roof} />}
@@ -112,15 +120,15 @@ export function TruckRear({ t, id = 'tr' }: { t: TruckLook; id?: string }) {
       <path d="M40 74 L52 72 L52 84 L40 84 Z M180 74 L168 72 L168 84 L180 84 Z" fill={c.trim} />
       {/* bed box and tailgate */}
       <path d="M30 88 L190 88 L192 150 L28 150 Z" fill={`url(#${id}-body)`} />
-      {t.accessories.tonneau === 'nexus-flip' && <path d="M28 82 L192 82 L192 90 L28 90 Z" fill={mix(c.logo, c.trim, 20)} />}
-      {t.accessories.bedLights && <path d="M34 93 L186 93" stroke={mix(c.trim, c.logo, 40)} stroke-width="1.2" />}
-      <path d="M44 96 L176 96 L176 142 L44 142 Z" fill="none" stroke={mix(c.body, c.logo, 30)} stroke-width="1" />
-      <text x="110" y="126" text-anchor="middle" class="truck-logo" fill={c.logo}>SLATE</text>
+      {t.accessories.tonneau === 'nexus-flip' && <path d="M28 82 L192 82 L192 90 L28 90 Z" fill={mix(INK, c.trim, 20)} />}
+      {t.accessories.bedLights && <path d="M34 93 L186 93" stroke={mix(c.trim, INK, 40)} stroke-width="1.2" />}
+      <path d="M44 96 L176 96 L176 142 L44 142 Z" fill="none" stroke={mix(c.body, INK, 30)} stroke-width="1" />
+      {hasLogo(t) && <text x="110" y="126" text-anchor="middle" class="truck-logo" fill={c.logo}>SLATE</text>}
       <rect x="32" y="94" width="9" height="30" rx="2" fill="var(--bad)" />
       <rect x="179" y="94" width="9" height="30" rx="2" fill="var(--bad)" />
       {/* bumper, hitch receiver */}
       <path d="M24 148 L196 148 L196 162 Q196 166 192 166 L28 166 Q24 166 24 162 Z" fill={c.trim} />
-      {t.accessories.hitch && <><rect x="101" y="162" width="18" height="14" rx="1.5" fill={mix(c.trim, c.logo, 45)} /><rect x="105" y="166" width="10" height="7" fill={c.logo} /></>}
+      {t.accessories.hitch && <><rect x="101" y="162" width="18" height="14" rx="1.5" fill={mix(c.trim, INK, 45)} /><rect x="105" y="166" width="10" height="7" fill={INK} /></>}
     </svg>
   );
 }

@@ -121,8 +121,9 @@ export function needsAuth(method: string, url: string): 'page' | 'api' | null {
   if (p === '/ws') return 'api';
   if (p.startsWith('/api/')) {
     if (p === '/api/health' || p === '/api/about' || p === '/api/update/version' || p.startsWith('/api/auth/')) return null;
+    // The truck photo is shown on the dash and the Truck page; only changing it needs the login.
+    if (p === '/api/vehicle/photo' && (method === 'GET' || method === 'HEAD')) return null;
     return 'api';
   }
-  void method;
   return null;
 }

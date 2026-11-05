@@ -18,6 +18,7 @@ import { VehicleError, type MenuLevel } from './gas/vehicles.ts';
 import { NOT_CONFIGURED } from './ha/client.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
+import { registerVehiclePhoto } from './drive/photo.ts';
 import { mountOps } from './ops/routes.ts';
 
 const optStr = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
@@ -251,6 +252,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   });
 
   registerDriveRoutes(app, brain.drive);
+  await registerVehiclePhoto(app, brain.settings, config.dataDir);
   // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----
   await registerTrackB(app, brain, nowPlaying);
 

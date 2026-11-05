@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, loadSettings, settingsStore, stateStore, toast, useStore, type CompareVehicle, type Driver, type Settings } from '../lib/brain.ts';
 import { VehiclePicker } from '../settings/VehiclePicker.tsx';
+import { truckOf, truckPhotoUrl } from '../drive/hooks.ts';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { errText, post, put, type SetupResp } from './api.ts';
 import './ops.css';
@@ -87,13 +88,15 @@ function ApStep({ setup, next }: StepProps) {
 function TruckStep({ settings, next }: StepProps) {
   const [id, setId] = useState(settings.truckId); const [pack, setPack] = useState(String(settings.packKwh));
   const { err, busy, run } = useSave(next);
+  const photo = truckPhotoUrl(truckOf(settings));
   return (
     <div class="form">
+      {photo && <img src={photo} alt="Your truck" style="display:block;width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:var(--panel-2)" />}
       <div class="fields form">
         <label class="f"><span>Truck id (MQTT prefix)</span><input type="text" value={id} onInput={(e) => setId(val(e))} /></label>
         <label class="f"><span>Usable pack kWh</span><input type="number" step="0.1" value={pack} onInput={(e) => setPack(val(e))} /></label>
       </div>
-      <p class="help">Pack size is a guess until delivery: 52.7 kWh was announced for the standard pack. Changing the truck id needs a brain restart for MQTT.</p>
+      <p class="help">Pack size is a guess until delivery: 52.7 kWh was announced for the standard pack. Changing the truck id needs a brain restart for MQTT. Colours, accessories and a photo of your truck: Settings, Truck, My Slate.</p>
       <div class="row"><button class="btn big primary" type="button" disabled={busy} onClick={() => void run(() => put('/api/settings', { truckId: id.trim(), packKwh: Number(pack) }))}>Save</button><Err e={err} /></div>
     </div>
   );

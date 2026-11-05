@@ -24,3 +24,11 @@ export function pickCards(s: State | null, playing: boolean): CardId[] {
 export function overLimit(mph: number | null, limit: number | null, dd: DriverDrive): boolean {
   return dd.overLimitWarn && mph !== null && limit !== null && mph > limit + dd.overLimitMph;
 }
+
+/** The tilt card shows the owner's photo while parked (under 1 mph) and level enough; moving or steep, the live drawing returns. */
+export function showTruckPhoto(s: State | null, hasPhoto: boolean): boolean {
+  if (!hasPhoto) return false;
+  const mph = s?.speedMph ?? 0;
+  const lvl = s?.drive?.tilt.level ?? null;
+  return mph < 1 && !s?.drive?.lockout.locked && lvl !== 'warn' && lvl !== 'danger';
+}

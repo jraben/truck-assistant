@@ -9,8 +9,8 @@ import { nowPlayingStore } from '../carplay/controller.ts';
 import { V, whyGps, whySoc, whyTruck } from '../components/common.tsx';
 import { socLabel, type WP } from '../components/drive.tsx';
 import { fmtTime } from '../lib/fmt.ts';
-import { driverDrive, speedoStyle, truckOf, useActiveDriver } from './hooks.ts';
-import { overLimit, pickCards } from './logic.ts';
+import { driverDrive, speedoStyle, truckOf, truckPhotoUrl, useActiveDriver } from './hooks.ts';
+import { overLimit, pickCards, showTruckPhoto } from './logic.ts';
 import { WIcon } from './icons.tsx';
 import { Speedo, SPEEDO_LABELS } from './Speedo.tsx';
 import { TiltPair } from './Tilt.tsx';
@@ -145,12 +145,25 @@ function TripCard({ s, go }: { s: State | null; go: WP['go'] }) {
 
 function TiltCard({ s }: { s: State | null }) {
   const { settings } = useActiveDriver();
+  const truck = truckOf(settings);
+  const photo = truckPhotoUrl(truck);
+  const [broken, setBroken] = useState<string | null>(null);
   const lvl = s?.drive?.tilt.level ?? null;
   const bed = Object.values(s?.relays ?? {}).find((r) => /bed light/i.test(r.name))?.on === true;
+  const tilt = s?.tilt ?? null;
+  const deg = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}°`;
+  if (photo && broken !== photo && showTruckPhoto(s, true)) {
+    return (
+      <div class="ccard tiltcard photocard">
+        <span class="photoframe"><img src={photo} alt="Your truck" onError={() => setBroken(photo)} /></span>
+        <span class="photonums num dimmable"><span class="lbl">Tilt</span> Pitch <b>{tilt ? deg(tilt.pitch) : '—'}</b> · Roll <b>{tilt ? deg(tilt.roll) : '—'}</b></span>
+      </div>
+    );
+  }
   return (
     <div class={`ccard tiltcard ${lvl === 'danger' ? 'danger' : lvl === 'warn' ? 'warn' : ''}`}>
       <span class="lbl">Tilt{lvl === 'danger' ? ' · TOO STEEP' : lvl === 'warn' ? ' · STEEP' : ''}</span>
-      <TiltPair tilt={s?.tilt ?? null} truck={truckOf(settings)} limits={s?.drive?.tilt} bedLightsOn={bed} compact />
+      <TiltPair tilt={tilt} truck={truck} limits={s?.drive?.tilt} bedLightsOn={bed} compact />
     </div>
   );
 }

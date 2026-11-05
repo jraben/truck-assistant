@@ -463,12 +463,21 @@ already prices `cityMiles` at mpgCity and `highwayMiles` at mpgHighway.
 ### Settings, added
 
 ```ts
-Settings.truck: {                    // the owner's build, for the tilt drawing
-  colors: { body; roof; logo; wheelDecal; trim: '#rrggbb'; lampPlates: '#rrggbb' | 'synthwave' };
+Settings.truck: {                    // the owner's build, for the tilt drawing and /settings > Truck > My Slate
+  colors: { body; roof; wheelDecal; trim: '#rrggbb'; logo: '#rrggbb' | 'none'; lampPlates: '#rrggbb' | 'synthwave' };
   finish: 'satin' | 'gloss' | 'matte'; roofWrap: boolean;
-  wheels: { inches: 17; style: 'steel' };
-  accessories: { tonneau: 'none' | 'nexus-flip'; hitch: boolean; bedLights: boolean };
-};  // default: Toolbox Red body, Clean Slate roof and wheel decals, Tar Pit logos, Synthwave lamp plates, NEXUS, hitch, bed lights
+  wheels: { inches: 17; style: 'steel' };          // black steel; wheelDecal is the ring decal on it
+  accessories: { tonneau: 'none' | 'nexus-flip'; hitch: boolean; bedLights: boolean };   // the ones the drawing shows
+  interior: { bolster: string; armrest: string };  // Slate colour names (WRAP_COLORS, e.g. 'Cardinal') or 'none' (standard, no insert); display only
+  slateShareUrl: string | null;      // https://www.slate.auto/share/<code> or https://www.slate.auto/store?…shortcode=<code> (code 4-16 letters/digits); '' = null
+  accessoryList: string[];           // the build's accessory names as Slate lists them (≤ 60, ≤ 80 chars each)
+  photo: { file: 'vehicle-photo.jpg' | 'vehicle-photo.png' | 'vehicle-photo.webp'; updatedAt: string; source: 'upload' | 'url' } | null;
+};  // default: the author's build (slate.auto share ABC123): Toolbox Red satin wrap, Clean Slate roof and wheel rings,
+    // Tar Pit logos (set 'none' for the build without logo decals), Synthwave lamp plates, black trim, NEXUS, hitch,
+    // bed lights, no bolster insert, Cardinal armrest, its 23 accessories (incl. Slate Telematics Module, CCS to NACS
+    // Adapter); no share link, no photo.
+    // An older settings.json keeps every stored value; the new fields arrive with these defaults.
+    // `photo` is set only by /api/vehicle/photo: PUT /api/settings ignores it. A bad stored record loads as null.
 Settings.drive: {
   highwayMph: 45; efficiency: { cityMiPerKwh: 4.0; highwayMiPerKwh: 3.2; alpha: 0.2 };  // seeds + EWMA weight
   tilt: { warnDeg: 20; dangerDeg: 30 };
@@ -491,6 +500,16 @@ to the new single `drive` widget on load; customised layouts are left alone.
   alerts with polygons as `[lat, lon]` rings) + `error`; 503 with a reason before the first report
 - `GET  /api/brightness` → `DriveState['brightness']`; `POST /api/brightness` `{auto?, pct?}`
   (pct 1-100 sets the manual level and turns auto off unless `auto` is given)
+- `GET  /api/vehicle/photo` → the truck photo (`DATA_DIR/vehicle-photo.<ext>`), 404 without one. ETag +
+  Last-Modified; `?v=<photo.updatedAt>` is cached a day, the bare URL is `no-cache`. Open (no login), so the
+  dash and the Truck page can show it.
+- `POST /api/vehicle/photo` → `{photo}`: either the raw image bytes (`Content-Type: image/jpeg|png|webp` or
+  `application/octet-stream`; the type is taken from the magic bytes; ≤ 6 MB, else 413) or JSON `{url}`
+  (https only, every redirect hop https too, at most 3; `image/*` content type; ≤ 6 MB; 15 s). Replaces any
+  earlier photo. `DELETE /api/vehicle/photo` → `{photo: null}`. Both sit behind the /settings login (Track D gate).
+  (`/truck` and `/api/truck` are Track C's; this is deliberately `/api/vehicle/*`.)
+- The Drive screen's tilt card shows the photo while parked (under 1 mph, not locked out, tilt below
+  `drive.tilt.warnDeg`) with the pitch and roll beneath; moving or steep, the live drawing returns.
 
 ### Outside services, added
 

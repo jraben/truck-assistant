@@ -191,6 +191,8 @@ export function mergeSettings(base: Settings, patch: unknown): Settings {
   if (typeof p.compareMpg === 'number') p.compareVehicle = customVehicle(p.compareMpg);
   delete p.compareMpg;
   delete p.drivers;
+  // The truck photo is set only by /api/vehicle/photo (it names a file in DATA_DIR).
+  if (isObj(p.truck)) { const t = { ...p.truck }; delete t.photo; p.truck = t; }
   let keys = base.keys;
   if ('keys' in p) { keys = applyKeys(base.keys, p.keys); delete p.keys; }
   let token = base.homeAssistant.token;
@@ -464,6 +466,11 @@ export class SettingsStore {
     if (this.s.drivers.filter((d) => !d.guest).length <= 1) throw new SettingsError('keep at least one named driver');
     this.commit({ ...structuredClone(this.s), drivers: structuredClone(this.s.drivers.filter((x) => x.id !== id)) });
     return true;
+  }
+
+  /** Record (or clear) the truck photo; the file itself is written by the caller. */
+  setTruckPhoto(photo: Settings['truck']['photo']): Settings {
+    return this.commit({ ...structuredClone(this.s), truck: { ...structuredClone(this.s.truck), photo } });
   }
 
   onChange(l: Listener) { this.listeners.push(l); }

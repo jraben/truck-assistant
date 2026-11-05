@@ -2,28 +2,87 @@
 // city/highway range, tilt warnings, heat, brightness, speed limits, and each
 // driver's speedometer and over-limit warning. Saves on its own button.
 import { useEffect, useState } from 'preact/hooks';
-import { defaultDrive, WRAP_COLORS } from '../../../brain/src/drive/settings.ts';
+import { defaultDrive, parseSlateShareUrl, WRAP_COLORS } from '../../../brain/src/drive/settings.ts';
 import { SPEEDO_STYLES, type DriverDrive, type DriveSettings, type TruckLook } from '../../../brain/src/drive/types.ts';
 import { api, loadSettings, putDriver, settingsStore, stateStore, useStore, type Settings } from '../lib/brain.ts';
-import { driverDrive, truckOf } from '../drive/hooks.ts';
+import { driverDrive, truckOf, truckPhotoUrl } from '../drive/hooks.ts';
 import { SPEEDO_LABELS } from '../drive/Speedo.tsx';
 import { TruckRear, TruckSide } from '../drive/TruckArt.tsx';
 import '../drive/drive.css';
 
 const num = (v: string) => (v.trim() === '' ? NaN : Number(v));
-const COLOR_FIELDS: [keyof TruckLook['colors'], string][] = [['body', 'Body wrap'], ['roof', 'Roof wrap'], ['logo', 'Logo decals'], ['wheelDecal', 'Wheel decals'], ['trim', 'Bumpers, flares (unwrapped)']];
+const COLOR_FIELDS: [keyof TruckLook['colors'], string][] = [['body', 'Body wrap'], ['roof', 'Roof wrap'], ['wheelDecal', 'Wheel decal ring'], ['logo', 'SLATE body logo decals'], ['trim', 'Bumpers, flares (unwrapped)']];
+const nameOf = (hex: string) => WRAP_COLORS.find((c) => c.hex === hex.toLowerCase())?.name ?? null;
 
-function ColorPick({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function Swatch({ name, hex, on, onClick }: { name: string; hex: string; on: boolean; onClick: () => void }) {
+  return (
+    <button type="button" title={`${name} (approximate)`} aria-label={name} aria-pressed={on} onClick={onClick}
+      style={{ width: '32px', height: '32px', borderRadius: '50%', background: hex, border: on ? '3px solid var(--accent)' : '1px solid var(--line)' }} />
+  );
+}
+
+function ColorPick({ label, value, onChange, allowNone }: { label: string; value: string; onChange: (v: string) => void; allowNone?: boolean }) {
+  const none = value === 'none';
   return (
     <div class="form" style="gap:6px">
-      <span class="lbl">{label}</span>
+      <span class="lbl">{label}: <b style="color:var(--fg)">{none ? 'None' : nameOf(value) ?? value}</b></span>
       <div class="row wrap" style="gap:6px">
-        <input type="color" value={value} onInput={(e) => onChange((e.target as HTMLInputElement).value)} aria-label={`${label} colour`} style="width:48px;height:40px;border:0;background:none;padding:0" />
-        {WRAP_COLORS.map((c) => (
-          <button type="button" title={c.name} aria-label={c.name} aria-pressed={value.toLowerCase() === c.hex} onClick={() => onChange(c.hex)}
-            style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.hex, border: value.toLowerCase() === c.hex ? '3px solid var(--accent)' : '1px solid var(--line)' }} />
-        ))}
+        {allowNone && <button type="button" class={`btn sm ${none ? 'primary' : ''}`} aria-pressed={none} onClick={() => onChange('none')}>None</button>}
+        <input type="color" value={none ? '#1c1d1f' : value} onInput={(e) => onChange((e.target as HTMLInputElement).value)} aria-label={`${label} colour`} style="width:48px;height:40px;border:0;background:none;padding:0" />
+        {WRAP_COLORS.map((c) => <Swatch name={c.name} hex={c.hex} on={value.toLowerCase() === c.hex} onClick={() => onChange(c.hex)} />)}
       </div>
+    </div>
+  );
+}
+
+function NamePick({ label, value, onChange, noneLabel }: { label: string; value: string; onChange: (v: string) => void; noneLabel?: string }) {
+  return (
+    <div class="form" style="gap:6px">
+      <span class="lbl">{label}: <b style="color:var(--fg)">{value === 'none' ? noneLabel ?? 'None' : value}</b></span>
+      <div class="row wrap" style="gap:6px">
+        {noneLabel && <button type="button" class={`btn sm ${value === 'none' ? 'primary' : ''}`} aria-pressed={value === 'none'} onClick={() => onChange('none')}>{noneLabel}</button>}
+        {WRAP_COLORS.map((c) => <Swatch name={c.name} hex={c.hex} on={value === c.name} onClick={() => onChange(c.name)} />)}
+      </div>
+    </div>
+  );
+}
+
+/** The truck photo: preview, upload, from an image URL, remove. Saves straight away (its own route). */
+function PhotoBox({ settings }: { settings: Settings }) {
+  const t = truckOf(settings);
+  const src = truckPhotoUrl(t);
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const run = async (what: string, f: () => Promise<unknown>) => {
+    setBusy(true); setMsg(null);
+    try { await f(); await loadSettings(); setMsg({ ok: true, text: what }); }
+    catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
+    finally { setBusy(false); }
+  };
+  const upload = (f: File | undefined) => {
+    if (!f) return;
+    if (f.size > 6 * 1024 * 1024) { setMsg({ ok: false, text: 'That photo is over 6 MB.' }); return; }
+    void run('Photo saved.', () => api('/api/vehicle/photo', { method: 'POST', body: f, headers: { 'content-type': f.type || 'application/octet-stream' } }));
+  };
+  const https = /^https:\/\//i.test(url.trim());
+  return (
+    <div class="form photobox" style="gap:8px">
+      <span class="lbl">Photo of your truck</span>
+      <div class="photoframe">{src ? <img src={src} alt="Your truck" /> : <span class="dimtxt">No photo yet. The Drive screen shows it while parked; without one it shows the drawing.</span>}</div>
+      <div class="row wrap" style="gap:8px">
+        <label class="btn sm" style="cursor:pointer">Upload…
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={busy} onChange={(e) => { const i = e.target as HTMLInputElement; upload(i.files?.[0]); i.value = ''; }} />
+        </label>
+        {src && <button class="btn sm danger" type="button" disabled={busy} onClick={() => void run('Photo removed.', () => api('/api/vehicle/photo', { method: 'DELETE' }))}>Remove</button>}
+        {t.photo && <span class="dimtxt" style="font-size:13px">{t.photo.source === 'url' ? 'From a URL' : 'Uploaded'}, {new Date(t.photo.updatedAt).toLocaleDateString()}</span>}
+      </div>
+      <div class="row wrap" style="gap:8px;align-items:flex-end">
+        <label class="f" style="flex:1;min-width:220px"><span>From image URL (https)</span><input type="url" value={url} placeholder="https://…/truck.jpg" onInput={(e) => setUrl((e.target as HTMLInputElement).value)} /></label>
+        <button class="btn sm" type="button" disabled={busy || !https} onClick={() => void run('Photo saved.', async () => { await api('/api/vehicle/photo', { method: 'POST', body: JSON.stringify({ url: url.trim() }) }); setUrl(''); })}>Fetch</button>
+      </div>
+      <p class="help">JPEG, PNG or WebP, up to 6 MB. Kept on the truck only.</p>
+      {busy ? <span class="dimtxt">Working…</span> : msg && <span class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</span>}
     </div>
   );
 }
@@ -33,9 +92,12 @@ export function DriveSection({ settings }: { settings: Settings }) {
   const [truck, setTruck] = useState<TruckLook>(() => structuredClone(truckOf(settings)));
   const [drive, setDrive] = useState<DriveSettings>(() => structuredClone((settings as Settings & { drive?: DriveSettings }).drive ?? defaultDrive()));
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  useEffect(() => { setTruck(structuredClone(truckOf(settings))); }, [JSON.stringify(truckOf(settings))]);
+  // A photo change (its own route) must not throw away unsaved colour edits.
+  useEffect(() => { setTruck(structuredClone(truckOf(settings))); }, [JSON.stringify({ ...truckOf(settings), photo: null })]);
 
-  const c = (k: keyof TruckLook['colors'], v: string) => setTruck({ ...truck, colors: { ...truck.colors, [k]: v } });
+  const share = truck.slateShareUrl ?? '';
+  const shareOk = share.trim() === '' || !!parseSlateShareUrl(share);
+  const c =(k: keyof TruckLook['colors'], v: string) => setTruck({ ...truck, colors: { ...truck.colors, [k]: v } });
   const acc = <K extends keyof TruckLook['accessories']>(k: K, v: TruckLook['accessories'][K]) => setTruck({ ...truck, accessories: { ...truck.accessories, [k]: v } });
   const d = <K extends keyof DriveSettings>(k: K, v: DriveSettings[K]) => setDrive({ ...drive, [k]: v });
   const sub = <K extends 'efficiency' | 'tilt' | 'heat' | 'brightness'>(k: K, f: keyof DriveSettings[K], v: number | boolean) => setDrive({ ...drive, [k]: { ...drive[k], [f]: v } });
@@ -43,7 +105,9 @@ export function DriveSection({ settings }: { settings: Settings }) {
   const save = async () => {
     setMsg(null);
     try {
-      const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ truck, drive }) });
+      if (!shareOk) throw new Error('The Slate link should look like https://www.slate.auto/share/ABC123');
+      const { photo: _photo, ...look } = truck;
+      const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ truck: { ...look, slateShareUrl: share.trim() || null, accessoryList: look.accessoryList.map((x) => x.trim()).filter(Boolean) }, drive }) });
       settingsStore.set(n);
       setMsg({ ok: true, text: 'Saved.' });
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
@@ -62,33 +126,52 @@ export function DriveSection({ settings }: { settings: Settings }) {
       <h2>Drive screen and the truck</h2>
       <p class="help">How the tilt gauge draws your truck, and how the Drive screen behaves. Truck settings are the truck's; the speedometer and speed warning are each driver's.</p>
 
-      <h3 class="sub">Your truck as built</h3>
-      <div class="row wrap" style="gap:24px;align-items:flex-end">
-        <div style="width:min(440px,100%)"><TruckSide t={truck} id="set-side" /></div>
-        <div style="width:min(180px,40%)"><TruckRear t={truck} id="set-rear" /></div>
-      </div>
-      <div class="form">
-        {COLOR_FIELDS.map(([k, label]) => <ColorPick label={label} value={truck.colors[k]} onChange={(v) => c(k, v)} />)}
-        <div class="form" style="gap:6px">
-          <span class="lbl">Front lamp plates</span>
-          <div class="row wrap">
-            <label class="check"><input type="radio" name="lamp" checked={truck.colors.lampPlates === 'synthwave'} onChange={() => c('lampPlates', 'synthwave')} /> Synthwave</label>
-            <label class="check"><input type="radio" name="lamp" checked={truck.colors.lampPlates !== 'synthwave'} onChange={() => c('lampPlates', truck.colors.body)} /> A colour</label>
-            {truck.colors.lampPlates !== 'synthwave' && <input type="color" value={truck.colors.lampPlates} onInput={(e) => c('lampPlates', (e.target as HTMLInputElement).value)} aria-label="Lamp plate colour" />}
+      <h3 class="sub">My Slate</h3>
+      <div class="myslate">
+        <div class="myslate-preview">
+          <TruckSide t={truck} id="set-side" />
+          <div class="row" style="gap:16px;align-items:flex-end">
+            <div style="width:42%"><TruckRear t={truck} id="set-rear" /></div>
+            <p class="help" style="flex:1">Live preview of the tilt drawing the Drive screen rotates. Save to keep it.</p>
           </div>
+          <PhotoBox settings={settings} />
         </div>
-        <div class="row wrap">
-          <label class="f" style="min-width:160px"><span>Wrap finish</span>
-            <select value={truck.finish} onChange={(e) => setTruck({ ...truck, finish: (e.target as HTMLSelectElement).value as TruckLook['finish'] })}>
-              <option value="satin">Satin</option><option value="gloss">Gloss</option><option value="matte">Matte</option>
-            </select>
+        <div class="form myslate-controls">
+          <div class="form" style="gap:6px">
+            <label class="f"><span>My build on slate.auto (share link)</span>
+              <input type="url" value={share} placeholder="https://www.slate.auto/share/ABC123" aria-invalid={!shareOk} onInput={(e) => setTruck({ ...truck, slateShareUrl: (e.target as HTMLInputElement).value })} />
+            </label>
+            {!shareOk && <span class="err">Paste the link from Slate's Share button: https://www.slate.auto/share/ABC123</span>}
+            {shareOk && share.trim() && <div><a class="btn sm" href={parseSlateShareUrl(share)!.url} target="_blank" rel="noreferrer noopener">Open my build on slate.auto ↗</a></div>}
+          </div>
+          {COLOR_FIELDS.map(([k, label]) => <ColorPick label={label} value={truck.colors[k]} allowNone={k === 'logo'} onChange={(v) => c(k, v)} />)}
+          <div class="form" style="gap:6px">
+            <span class="lbl">Front lamp plates</span>
+            <div class="row wrap">
+              <label class="check"><input type="radio" name="lamp" checked={truck.colors.lampPlates === 'synthwave'} onChange={() => c('lampPlates', 'synthwave')} /> Synthwave (round amber lamps)</label>
+              <label class="check"><input type="radio" name="lamp" checked={truck.colors.lampPlates !== 'synthwave'} onChange={() => c('lampPlates', truck.colors.body)} /> A colour</label>
+              {truck.colors.lampPlates !== 'synthwave' && <input type="color" value={truck.colors.lampPlates} onInput={(e) => c('lampPlates', (e.target as HTMLInputElement).value)} aria-label="Lamp plate colour" />}
+            </div>
+          </div>
+          <div class="row wrap">
+            <label class="f" style="min-width:160px"><span>Wrap finish</span>
+              <select value={truck.finish} onChange={(e) => setTruck({ ...truck, finish: (e.target as HTMLSelectElement).value as TruckLook['finish'] })}>
+                <option value="satin">Satin</option><option value="gloss">Gloss</option><option value="matte">Matte</option>
+              </select>
+            </label>
+            <label class="check"><input type="checkbox" checked={truck.roofWrap} onChange={(e) => setTruck({ ...truck, roofWrap: (e.target as HTMLInputElement).checked })} /> Roof wrapped separately</label>
+            <label class="check"><input type="checkbox" checked={truck.accessories.tonneau === 'nexus-flip'} onChange={(e) => acc('tonneau', (e.target as HTMLInputElement).checked ? 'nexus-flip' : 'none')} /> NEXUS flip-up tonneau</label>
+            <label class="check"><input type="checkbox" checked={truck.accessories.hitch} onChange={(e) => acc('hitch', (e.target as HTMLInputElement).checked)} /> 2" hitch receiver</label>
+            <label class="check"><input type="checkbox" checked={truck.accessories.bedLights} onChange={(e) => acc('bedLights', (e.target as HTMLInputElement).checked)} /> Bed light kit</label>
+          </div>
+          <span class="lbl">Interior</span>
+          <NamePick label="Door bolster insert" noneLabel="Standard (none)" value={truck.interior.bolster} onChange={(v) => setTruck({ ...truck, interior: { ...truck.interior, bolster: v } })} />
+          <NamePick label="Door armrest" noneLabel="Standard (none)" value={truck.interior.armrest} onChange={(v) => setTruck({ ...truck, interior: { ...truck.interior, armrest: v } })} />
+          <label class="f"><span>Accessories on the build (one per line)</span>
+            <textarea rows={Math.min(16, Math.max(4, truck.accessoryList.length + 1))} value={truck.accessoryList.join('\n')} onInput={(e) => setTruck({ ...truck, accessoryList: (e.target as HTMLTextAreaElement).value.split('\n') })} />
           </label>
-          <label class="check"><input type="checkbox" checked={truck.roofWrap} onChange={(e) => setTruck({ ...truck, roofWrap: (e.target as HTMLInputElement).checked })} /> Roof wrapped separately</label>
-          <label class="check"><input type="checkbox" checked={truck.accessories.tonneau === 'nexus-flip'} onChange={(e) => acc('tonneau', (e.target as HTMLInputElement).checked ? 'nexus-flip' : 'none')} /> NEXUS flip-up tonneau</label>
-          <label class="check"><input type="checkbox" checked={truck.accessories.hitch} onChange={(e) => acc('hitch', (e.target as HTMLInputElement).checked)} /> 2" hitch receiver</label>
-          <label class="check"><input type="checkbox" checked={truck.accessories.bedLights} onChange={(e) => acc('bedLights', (e.target as HTMLInputElement).checked)} /> Bed light kit</label>
+          <p class="help">Colour names are Slate's; the swatches are approximations (Slate publishes no colour values). 17" black steel wheels, regular cab. The bed light strip lights up on the drawing when the relay named "Bed lights" is on.</p>
         </div>
-        <p class="help">17" steel wheels, regular cab. The bed light strip lights up on the drawing when the relay named "Bed lights" is on.</p>
       </div>
 
       <h3 class="sub">City and highway range</h3>

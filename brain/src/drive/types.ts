@@ -7,20 +7,27 @@ export type RangeOverride = 'auto' | RangeMode;
 export const SPEEDO_STYLES = ['digital', 'sweep', 'fifty-seven', 'ribbon', 'minimal'] as const;
 export type SpeedoStyle = (typeof SPEEDO_STYLES)[number];
 
+/** The owner's photo of the truck: DATA_DIR/<file>, set only through /api/vehicle/photo. */
+export type TruckPhoto = { file: string; updatedAt: string; source: 'upload' | 'url' };
+
 /** Truck-level: what the truck looks like (the tilt drawing) and what is fitted. */
 export type TruckLook = {
   colors: {
     body: string;        // #rrggbb: the wrap (Toolbox Red)
     roof: string;        // partial roof wrap (Clean Slate)
-    logo: string;        // SLATE logo decals (Tar Pit)
-    wheelDecal: string;  // decal on the steel wheel face (Clean Slate)
-    lampPlates: string;  // #rrggbb, or "synthwave" (the gradient plate)
+    logo: string;        // SLATE body logo decals: #rrggbb, or "none" (no decals; the grille still says SLATE)
+    wheelDecal: string;  // the ring decal on the black steel wheel (Clean Slate)
+    lampPlates: string;  // #rrggbb, or "synthwave" (black plates, round amber lamps)
     trim: string;        // the unwrapped polypropylene: bumpers, flares, sills
   };
   finish: 'satin' | 'gloss' | 'matte';
   roofWrap: boolean;     // false = roof in the body colour
   wheels: { inches: 17; style: 'steel' };
   accessories: { tonneau: 'none' | 'nexus-flip'; hitch: boolean; bedLights: boolean };
+  interior: { bolster: string; armrest: string };   // Slate colour names (Cardinal), or 'none' = no insert (standard); display only
+  slateShareUrl: string | null;                     // https://www.slate.auto/share/<code>
+  accessoryList: string[];                          // the build's accessory names, as Slate lists them
+  photo: TruckPhoto | null;
 };
 
 /** Truck-level drive settings. */

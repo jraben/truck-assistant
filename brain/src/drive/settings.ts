@@ -8,26 +8,67 @@ export class DriveSettingsError extends Error {}
 const HEX = /^#[0-9a-f]{6}$/i;
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** Slate's wrap colours, as near as a screen can show them (names from Slate's configurator). */
-export const WRAP_COLORS: { name: string; hex: string }[] = [
-  { name: 'Toolbox Red', hex: '#b5272d' },
-  { name: 'Clean Slate', hex: '#e4e5e0' },
-  { name: 'Tar Pit', hex: '#1c1d1f' },
-  { name: 'Slate Gray', hex: '#7d8287' },
-  { name: 'Gold Rush', hex: '#d39b2a' },
-  { name: 'Blue Bayou', hex: '#2f6f9f' },
-  { name: 'Mint Emerald', hex: '#5fbf97' },
-  { name: 'Synthwave', hex: '#ff3fb4' },
+/**
+ * Slate's colour names (wrap, wheel decals, interior inserts, key fob caps).
+ * Slate publishes no hex values, so every one is an approximation picked off
+ * renders and photos (`approx: true`); the names are Slate's.
+ */
+export const WRAP_COLORS: { name: string; hex: string; approx: boolean }[] = [
+  { name: 'Toolbox Red', hex: '#b5272d', approx: true },
+  { name: 'Clean Slate', hex: '#e4e5e0', approx: true },
+  { name: 'Tar Pit', hex: '#1c1d1f', approx: true },
+  { name: 'Sterling Slate', hex: '#9da2a7', approx: true },
+  { name: 'Slate Gray', hex: '#7d8287', approx: true },
+  { name: 'Cardinal', hex: '#8a1c2b', approx: true },
+  { name: 'Gold Rush', hex: '#d39b2a', approx: true },
+  { name: 'Blue Bayou', hex: '#2f6f9f', approx: true },
+  { name: 'Mint', hex: '#93d3b6', approx: true },
+  { name: 'Emerald', hex: '#24785a', approx: true },
+  { name: 'Synthwave', hex: '#ff3fb4', approx: true },
+];
+export const colorByName = (name: string) => WRAP_COLORS.find((c) => c.name.toLowerCase() === name.trim().toLowerCase());
+
+/** The accessories on the author's build (slate.auto share ABC123, 2026-11-05), as Slate names them. */
+export const BUILD_ACCESSORIES = [
+  'Bed Light Kit', 'The Five Switch | Upgrade Version', 'One-Key System | 2-Pack', 'PACKOUT System Mounting Plate | Large',
+  'MOLLE Paneling Kit', 'Tailgate Lock Kit', 'Front Left + Right Integrated Speakers', 'Front Center Integrated Speaker',
+  '17" Single Color Wheel Decals (Clean Slate / Satin)', 'Full Wrap (Toolbox Red / Satin)', 'Roof Partial Wrap (Clean Slate / Satin)',
+  'Synthwave Front Lamp Plates', 'Truck Bed Organizer Slide Out Mat', 'MOLLE Pouch | Black | Large', '2" Rear Hitch Receiver Kit',
+  'Classic Level 2 Wall Charger | Black', 'Door Armrest (Cardinal)', 'NEXUS Flip-Up Hard Tonneau Cover', 'Slate Telematics Module',
+  'Key Fob End Cap (Sterling Slate)', 'Hands Free Bluetooth Controller', 'Tablet Mount', 'CCS to NACS Adapter',
 ];
 
-/** Jeff's truck as configured (docs/drive-v2.md §2). */
+const SHARE_CODE = /^[A-Za-z0-9]{4,16}$/;
+/**
+ * A Slate build link: https://www.slate.auto/share/<code>, or the configurator's
+ * https://www.slate.auto/store?…shortcode=<code>. Returns the trimmed link and
+ * its code, or null. Pure.
+ */
+export function parseSlateShareUrl(v: unknown): { url: string; code: string } | null {
+  if (typeof v !== 'string' || v.length > 500) return null;
+  let u: URL;
+  try { u = new URL(v.trim()); } catch { return null; }
+  if (u.protocol !== 'https:' || (u.hostname !== 'www.slate.auto' && u.hostname !== 'slate.auto') || u.port || u.username || u.password) return null;
+  const share = /^\/share\/([^/]+)\/?$/.exec(u.pathname);
+  const code = share ? share[1] : /^\/store\/?$/.test(u.pathname) ? u.searchParams.get('shortcode') : null;
+  if (!code || !SHARE_CODE.test(code)) return null;
+  return { url: u.toString(), code };
+}
+
+const PHOTO_FILE = /^vehicle-photo\.(jpg|png|webp)$/;
+
+/** The author's Slate as built (slate.auto share ABC123): editable in /settings, Truck. */
 export function defaultTruck(): TruckLook {
   return {
-    colors: { body: '#b5272d', roof: '#e4e5e0', logo: '#1c1d1f', wheelDecal: '#e4e5e0', lampPlates: 'synthwave', trim: '#5e6368' },
+    colors: { body: '#b5272d', roof: '#e4e5e0', logo: 'none', wheelDecal: '#e4e5e0', lampPlates: 'synthwave', trim: '#232427' },
     finish: 'satin',
     roofWrap: true,
     wheels: { inches: 17, style: 'steel' },
     accessories: { tonneau: 'nexus-flip', hitch: true, bedLights: true },
+    interior: { bolster: 'none', armrest: 'Cardinal' },
+    slateShareUrl: null,
+    accessoryList: [...BUILD_ACCESSORIES],
+    photo: null,
   };
 }
 
@@ -57,21 +98,48 @@ function hex(v: unknown, name: string, dflt: string, extra: string[] = []): stri
   throw new DriveSettingsError(`${name} must be #rrggbb${extra.length ? ` or ${extra.join(', ')}` : ''}`);
 }
 
+function colorName(v: unknown, name: string, dflt: string): string {
+  if (v === undefined) return dflt;
+  if (v === 'none') return 'none';
+  const c = typeof v === 'string' ? colorByName(v) : undefined;
+  if (!c) throw new DriveSettingsError(`${name} must be none or one of Slate's colour names (${WRAP_COLORS.map((x) => x.name).join(', ')})`);
+  return c.name;
+}
+
+/** A stored photo record, or null for anything that isn't one (never throws: a bad record must not reset the settings file). */
+function photoOf(v: unknown): TruckLook['photo'] {
+  if (!isObj(v) || typeof v.file !== 'string' || !PHOTO_FILE.test(v.file) || typeof v.updatedAt !== 'string' || !Number.isFinite(Date.parse(v.updatedAt))) return null;
+  return { file: v.file, updatedAt: v.updatedAt, source: v.source === 'url' ? 'url' : 'upload' };
+}
+
 export function validateTruck(v: unknown): TruckLook {
   const d = defaultTruck();
   if (v === undefined || v === null) return d;
   if (!isObj(v)) throw new DriveSettingsError('truck must be an object');
   const c = isObj(v.colors) ? v.colors : {};
   const a = isObj(v.accessories) ? v.accessories : {};
+  const i = isObj(v.interior) ? v.interior : {};
   const finish = v.finish === undefined ? d.finish : v.finish;
   if (finish !== 'satin' && finish !== 'gloss' && finish !== 'matte') throw new DriveSettingsError('truck.finish must be satin, gloss or matte');
   const tonneau = a.tonneau === undefined ? d.accessories.tonneau : a.tonneau;
   if (tonneau !== 'none' && tonneau !== 'nexus-flip') throw new DriveSettingsError('truck.accessories.tonneau must be none or nexus-flip');
+  let slateShareUrl: string | null = null;
+  if (v.slateShareUrl !== undefined && v.slateShareUrl !== null && v.slateShareUrl !== '') {
+    const p = parseSlateShareUrl(v.slateShareUrl);
+    if (!p) throw new DriveSettingsError('truck.slateShareUrl must be a Slate build link: https://www.slate.auto/share/<code>');
+    slateShareUrl = p.url;
+  }
+  let accessoryList = d.accessoryList;
+  if (v.accessoryList !== undefined) {
+    if (!Array.isArray(v.accessoryList) || v.accessoryList.some((x) => typeof x !== 'string')) throw new DriveSettingsError('truck.accessoryList must be a list of names');
+    accessoryList = (v.accessoryList as string[]).map((x) => x.trim().slice(0, 80)).filter(Boolean);
+    if (accessoryList.length > 60) throw new DriveSettingsError('truck.accessoryList: at most 60 items');
+  }
   return {
     colors: {
       body: hex(c.body, 'truck.colors.body', d.colors.body),
       roof: hex(c.roof, 'truck.colors.roof', d.colors.roof),
-      logo: hex(c.logo, 'truck.colors.logo', d.colors.logo),
+      logo: hex(c.logo, 'truck.colors.logo', d.colors.logo, ['none']),
       wheelDecal: hex(c.wheelDecal, 'truck.colors.wheelDecal', d.colors.wheelDecal),
       lampPlates: hex(c.lampPlates, 'truck.colors.lampPlates', d.colors.lampPlates, ['synthwave']),
       trim: hex(c.trim, 'truck.colors.trim', d.colors.trim),
@@ -80,6 +148,10 @@ export function validateTruck(v: unknown): TruckLook {
     roofWrap: bool(v.roofWrap, d.roofWrap),
     wheels: { inches: 17, style: 'steel' },
     accessories: { tonneau, hitch: bool(a.hitch, d.accessories.hitch), bedLights: bool(a.bedLights, d.accessories.bedLights) },
+    interior: { bolster: colorName(i.bolster, 'truck.interior.bolster', d.interior.bolster), armrest: colorName(i.armrest, 'truck.interior.armrest', d.interior.armrest) },
+    slateShareUrl,
+    accessoryList,
+    photo: photoOf(v.photo),
   };
 }
 

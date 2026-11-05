@@ -144,6 +144,8 @@ export function SettingsApp() {
     setBusy(true); setMsg(null);
     try {
       const body: Record<string, unknown> = { ...draft, homeAssistant: { ...draft.homeAssistant } };
+      // The truck look and drive settings have their own Save (DriveSection); a stale draft copy must not undo it.
+      delete body.truck; delete body.drive;
       if (keys.haToken.trim()) (body.homeAssistant as Record<string, unknown>).token = keys.haToken.trim();
       // no password typed = keep the stored one (for the same network)
       body.homeWifi = draft.homeWifi?.ssid.trim() ? { ssid: draft.homeWifi.ssid.trim(), password: keys.homeWifi || settings.homeWifi?.password } : null;
