@@ -52,6 +52,11 @@ export function connect() {
     if (ws !== sock) return;
     ws = null;
     if (linkStore.get().connected) linkStore.set({ connected: false, since: Date.now() });
+    // A browser off the truck (another PC, a phone, the NAS copy) is refused the live
+    // feed until it logs in; "Reconnecting" for ever would hide that. Go to the login page.
+    void fetch('/api/auth/status').then((r) => (r.ok ? r.json() : null)).then((a: { passwordSet?: boolean; authed?: boolean } | null) => {
+      if (a?.passwordSet && a.authed === false && location.pathname !== '/login') location.href = `/login?next=${encodeURIComponent(location.pathname + location.hash)}`;
+    }).catch(() => { /* brain down: keep retrying */ });
     setTimeout(connect, backoff);
     backoff = Math.min(backoff * 2, 5000);
   };
