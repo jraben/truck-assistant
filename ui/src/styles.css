@@ -254,6 +254,13 @@ table.tou td { padding: 4px; vertical-align: middle; }
 /* theme quick picker (cockpit rail) */
 .picker { position: fixed; left: calc(var(--rail) + 8px); bottom: 8px; z-index: 45; width: min(340px, calc(100vw - 32px)); max-height: calc(100% - 16px); overflow: auto; }
 .picker .item { grid-template-columns: auto 1fr; align-items: center; }
+.more-menu { display: grid; gap: 6px; width: min(320px, calc(100vw - 32px)); }
+.more-menu > a, .more-menu > button:not(.tag), .more-menu > span { min-height: var(--hit); display: flex; align-items: center; gap: 14px; padding: 0 14px;
+  border-radius: calc(10px * var(--r)); color: var(--fg); text-decoration: none; font-family: var(--display); font-size: 18px; }
+.more-menu > a:hover, .more-menu > button:not(.tag):hover { background: var(--panel-2); }
+.more-menu svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.more-menu > span { font-size: 15px; }
+.more-menu .tag { justify-self: end; }
 .swatch { display: inline-flex; width: 56px; height: 32px; border-radius: calc(6px * var(--r)); overflow: hidden; border: 1px solid var(--line); flex: none; }
 .swatch i { flex: 1; }
 @media (max-width: 820px) { .picker { left: 16px; top: 140px; bottom: auto; } }

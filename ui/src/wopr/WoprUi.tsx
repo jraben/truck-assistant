@@ -26,7 +26,7 @@ export function WoprButton() {
       onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); voice.press(); }}
       onPointerUp={() => voice.release()} onPointerCancel={() => voice.release()}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!e.repeat) { voice.press(); setTimeout(() => voice.release(), 0); } } }}>
-      <Icon d={MIC} />{offline ? 'Offline' : PHASE[v.phase]}
+      <Icon d={MIC} />{offline ? 'WOPR' : PHASE[v.phase]}
     </button>
   );
 }
