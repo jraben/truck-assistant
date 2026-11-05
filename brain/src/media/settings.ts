@@ -5,38 +5,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export type RadioStation = {
-  id: string;                       // Radio Browser stationuuid, or "preset:kjef"
-  name: string;
-  url: string;                      // what to play (url_resolved when Radio Browser has one)
-  homepage: string | null;
-  favicon: string | null;
-  tags: string[];
-  country: string | null;
-  codec: string | null;
-  bitrate: number | null;           // kbps; 0/unknown = null
-  hls: boolean;
-};
-
-export type FmPreset = { mhz: number; name: string };
-
-export type SpotifyToken = { access: string; refresh: string; expiresAt: number; scope: string; user: string | null };
-
-export type MediaSettings = {
-  wopr: { url: string | null; username: string; password?: string };
-  spotify: {
-    clientId: string | null;        // each owner's own free developer app (developer.spotify.com)
-    deviceName: string;             // the truck as a Spotify Connect speaker (librespot --name)
-    connect: boolean;               // run librespot on the Pi when it is installed
-    bitrate: 96 | 160 | 320;
-    tokens: Record<string, SpotifyToken>;   // driverId -> tokens; never sent to the UI
-  };
-  plex: { url: string | null; token?: string };
-  radio: { kjefUrl: string; favourites: Record<string, RadioStation[]> };
-  fm: { presets: FmPreset[]; ppm: number; gain: number | null };
-  local: { folder: string | null };  // null = DATA_DIR/music
-  receipts: { autoImport: boolean };
-};
+import type { FmPreset, MaskedMediaSettings, MediaSettings, RadioStation, SpotifyToken } from './types.ts';
+export type { FmPreset, MaskedMediaSettings, MediaSettings, RadioStation, SpotifyToken } from './types.ts';
 
 /** KJEF (SUB/WAVE on NOMAD) is public at radio.jeffraben.com since 2026-11-03; on the home LAN http://192.168.1.30:7700/stream.mp3 also works. */
 export const KJEF_PUBLIC = 'https://radio.jeffraben.com/stream.mp3';
@@ -60,11 +30,6 @@ const MASK = '•';
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const mask = (k: string | undefined) => (k ? MASK.repeat(4) + k.slice(-4) : undefined);
 const URL_RE = /^https?:\/\/[^\s/]+/i;
-
-/** What GET /api/media/settings returns: secrets masked, Spotify tokens reduced to who is connected. */
-export type MaskedMediaSettings = Omit<MediaSettings, 'spotify'> & {
-  spotify: Omit<MediaSettings['spotify'], 'tokens'> & { connected: Record<string, { user: string | null }> };
-};
 
 export function maskMedia(s: MediaSettings): MaskedMediaSettings {
   const wopr = { ...s.wopr, password: mask(s.wopr.password) };

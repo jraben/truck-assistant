@@ -4,17 +4,8 @@
 // brain relays the file (Range requests included, so seeking works).
 import type { MediaSettings } from './settings.ts';
 
-export type PlexItem = {
-  key: string;                      // ratingKey
-  type: 'artist' | 'album' | 'track' | 'playlist';
-  title: string;
-  subtitle: string | null;          // album: artist; track: artist · album
-  artist: string | null; album: string | null;
-  thumb: string | null;             // brain URL, never a Plex URL with the token
-  durationMs: number | null;
-  index: number | null;             // track number
-};
-export type PlexSection = { key: string; title: string };
+import type { PlexItem, PlexSection } from './types.ts';
+export type { PlexItem, PlexSection } from './types.ts';
 
 export class PlexError extends Error {
   status: number;

@@ -41,3 +41,6 @@ export function parseWhere(raw: string): GateAnswer {
   }
   return codes.length ? { kind: 'codes', place, codes, how, text } : { kind: 'no-codes', place, codes: [], how, text };
 }
+
+/** GET /api/wopr/gate: the code for the stop the truck is at, held in the brain's memory only. */
+export type GateStatus = (GateAnswer & { stopId: number | null; at: string }) | null;

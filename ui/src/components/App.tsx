@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DEFAULT_LAYOUT } from '../../../brain/src/layout.ts';
 import { activeDriver, linkStore, loadSettings, putDriver, settingsStore, stateStore, toast, toastStore, useStore, type Driver, type Layout, type State } from '../lib/brain.ts';
 import { allThemes, isLight, paintTheme, pickTheme, type Theme } from '../lib/theme.ts';
@@ -8,6 +8,8 @@ import { ChargePrompt } from './costs.tsx';
 import { widgetFor } from './widgets.tsx';
 import { DriverBadge, DriverPanel, DriverPrompt } from './drivers.tsx';
 import { NetPanel, NetPill } from './network.tsx';
+import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
+import { WoprButton } from '../wopr/WoprUi.tsx';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -16,10 +18,10 @@ const ICONS: Record<string, string> = {
   charge: 'M13 2 4 14h7l-1 8 9-12h-7z',
   trips: 'M5 19a2 2 0 1 0 0-.01M19 5a2 2 0 1 0 0-.01M7 19h7a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h7',
   cams: 'M5 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 11l5-3v8l-5-3',
+  media: MEDIA_ICON,
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const PALETTE = 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zM7.5 12a1 1 0 1 0 0-.01M10 8a1 1 0 1 0 0-.01M14 8a1 1 0 1 0 0-.01';
-const MIC = 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3';
 const Ico = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
 
 /** Back from cams this long after reverse ends (the plan's 3 s). */
@@ -42,7 +44,8 @@ export function App() {
   const settings = useStore(settingsStore);
   const toastMsg = useStore(toastStore);
   const driver = activeDriver(settings, s);
-  const layout = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
+  const base = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
+  const layout = useMemo(() => withMediaView(base), [base]);
   const [view, setView] = useState(() => viewFromHash(layout));
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);
@@ -100,7 +103,7 @@ export function App() {
             <Ico d={ICONS[v.id] ?? ICONS.drive} />{v.label}
           </a>
         ))}
-        <button type="button" class="voice" onClick={() => toast('WOPR voice is a later phase')}><Ico d={MIC} />WOPR</button>
+        <WoprButton />
         <button type="button" aria-expanded={driverOpen} title={s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver'} onClick={() => { setDriverOpen(!driverOpen); setPicker(false); }}><DriverBadge d={s?.driver ?? null} size={30} />{s?.driver?.name ?? 'Driver'}</button>
         <button type="button" aria-expanded={picker} onClick={() => { setPicker(!picker); setDriverOpen(false); }}><Ico d={PALETTE} />Theme</button>
         <a href="/settings"><Ico d={GEAR} />Settings</a>
@@ -124,6 +127,7 @@ export function App() {
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <ChargePrompt />
+      <TrackBOverlays />
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
     </div>
   );

@@ -116,7 +116,7 @@ export function DriversSection({ settings }: { settings: Settings }) {
         {draft.compareVehicle && <VehiclePicker value={draft.compareVehicle} onChange={(v) => set('compareVehicle', v)} />}
 
         <h3 class="sub">Layout (advanced)</h3>
-        <p class="help">Per view, a grid of widgets on the 1920×720 bar: col/row start at 1, w/h are spans. Widget types: speed, soc, nextCharger, trip, cabin, aux12v, tilt, carplay, liveStrip, nowPlaying, relays, fiveSwitch, tpms, chargers, socSlider, costSummary, costSessions, trips, cam.</p>
+        <p class="help">Per view, a grid of widgets on the 1920×720 bar: col/row start at 1, w/h are spans. Widget types: speed, soc, nextCharger, trip, cabin, aux12v, tilt, carplay, liveStrip, nowPlaying, relays, fiveSwitch, tpms, chargers, socSlider, costSummary, costSessions, trips, cam, media, nextAppointment.</p>
         <textarea value={draft.layoutText} onInput={(e) => set('layoutText', (e.target as HTMLTextAreaElement).value)} spellcheck={false} style="min-height:160px" />
         <div class="row wrap">
           <button class="btn primary" type="button" onClick={() => void save()}>Save {d.name}'s profile</button>

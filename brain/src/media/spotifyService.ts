@@ -4,8 +4,10 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import type { MediaSettingsStore } from './settings.ts';
-import { authorizeUrl, codeFromUrl, pkcePair, SpotifyApi, SpotifyError, SpotifyTokens, type SpotifyPlayback } from './spotify.ts';
+import { authorizeUrl, codeFromUrl, pkcePair, SpotifyApi, SpotifyError, SpotifyTokens } from './spotify.ts';
+import type { SpotifyPlayback } from './types.ts';
 import type { NowPlaying } from '../types.ts';
+import type { SpotifyStatus } from './types.ts';
 
 const AUTH_TTL_MS = 15 * 60_000;
 const POLL_MS = 10_000;
@@ -16,16 +18,7 @@ export function findLibrespot(): string | null {
   return null;
 }
 
-export type SpotifyStatus = {
-  clientId: boolean; deviceName: string;
-  librespot: 'running' | 'starting' | 'off' | 'not-installed' | 'sim' | 'crashed';
-  librespotError: string | null;
-  connected: boolean;              // the active driver has tokens
-  user: string | null;
-  playback: SpotifyPlayback | null;
-  onTruck: boolean;                // playing on the truck's Connect device
-  message: string | null;
-};
+export type { SpotifyStatus } from './types.ts';
 
 export class SpotifyService {
   readonly tokens: SpotifyTokens;

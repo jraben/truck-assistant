@@ -17,6 +17,16 @@ export type ReceiptParse = {
   missing: string[];               // fields that weren't found
 };
 
+/** A parsed receipt waiting for (or past) its confirm tap: GET /api/charges/drafts. */
+export type ReceiptDraft = ReceiptParse & {
+  id: number;
+  createdAt: string;
+  state: 'draft' | 'confirmed' | 'dismissed';
+  sourceRef: string;               // messageId, or a hash of the body
+  subject: string | null;
+  sessionId: number | null;        // the ChargeSession it became
+};
+
 export type ReceiptInput = { text?: string; html?: string; subject?: string; from?: string; receivedAt?: string };
 
 /** HTML email -> readable lines (tables become "cell: cell" rows). */

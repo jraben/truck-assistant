@@ -11,17 +11,10 @@ import { createHash } from 'node:crypto';
 import type { Db } from '../db.ts';
 import type { ChargeService } from '../charges/service.ts';
 import type { ChargeSession } from '../types.ts';
-import { parseReceipt, type ReceiptInput, type ReceiptParse } from './parse.ts';
+import { parseReceipt, type ReceiptDraft, type ReceiptInput, type ReceiptParse } from './parse.ts';
 import { WoprError, woprJson, type WoprConfig } from '../wopr/client.ts';
 
-export type ReceiptDraft = ReceiptParse & {
-  id: number;
-  createdAt: string;
-  state: 'draft' | 'confirmed' | 'dismissed';
-  sourceRef: string;               // messageId, or a hash of the body
-  subject: string | null;
-  sessionId: number | null;        // the ChargeSession it became
-};
+export type { ReceiptDraft } from './parse.ts';
 
 export class ReceiptError extends Error {
   status: number;

@@ -4,7 +4,8 @@ import { FiveSwitch, Relays, Tpms } from './control.tsx';
 import { Chargers, SocSlider } from './charge.tsx';
 import { CostSessions, CostSummary } from './costs.tsx';
 import { Trips } from './trips.tsx';
-import { CarPlay, NowPlayingW } from './carplay.tsx';
+import { CarPlay } from './carplay.tsx';
+import { TRACKB_WIDGETS } from '../media/trackb.tsx';
 
 function Cam({ s, props }: WP) {
   const label = String(props?.label ?? 'Camera');
@@ -25,9 +26,10 @@ function Unknown({ props }: WP) {
 /** Widget types usable in Settings.layout. */
 export const WIDGETS: Record<string, ComponentType<WP>> = {
   speed: Speed, soc: Soc, nextCharger: NextCharger, trip: TripW, cabin: Cabin, aux12v: Aux12v, tilt: Tilt,
-  carplay: CarPlay, liveStrip: LiveStrip, nowPlaying: NowPlayingW,
+  carplay: CarPlay, liveStrip: LiveStrip,
   relays: Relays, fiveSwitch: FiveSwitch, tpms: Tpms,
   chargers: Chargers, socSlider: SocSlider, costSummary: CostSummary, costSessions: CostSessions,
   trips: Trips, cam: Cam,
+  ...TRACKB_WIDGETS, // media, nowPlaying (any source), nextAppointment
 };
 export const widgetFor = (t: string) => WIDGETS[t] ?? Unknown;

@@ -9,9 +9,8 @@ export const AUDIO_EXT: Record<string, string> = {
   '.oga': 'audio/ogg', '.opus': 'audio/ogg', '.wav': 'audio/wav', '.webm': 'audio/webm',
 };
 
-export type LocalEntry = { name: string; path: string };
-export type LocalTrack = LocalEntry & { title: string; artist: string | null; album: string | null; size: number };
-export type LocalListing = { root: string; path: string; parent: string | null; dirs: LocalEntry[]; files: LocalTrack[] };
+import type { LocalListing, LocalTrack } from './types.ts';
+export type { LocalEntry, LocalListing, LocalTrack } from './types.ts';
 
 export class LocalError extends Error {
   status: number;

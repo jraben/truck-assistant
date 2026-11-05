@@ -52,3 +52,6 @@ export function appointmentLine(a: Appointment, locale = 'en-US'): string {
   const t = new Date(a.start).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' }).toLowerCase();
   return `Next: ${t} · ${a.title}${a.location ? ` · ${a.location}` : ''}`;
 }
+
+/** GET /api/wopr/next. */
+export type NextStatus = { configured: boolean; online: boolean; next: Appointment | null; fetchedAt: string | null; message: string | null };

@@ -9,7 +9,8 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import type { MediaSettings } from './settings.ts';
 
-export type Tuner = { state: 'present' | 'none' | 'no-software' | 'sim' | 'busy'; message: string; checkedAt: string };
+import type { Tuner } from './types.ts';
+export type { Tuner } from './types.ts';
 
 const PATHS = (process.env.PATH ?? '').split(path.delimiter);
 export function which(bin: string): string | null {

@@ -44,7 +44,8 @@ export function kjefPreset(url: string): RadioStation {
 /** Rough data use per hour of a stream, for the "on a phone hotspot" warning. Unknown bitrate: assume 128 kbps. */
 export const mbPerHour = (kbps: number | null) => Math.round(((kbps ?? 128) * 1000 / 8) * 3600 / 1e6);
 
-export type RadioNow = { stationId: string; name: string; title: string | null; artist: string | null; since: string };
+import type { RadioNow } from './types.ts';
+export type { RadioNow } from './types.ts';
 
 export class RadioService {
   private version: string;

@@ -6,7 +6,8 @@
 // development mode serves at most 5 Spotify accounts, added by hand in its
 // dashboard (User Management). Playback control needs Spotify Premium.
 import { createHash, randomBytes } from 'node:crypto';
-import type { SpotifyToken } from './settings.ts';
+import type { SpotifyDevice, SpotifyPlayback, SpotifyPlaylist, SpotifyToken } from './types.ts';
+export type { SpotifyDevice, SpotifyPlayback, SpotifyPlaylist } from './types.ts';
 
 export const SCOPES = ['user-read-playback-state', 'user-modify-playback-state', 'user-read-currently-playing', 'playlist-read-private', 'playlist-read-collaborative'];
 const ACCOUNTS = 'https://accounts.spotify.com';
@@ -123,13 +124,6 @@ export class SpotifyTokens {
     return j;
   }
 }
-
-export type SpotifyDevice = { id: string; name: string; type: string; active: boolean; volume: number | null };
-export type SpotifyPlayback = {
-  playing: boolean; title: string | null; artist: string | null; album: string | null; art: string | null;
-  durationMs: number | null; positionMs: number | null; device: SpotifyDevice | null; context: string | null;
-};
-export type SpotifyPlaylist = { id: string; uri: string; name: string; tracks: number | null; image: string | null; owner: string | null };
 
 /** GET /v1/me/player JSON (or null for 204 "nothing") -> SpotifyPlayback. */
 export function mapPlayback(j: unknown): SpotifyPlayback | null {

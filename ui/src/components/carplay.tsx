@@ -1,7 +1,8 @@
 // The CarPlay panel and the now-playing widgets. The panel's canvas belongs to
 // the CarPlay controller (ui/src/carplay), which keeps running across views.
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { useStore } from '../lib/brain.ts';
+import { stateStore, useStore } from '../lib/brain.ts';
+import { NowPlayingMiniAny } from '../media/nowplaying.tsx';
 import { carplay, carplayStore, nowPlayingStore, type CarPlayState } from '../carplay/controller.ts';
 import { fmtClock, livePosition, type NowPlaying } from '../carplay/media.ts';
 import { Card } from './common.tsx';
@@ -139,18 +140,10 @@ export function NowPlayingW({ go }: WP) {
   );
 }
 
-/** The slim strip beside the CarPlay panel. */
+/** The slim strip beside the CarPlay panel: whatever is playing, from any source (media/nowplaying.tsx). */
 export function NowPlayingMini() {
-  const np = useStore(nowPlayingStore);
-  if (!np) return null;
-  return (
-    <Card label="Playing">
-      <div class="np mini">
-        {np.art && <img src={np.art} alt="" />}
-        <span class="grow npt"><b class="ellip">{np.title ?? '—'}</b><span class="ellip dimtxt">{np.artist ?? ''}</span></span>
-      </div>
-    </Card>
-  );
+  const s = useStore(stateStore);
+  return <NowPlayingMiniAny s={s} />;
 }
 
 /** The Waze modal's line about CarPlay. */

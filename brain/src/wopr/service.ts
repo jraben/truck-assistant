@@ -1,9 +1,11 @@
 // WOPR from the truck: voice turns, the next appointment, gate codes on arrival.
 import type { State } from '../types.ts';
 import type { MediaSettingsStore } from '../media/settings.ts';
-import { pickNextAppointment, type Appointment, type CalEvent } from './calendar.ts';
+import { pickNextAppointment, type CalEvent, type NextStatus } from './calendar.ts';
+export type { NextStatus } from './calendar.ts';
 import { WoprError, woprFetch, woprJson, NOT_CONFIGURED_MSG, type WoprConfig } from './client.ts';
-import { parseWhere, type GateAnswer } from './gate.ts';
+import { parseWhere, type GateStatus } from './gate.ts';
+export type { GateStatus } from './gate.ts';
 import { buildMessages, buildPrimer, type ChatMsg } from './primer.ts';
 import { MarkerStripper } from './stream.ts';
 
@@ -19,8 +21,6 @@ const CONTEXT_FRESH_MS = 3 * 60_000;
 /** A gate answer stays up this long at most (or until the truck leaves, or it's dismissed). */
 export const GATE_TTL_MS = 30 * 60_000;
 
-export type NextStatus = { configured: boolean; online: boolean; next: Appointment | null; fetchedAt: string | null; message: string | null };
-export type GateStatus = (GateAnswer & { stopId: number | null; at: string }) | null;
 export type ChatEvent = { t: 'text'; v: string } | { t: 'searching' } | { t: 'done' } | { t: 'error'; message: string; kind?: string };
 
 export class WoprService {
