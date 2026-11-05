@@ -17,10 +17,7 @@ export function speedoStyle(d: Driver | null): SpeedoStyle {
   return t?.speedo ?? 'digital';
 }
 
-/** Over the limit by more than the driver's tolerance, with their warning on. */
-export function overLimit(mph: number | null, limit: number | null, dd: DriverDrive): boolean {
-  return dd.overLimitWarn && mph !== null && limit !== null && mph > limit + dd.overLimitMph;
-}
+export { overLimit } from './logic.ts';
 
 /** Moving over the lockout speed: video, the browser and long scrolling lists pause. */
 export function useLockout(): { locked: boolean; bigTargets: boolean } {

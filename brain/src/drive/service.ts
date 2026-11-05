@@ -13,7 +13,7 @@ import { pickBrightnessBackend, smoothLux, targetPct, WRITE_MIN_MS, WRITE_MIN_ST
 import { cpuReader, heatLevel, heatMessage, parkedInSun, requestShutdown, SHUTDOWN_HOLD_MS, type CpuReader } from './heat.ts';
 import { bigTargets, lockStep, type LockState } from './lockout.ts';
 import { SpeedLimits } from './maxspeed.ts';
-import { rangeFor, RangeModel, type RangeSnapshot } from './range.ts';
+import { rangeFor, RangeModel, WINDOW_MS, type RangeSnapshot } from './range.ts';
 import { lastEndedCharge, sinceCharge } from './sinceCharge.ts';
 import type { DriveState, RangeMode, RangeOverride, SinceCharge, SpeedLimit } from './types.ts';
 import { briefOf, needsRefresh, WeatherService } from './weather.ts';
@@ -30,7 +30,7 @@ export type DriveInputs = {
 };
 
 export type DriveDeps = {
-  db: Db; settings: SettingsStore; version: string; sim: boolean;
+  db: Db; settings: SettingsStore; version: string; sim: boolean; timeScale?: number;
   charges: () => ChargeSession[];
   tripsSince: (iso: string) => Trip[];
   tiers: () => Parameters<typeof resolveName>[1];
@@ -68,7 +68,7 @@ export class DriveService {
     this.d = d;
     this.inputs = inputs;
     const st = d.settings.get();
-    this.range = new RangeModel({ city: st.drive.efficiency.cityMiPerKwh, highway: st.drive.efficiency.highwayMiPerKwh }, kvGet<RangeSnapshot>(d.db, 'driveRange'));
+    this.range = new RangeModel({ city: st.drive.efficiency.cityMiPerKwh, highway: st.drive.efficiency.highwayMiPerKwh }, kvGet<RangeSnapshot>(d.db, 'driveRange'), WINDOW_MS / Math.max(1, d.timeScale ?? 1));
     this.weather = new WeatherService(d.db, d.version);
     this.limits = new SpeedLimits(d.db, d.version);
     this.readCpu = cpuReader(d.sim);

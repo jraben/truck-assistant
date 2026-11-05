@@ -68,8 +68,11 @@ export class RangeModel {
   stats: { city: ModeStats; highway: ModeStats };
   override: RangeOverride;
   private window: { mode: RangeMode; miles: number; startSoc: number } | null = null;
+  /** The averaging window in real ms (SIM_SPEEDUP shrinks it, so simulated minutes stay minutes). */
+  readonly windowMs: number;
 
-  constructor(seed: { city: number; highway: number }, snap?: RangeSnapshot | null) {
+  constructor(seed: { city: number; highway: number }, snap?: RangeSnapshot | null, windowMs = WINDOW_MS) {
+    this.windowMs = windowMs;
     this.stats = {
       city: snap?.city && snap.city.learnedMiles > 0 ? { ...snap.city } : { eff: seed.city, learnedMiles: 0 },
       highway: snap?.highway && snap.highway.learnedMiles > 0 ? { ...snap.highway } : { eff: seed.highway, learnedMiles: 0 },
@@ -86,11 +89,11 @@ export class RangeModel {
   addSample(t: number, mph: number | null) {
     if (mph === null || !Number.isFinite(mph)) return;
     this.samples.push({ t, mph: Math.max(0, mph) });
-    const cut = t - WINDOW_MS - 15_000;
+    const cut = t - this.windowMs - 15_000;
     while (this.samples.length > 2 && this.samples[1].t < cut) this.samples.shift();
   }
 
-  avg(now: number) { return rollingAvg(this.samples, now); }
+  avg(now: number) { return rollingAvg(this.samples, now, this.windowMs); }
   autoMode(now: number, highwayMph: number): RangeMode { return classify(this.avg(now), highwayMph); }
   mode(now: number, highwayMph: number): RangeMode { return effectiveMode(this.autoMode(now, highwayMph), this.override); }
   eff(mode: RangeMode) { return this.stats[mode].eff; }

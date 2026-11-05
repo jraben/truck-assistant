@@ -128,7 +128,7 @@ export class Brain extends EventEmitter {
     this.net = new NetManager(new UnavailableBackend('starting up'), () => this.settings.get(), () => this.driverId,
       kvGet(db, 'netBytes'), (b) => { try { kvSet(db, 'netBytes', b); } catch { /* best effort */ } }, () => this.changed());
     this.drive = new DriveService({
-      db, settings, version: config.version, sim: config.sim,
+      db, settings, version: config.version, sim: config.sim, timeScale: config.sim ? config.simSpeedup : 1,
       charges: () => this.charges.store.list(null, null, null),
       tripsSince: (iso) => this.trips.between(iso, null, { source: 'truck' }),
       tiers: () => this.stops.tiers(),

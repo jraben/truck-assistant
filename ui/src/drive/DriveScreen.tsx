@@ -9,7 +9,8 @@ import { nowPlayingStore } from '../carplay/controller.ts';
 import { V, whyGps, whySoc, whyTruck } from '../components/common.tsx';
 import { socLabel, type WP } from '../components/drive.tsx';
 import { fmtTime } from '../lib/fmt.ts';
-import { driverDrive, overLimit, speedoStyle, truckOf, useActiveDriver } from './hooks.ts';
+import { driverDrive, speedoStyle, truckOf, useActiveDriver } from './hooks.ts';
+import { overLimit, pickCards } from './logic.ts';
 import { WIcon } from './icons.tsx';
 import { Speedo, SPEEDO_LABELS } from './Speedo.tsx';
 import { TiltPair } from './Tilt.tsx';
@@ -152,22 +153,6 @@ function TiltCard({ s }: { s: State | null }) {
       <TiltPair tilt={s?.tilt ?? null} truck={truckOf(settings)} limits={s?.drive?.tilt} bedLightsOn={bed} compact />
     </div>
   );
-}
-
-/** Which cards, in order: tilt first when it warns; moving = media, trip, since charge; parked = since charge, tilt, media. */
-export function pickCards(s: State | null, playing: boolean): ('np' | 'since' | 'trip' | 'tilt')[] {
-  const moving = !!s?.drive?.lockout.locked;
-  const lvl = s?.drive?.tilt.level;
-  const out: ('np' | 'since' | 'trip' | 'tilt')[] = [];
-  if (lvl === 'warn' || lvl === 'danger') out.push('tilt');
-  const rest: ('np' | 'since' | 'trip' | 'tilt')[] = moving ? ['np', 'trip', 'since', 'tilt'] : ['since', 'tilt', 'np', 'trip'];
-  for (const c of rest) {
-    if (out.includes(c)) continue;
-    if (c === 'np' && !playing) continue;
-    if (c === 'trip' && !s?.trip) continue;
-    out.push(c);
-  }
-  return out.slice(0, 3);
 }
 
 function Cards({ s, go }: { s: State | null; go: WP['go'] }) {

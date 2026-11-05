@@ -7,6 +7,7 @@ import { ChargeForm, CostSessions, CostSummary } from '../components/costs.tsx';
 import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
+import { DriveSection } from './DriveSection.tsx';
 
 const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -104,6 +105,8 @@ export function SettingsApp() {
       </Section>
 
       <DriversSection settings={settings} />
+
+      <DriveSection settings={settings} />
 
       <Section title="Truck" help="These settings are the truck's, whoever is driving.">
         <div class="fields form">

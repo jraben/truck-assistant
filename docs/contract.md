@@ -335,7 +335,7 @@ type ChargeSummary = {
 };
 
 // A theme is a token set; every UI colour comes from it. Presets: night, day,
-// toolbox-red, synthwave, mint-emerald, tar-pit, wopr, clean-slate (brain/src/themes.ts).
+// toolbox-red, synthwave, mint-emerald, tar-pit, wopr, clean-slate, bel-air (brain/src/themes.ts).
 type Theme = {
   id: string; name: string;         // id: lowercase, digits, "-"; must not reuse a preset id
   colors: Record<'bg'|'panel'|'panel2'|'line'|'fg'|'dim'|'accent'|'accentInk'|'ok'|'warn'|'bad', string>;  // #rrggbb
@@ -406,3 +406,129 @@ order above, and switches with `nmcli connection up`. Data use is read from
   the repo or `.env`.
 - **Simulation:** `SIM=1` makes the brain invent GPS, speed and truck-box
   data so everything runs on a desk.
+
+## Track A: Drive
+
+Drive screen, speedometers, tilt, weather, city/highway range, speed limits,
+lockouts, brightness and heat (docs/drive-v2.md §1-6, §8). Brain code in
+`brain/src/drive/`, cockpit code in `ui/src/drive/`. Shapes in
+`brain/src/drive/types.ts` (re-exported from `types.ts`).
+
+### MQTT: truck box, added
+
+| Topic | Payload | Notes |
+|---|---|---|
+| `slate/truckbox/sensor/ambient_lux/state` | lux, float | light sensor for auto brightness (SIM provides a day curve) |
+
+### State, added
+
+`State.drive: DriveState | null` (null only before the drive service starts):
+
+```ts
+type DriveState = {
+  mode: 'city' | 'highway';          // shown mode: the override, else the classifier
+  override: 'auto' | 'city' | 'highway';
+  avgMph2min: number | null;         // time-weighted rolling 2-minute average; >= drive.highwayMph = highway
+  efficiency: { city: number; highway: number; learnedMiles: { city: number; highway: number } };  // mi/kWh
+  range: { city: number | null; highway: number | null; current: number | null };  // miles; State.rangeMi is unchanged
+  sinceCharge: SinceCharge | null; sinceChargeWhy: string | null;
+  speedLimit: { mph: number | null; raw: string | null; road: string | null; wayId: number; at: string } | null;
+  speedLimitWhy: string | null;
+  weather: WeatherBrief | null; weatherWhy: string | null;
+  lockout: { locked: boolean; bigTargets: boolean };   // locked: over drive.lockoutMph (unlocks after 5 s at or under); bigTargets: >= 25 mph
+  heat: { cpuC: number | null; source: 'thermal' | 'vcgencmd' | 'sim' | null; level: 'ok' | 'throttle' | 'warn' | 'shutdown'; parkedInSun: boolean; message: string | null };
+  brightness: { pct: number | null; auto: boolean; lux: number | null; night: boolean; backend: 'ddcutil' | 'sysfs' | 'sim' | 'none'; error: string | null };
+  tilt: { warnDeg: number; dangerDeg: number; level: 'ok' | 'warn' | 'danger' | null };
+};
+type SinceCharge = {                 // since the most recently ended charge session
+  since: string; sessionId: number; miles: number;
+  kwh: number; kwhSource: 'soc' | 'miles';   // SoC drop only from a real (CAN) reading, else miles / per-mode mi/kWh
+  miPerKwh: number | null; pctUsed: number | null; costPerMile: number | null;  // that charge's $/kWh x kWh / miles
+};
+type WeatherBrief = { place: string | null; tempF: number | null; icon: WeatherIcon; condition: string; isDay: boolean;
+  highF: number | null; lowF: number | null; windMph: number | null; windDir: string | null;
+  fetchedAt: string; stale: boolean;  // stale = older than 45 min
+  alerts: { event: string; severity: 'Extreme' | 'Severe' | 'Moderate' | 'Minor' | 'Unknown'; expires: string | null }[] };
+```
+
+Mode learning: each mode's mi/kWh is an EWMA over 2-mile windows of that mode,
+learned only while the SoC is a real reading (CAN); until then the seeds hold.
+The SoC estimate decays by the current mode's mi/kWh.
+
+`Trip` gains `cityMiles`, `highwayMiles`, `cityKwh`, `highwayKwh` (numbers or
+null for trips recorded before the split; kWh are estimates at the per-mode
+mi/kWh, and `kwhEst` becomes their sum). The charge summary's gas comparison
+already prices `cityMiles` at mpgCity and `highwayMiles` at mpgHighway.
+
+### Settings, added
+
+```ts
+Settings.truck: {                    // the owner's build, for the tilt drawing
+  colors: { body; roof; logo; wheelDecal; trim: '#rrggbb'; lampPlates: '#rrggbb' | 'synthwave' };
+  finish: 'satin' | 'gloss' | 'matte'; roofWrap: boolean;
+  wheels: { inches: 17; style: 'steel' };
+  accessories: { tonneau: 'none' | 'nexus-flip'; hitch: boolean; bedLights: boolean };
+};  // default: Toolbox Red body, Clean Slate roof and wheel decals, Tar Pit logos, Synthwave lamp plates, NEXUS, hitch, bed lights
+Settings.drive: {
+  highwayMph: 45; efficiency: { cityMiPerKwh: 4.0; highwayMiPerKwh: 3.2; alpha: 0.2 };  // seeds + EWMA weight
+  tilt: { warnDeg: 20; dangerDeg: 30 };
+  heat: { throttleC: 75; warnC: 80; shutdownC: 85; parkedSunF: 110 };
+  brightness: { auto: true; manualPct: 80; minPct: 10; maxPct: 100; nightMaxPct: 45 };
+  speedLimits: true; lockoutMph: 5;
+};
+Driver.drive: { speedo: 'auto' | 'digital' | 'sweep' | 'fifty-seven' | 'ribbon' | 'minimal'; overLimitWarn: false; overLimitMph: 5 };
+Theme.speedo?: same styles      // a theme's pairing, used by a driver's 'auto' (Bel Air -> 'fifty-seven')
+```
+
+A driver layout whose Drive view is still the old default widget set is moved
+to the new single `drive` widget on load; customised layouts are left alone.
+
+### HTTP, added
+
+- `GET  /api/drive` → `DriveState`
+- `POST /api/drive/range-mode` `{mode: 'auto'|'city'|'highway'}` → `DriveState` (kept across restarts)
+- `GET  /api/weather` → the full `WeatherReport` (12 hourly periods, sunrise/sunset,
+  alerts with polygons as `[lat, lon]` rings) + `error`; 503 with a reason before the first report
+- `GET  /api/brightness` → `DriveState['brightness']`; `POST /api/brightness` `{auto?, pct?}`
+  (pct 1-100 sets the manual level and turns auto off unless `auto` is given)
+
+### Outside services, added
+
+- **Weather:** `api.weather.gov` (points → forecast, hourly forecast, latest
+  observation of the first station, `alerts/active?point=`), `User-Agent:
+  slate-cockpit/<version>`, no email. Fallback: `api.open-meteo.com` (°F, mph,
+  `timezone=auto`). Refresh every 15 min while online or after moving 10 km;
+  2 min back-off after a failure; the last report is kept in SQLite and shown
+  with its age. NWS point lookups cached a week per ~1 km. The place name is
+  the stops naming chain (saved place, HA zone, places feed), else NWS's
+  nearest town.
+- **Radar (UI only):** `api.rainviewer.com/public/weather-maps.json`, tiles at
+  zoom ≤ 7 (scaled beyond). Base map `tile.openstreetmap.org`, recoloured by CSS
+  for dark themes; attribution on the map. With `network.saveData` the radar
+  shows only the latest frame (no animation).
+- **Speed limits:** Overpass (`overpass-api.de`, then a mirror), `way(around:40)`
+  of road classes, `out tags geom`, at most one query per 15 s while moving and
+  online, 2 min back-off on 429/5xx; every returned way is cached in SQLite
+  (`osm_ways`, by bounding box) and matched locally by distance (≤ 25 m) and
+  heading. `maxspeed` parsing: bare numbers are km/h, "mph"/"knots" units are
+  honoured, implicit values (`US:urban`), `none`, `walk`, `signals` are unknown.
+
+### Lockouts (for any view)
+
+`ui/src/drive/Lock.tsx` exports `<DrivingLock what="video"|"browser"|"list">`:
+over `drive.lockoutMph` its children are replaced by a "paused while driving"
+notice. The Trips lists use it, and the Settings link is disabled. Media and
+browser views (Track B) should wrap their video and browser panes in it. At
+`lockout.bigTargets` the app root gets `.at-speed` (larger hit targets; the
+Theme and Settings rail buttons step aside); at heat level `throttle` and above
+it gets `.calm` (no transitions or animations).
+
+### Brightness and heat on the Pi
+
+- Brightness writes go to `ddcutil setvcp 10 <pct> --noverify` (DDC/CI over
+  HDMI: needs `i2c-dev` loaded and the brain's user in group `i2c`), else
+  `/sys/class/backlight/*/brightness`, else a simulated backend. At most one
+  write per 4 s and only for a change of 3 % or more.
+- CPU temperature from `/sys/class/thermal/thermal_zone0/temp`, else `vcgencmd
+  measure_temp`; simulated on a desk. Held at or above `heat.shutdownC` for 30 s,
+  the brain runs `systemctl poweroff` (Linux, not SIM; `HEAT_SHUTDOWN=0` disables).

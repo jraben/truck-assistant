@@ -9,7 +9,9 @@ import { limitOn, matchWay, parseMaxspeed, parseOverpass } from '../src/drive/ma
 import { bigTargets, lockStep, UNLOCK_MS } from '../src/drive/lockout.ts';
 import { heatLevel, parkedInSun, parseThermalZone, parseVcgencmd } from '../src/drive/heat.ts';
 import { luxToPct, smoothLux, targetPct } from '../src/drive/brightness.ts';
-import { defaultDrive, defaultTruck, validateDrive, validateDriverDrive, validateTruck } from '../src/drive/settings.ts';
+import { defaultDrive, defaultTruck, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from '../src/drive/settings.ts';
+import { DEFAULT_LAYOUT } from '../src/layout.ts';
+import { loadSettings, migrateSettings } from '../src/settings.ts';
 import { tripGallons } from '../src/charges/summary.ts';
 import type { ChargeSession } from '../src/types.ts';
 
@@ -280,5 +282,27 @@ describe('drive settings', () => {
     expect(() => validateDrive({ tilt: { warnDeg: 30, dangerDeg: 20 } })).toThrow(/dangerDeg/);
     expect(() => validateDriverDrive({ speedo: 'steam' })).toThrow(/speedo/);
     expect(validateDriverDrive({ speedo: 'fifty-seven', overLimitWarn: true })).toEqual({ speedo: 'fifty-seven', overLimitWarn: true, overLimitMph: 5 });
+  });
+});
+
+describe('drive layout migration', () => {
+  const legacy = { views: [{ id: 'drive', label: 'Drive', widgets: ['speed', 'soc', 'nowPlaying', 'nextCharger', 'trip', 'cabin', 'aux12v', 'tilt'].map((type, i) => ({ type, col: i + 1, row: 1, w: 1, h: 1 })) }, ...DEFAULT_LAYOUT.views.slice(1)] };
+  it('moves the old default Drive view to the new screen, keeps custom ones', () => {
+    expect(migrateDriveLayout(legacy).views[0].widgets.map((w) => w.type)).toEqual(['drive']);
+    const custom = { views: [{ id: 'drive', label: 'Mine', widgets: [{ type: 'speed', col: 1, row: 1, w: 6, h: 2 }] }] };
+    expect(migrateDriveLayout(custom)).toEqual(custom);
+    expect(DEFAULT_LAYOUT.views[0].widgets.map((w) => w.type)).toEqual(['drive']);
+  });
+  it('an old settings file gets truck, drive and per-driver drive defaults', () => {
+    const s = loadSettings(migrateSettings({ drivers: [{ id: 'jeff', name: 'Jeff', color: '#4fc3d9', layout: legacy }] }));
+    expect(s.truck.colors.lampPlates).toBe('synthwave');
+    expect(s.drive.highwayMph).toBe(45);
+    expect(s.drivers[0].drive.speedo).toBe('auto');
+    expect(s.drivers[0].layout.views[0].widgets[0].type).toBe('drive');
+  });
+  it('a shorter window (SIM_SPEEDUP) classifies on its own scale', () => {
+    const m = new RangeModel({ city: 4, highway: 3.2 }, null, 20_000);
+    for (let i = 0; i <= 20; i++) m.addSample(i * 1000, 60);
+    expect(m.mode(20_000, 45)).toBe('highway');
   });
 });
