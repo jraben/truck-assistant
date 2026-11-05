@@ -25,12 +25,14 @@ remove later" (Jeff, 2026-11-05). Design docs are linked; a ✓ means built.
 - Heat: screen and Pi temperature shutdown, parked-in-sun warning
 
 ## Track B: Media and WOPR ([drive-v2](drive-v2.md) §7)
-- MEDIA screen: CarPlay, Spotify Connect + Web API, internet radio (KJEF
-  preset), AM/FM via RTL-SDR, Plex, local files
-- WOPR voice button (Groq STT → `/api/WOPR` → Cartesia TTS)
-- Next calendar appointment → one tap to Waze (via WOPR)
-- Gate code on arrival (WOPR `/api/where`)
-- Public charging costs from receipt emails (via WOPR's Outlook)
+- ✓ MEDIA screen: CarPlay, Spotify Connect + Web API, internet radio (KJEF
+  preset), AM/FM via RTL-SDR, Plex, local files (desk-tested in SIM; Spotify,
+  Plex and the tuner untested on real hardware/accounts)
+- ✓ WOPR voice button (Groq STT → `/api/WOPR` → Cartesia TTS), tested against a mock WOPR
+- ✓ Next calendar appointment → one tap to Waze (via WOPR)
+- ✓ Gate code on arrival (WOPR `/api/where`)
+- ✓ Public charging costs from receipt emails: parser, drafts, one-tap
+  confirm; automatic import waits on a WOPR mail-search route (contract, Track B)
 
 ## Track C: Cameras and remote ([remote](remote.md))
 - Camera pipeline: go2rtc on the Pi, USB capture / UVC / AHD, Cams view live,

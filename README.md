@@ -28,8 +28,14 @@ Built for Jeff's truck first, published for other Slate owners later.
   template). CarPlay: the CarPlay view drives a Carlinkit dongle over WebUSB
   (`ui/src/carplay/`, vendored node-carplay 4.1.0); on a desk,
   `?carplaySim=1` plays a test clip through the same path. Pi setup and
-  dongle notes: `deploy/pi/README.md`. Not yet: camera feeds, WOPR voice,
-  streaming accounts.
+  dongle notes: `deploy/pi/README.md`. Not yet: camera feeds.
+- **Media and WOPR (Track B, 2026-11-05):** a MEDIA view (CarPlay, Spotify
+  Connect, internet radio with KJEF, AM/FM on an RTL-SDR, Plex, files, Apple
+  Music via CarPlay), the WOPR voice button, next appointment to Waze, gate
+  codes on arrival, and charging receipts to confirm. Set up on /settings
+  (WOPR, Spotify, Plex, AM/FM). Desk test without WOPR:
+  `node scripts/mock-wopr.mjs` (login jeff / test). Details: `docs/contract.md`
+  (Track B) and `deploy/pi/README.md` (Media).
 - **Drivers, stops, phone history, gas prices, getting online (2026-11-05):**
   driver profiles (Jeff, Sam, Jordan, Guest) with their own theme, layout,
   charging prefs and gas comparison vehicle; stops named from saved places,
