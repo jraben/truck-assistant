@@ -4,6 +4,8 @@ import { config } from './config.ts';
 import { openDb } from './db.ts';
 import { buildServer } from './server.ts';
 import { SettingsStore } from './settings.ts';
+import { RemoteService } from './remote/service.ts';
+import { registerRemote } from './remote/routes.ts';
 
 async function main() {
   console.log(`[brain] v${config.version}, data in ${config.dataDir}${config.sim ? ', SIM=1' : ''}`);
@@ -11,7 +13,10 @@ async function main() {
   const settings = new SettingsStore(config.dataDir);
   const brain = new Brain(db, settings);
   const app = await buildServer(brain);
+  const remote = new RemoteService(brain, db, config.dataDir, config.sim);   // Track C: cameras, dashcam, alerts, remote
+  await registerRemote(app, remote);
   brain.start();
+  await remote.start();
   await app.listen({ port: config.port, host: config.host });
   console.log(`[brain] listening on http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`);
 
@@ -20,7 +25,7 @@ async function main() {
     if (stopping) return; stopping = true;
     console.log(`[brain] ${sig}, shutting down`);
     const force = setTimeout(() => process.exit(1), 5000);
-    try { await app.close(); await brain.stop(); db.close(); } catch (e) { console.error(e); }
+    try { await app.close(); remote.stop(); await brain.stop(); db.close(); } catch (e) { console.error(e); }
     clearTimeout(force);
     process.exit(0);
   };

@@ -234,13 +234,21 @@ export class Brain extends EventEmitter {
 
   // ---- inputs ------------------------------------------------------------
 
+  /** Topics other modules want (Track C: the tier 1 watch). Each MQTT message is also emitted as 'mqtt'. */
+  private extraTopics = new Set<string>();
+  addTopics(topics: string[]) {
+    for (const t of topics) this.extraTopics.add(t);
+    this.mqtt?.setSubscriptions(this.subscriptions(this.settings.get()));
+  }
+
   private subscriptions(st: Settings): string[] {
-    const t = [`${st.truckId}/truckbox/#`];
+    const t = [`${st.truckId}/truckbox/#`, ...this.extraTopics];
     if (st.homeAssistant.homeChargerEnergyEntity) t.push(haEntityStateTopic(st.homeAssistant.homeChargerEnergyEntity));
     return t;
   }
 
   private onMqtt(topic: string, payload: string) {
+    this.emit('mqtt', topic, payload);
     const st = this.settings.get();
     const prefix = `${st.truckId}/truckbox/`;
     if (topic.startsWith(prefix)) {
