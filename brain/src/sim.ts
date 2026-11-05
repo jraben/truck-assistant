@@ -14,6 +14,14 @@ export const SIM_ROUTE: Leg[] = [
 ];
 export const SIM_HOME = SIM_ROUTE[0][0];
 
+/** Ambient light for the brightness loop: a day curve from the local clock, with passing shade. */
+export function simLux(now: Date, t: number): number {
+  const h = now.getHours() + now.getMinutes() / 60;
+  const sun = Math.max(0, Math.sin(((h - 6) / 13) * Math.PI));
+  const shade = 0.55 + 0.45 * Math.abs(Math.sin(t / 37));
+  return Math.round(2 + 30_000 * sun ** 1.5 * shade);
+}
+
 type Phase = 'parked' | 'reverse' | 'drive' | 'arrived';
 const PHASE_S: Record<Exclude<Phase, 'drive'>, number> = { parked: 200, reverse: 5, arrived: 12 };
 
@@ -75,7 +83,8 @@ export class SimTruck {
     } else {
       const target = route[this.seg + 1];
       const remainingLeg = haversineMi(this.pos, target) + route.slice(this.seg + 1).reduce((a, p, i, arr) => (i + 1 < arr.length ? a + haversineMi(p, arr[i + 1]) : a), 0);
-      let want = 34 + 10 * Math.sin(this.t / 40) + 4 * Math.sin(this.t / 7);
+      // Leg 2 (Tempe to downtown) runs on the freeway, so the city/highway split has both.
+      let want = this.leg === 1 ? 60 + 5 * Math.sin(this.t / 30) : 34 + 10 * Math.sin(this.t / 40) + 4 * Math.sin(this.t / 7);
       if (remainingLeg < 0.25) want = Math.max(6, want * (remainingLeg / 0.25));
       if (this.t % 180 < 20 && remainingLeg > 0.5) want = 0; // a red light now and then
       this.speed += Math.max(-6, Math.min(4, want - this.speed)) * Math.min(1, dt);
@@ -102,6 +111,7 @@ export class SimTruck {
     const s = this.t;
     this.emit('sensor/cabin_temp/state', (74 + 3 * Math.sin(s / 300)).toFixed(1));
     this.emit('sensor/cabin_humidity/state', (22 + 2 * Math.sin(s / 500)).toFixed(0));
+    this.emit('sensor/ambient_lux/state', String(simLux(new Date(), s)));
     this.emit('sensor/aux_battery_v/state', (driving ? 13.8 + 0.1 * Math.sin(s / 9) : 12.6 + 0.05 * Math.sin(s / 50)).toFixed(2));
     this.emit('sensor/pitch/state', (1.5 * Math.sin(s / 23) + (driving ? 0.4 * Math.sin(s * 1.3) : 0)).toFixed(1));
     this.emit('sensor/roll/state', (-0.8 + 1.2 * Math.sin(s / 31) + (driving ? 0.4 * Math.cos(s * 1.1) : 0)).toFixed(1));

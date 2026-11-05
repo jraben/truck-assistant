@@ -1,0 +1,21 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/stations/KPHX",
+   "type": "Feature",
+   "properties": {
+    "stationIdentifier": "KPHX",
+    "name": "Phoenix, Phoenix Sky Harbor International Airport"
+   }
+  },
+  {
+   "id": "https://api.weather.gov/stations/KGEU",
+   "type": "Feature",
+   "properties": {
+    "stationIdentifier": "KGEU",
+    "name": "Glendale, Glendale Municipal Airport"
+   }
+  }
+ ]
+}

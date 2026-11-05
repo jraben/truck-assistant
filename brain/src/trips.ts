@@ -14,6 +14,7 @@ type Row = {
   start_soc: number | null; end_soc: number | null; kwh_est: number | null;
   start_lat: number | null; start_lon: number | null; end_lat: number | null; end_lon: number | null;
   driver_id: string | null; source: string | null; start_stop_id: number | null; end_stop_id: number | null;
+  city_miles?: number | null; highway_miles?: number | null; city_kwh?: number | null; highway_kwh?: number | null;
   from_name?: string | null; to_name?: string | null;
 };
 
@@ -35,6 +36,9 @@ function toTrip(r: Row): Trip {
     source: (r.source ?? 'truck') as Trip['source'],
     from: r.start_stop_id ? { stopId: r.start_stop_id, name: r.from_name ?? null } : null,
     to: r.end_stop_id ? { stopId: r.end_stop_id, name: r.to_name ?? null } : null,
+    cityMiles: r.city_miles == null ? null : Math.round(r.city_miles * 100) / 100,
+    highwayMiles: r.highway_miles == null ? null : Math.round(r.highway_miles * 100) / 100,
+    cityKwh: r.city_kwh ?? null, highwayKwh: r.highway_kwh ?? null,
   };
 }
 
@@ -163,9 +167,10 @@ export class TripStore {
     this.db.exec('BEGIN');
     try {
       if (curId !== null && curId !== prevId) {
-        const cur = this.db.prepare('SELECT miles FROM trips WHERE id = ?').get(curId) as { miles: number } | undefined;
+        const cur = this.db.prepare('SELECT miles, city_miles, highway_miles FROM trips WHERE id = ?').get(curId) as { miles: number; city_miles: number | null; highway_miles: number | null } | undefined;
         this.db.prepare('UPDATE trip_points SET trip_id = ? WHERE trip_id = ?').run(prevId, curId);
         this.db.prepare('UPDATE trips SET miles = miles + ? WHERE id = ?').run(cur?.miles ?? 0, prevId);
+        if (cur && (cur.city_miles !== null || cur.highway_miles !== null)) this.db.prepare('UPDATE trips SET city_miles = COALESCE(city_miles, 0) + ?, highway_miles = COALESCE(highway_miles, 0) + ? WHERE id = ?').run(cur.city_miles ?? 0, cur.highway_miles ?? 0, prevId);
         this.db.prepare('DELETE FROM trips WHERE id = ?').run(curId);
       }
       this.db.prepare('UPDATE trips SET ended_at = NULL, end_soc = NULL, kwh_est = NULL, end_lat = NULL, end_lon = NULL, end_reason = NULL, end_stop_id = NULL WHERE id = ?').run(prevId);

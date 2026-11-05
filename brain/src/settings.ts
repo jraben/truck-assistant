@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { ChargingPrefs, CompareVehicle, Driver, Layout, Settings, WifiNet } from './types.ts';
 import { DEFAULT_LAYOUT } from './layout.ts';
+import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
 import { defaultThemeSettings, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
 
 export const RELAY_IDS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'] as const;
@@ -39,6 +40,7 @@ export function newDriver(id: string, name: string, opts: Partial<Pick<Driver, '
     compareVehicle: null,
     hotspot: null,
     btTetherMac: null,
+    drive: defaultDriverDrive(),
   };
 }
 
@@ -74,6 +76,8 @@ export function defaultSettings(): Settings {
     placesFeed: { url: null },
     homeWifi: null,
     saveDataOnHotspot: true,
+    truck: defaultTruck(),
+    drive: defaultDrive(),
     drivers: seedDrivers(),
   };
 }
@@ -311,6 +315,7 @@ export function validateDriver(d: unknown, idHint: string | number = '?'): Drive
     if (typeof x.btTetherMac !== 'string' || !/^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(x.btTetherMac.trim())) throw new SettingsError(`${where}: btTetherMac must look like AA:BB:CC:DD:EE:FF`);
     x.btTetherMac = x.btTetherMac.trim().replace(/-/g, ':').toUpperCase();
   }
+  try { x.drive = validateDriverDrive(x.drive, `${where} drive`); } catch (e) { if (e instanceof DriveSettingsError) throw new SettingsError(e.message); throw e; }
   return x;
 }
 
@@ -366,6 +371,7 @@ export function validate(s: Settings): Settings {
   if (fu === undefined || fu === '' || fu === null) s.placesFeed.url = null;
   else if (typeof fu !== 'string' || !/^https?:\/\/\S+$/i.test(fu.trim())) throw new SettingsError('placesFeed.url must start with http:// or https://');
   else s.placesFeed.url = fu.trim();
+  try { s.truck = validateTruck(s.truck); s.drive = validateDrive(s.drive); } catch (e) { if (e instanceof DriveSettingsError) throw new SettingsError(e.message); throw e; }
   if (!Array.isArray(s.drivers)) throw new SettingsError('drivers must be a list');
   s.drivers = s.drivers.map((d, i) => validateDriver(d, i));
   if (new Set(s.drivers.map((d) => d.id)).size !== s.drivers.length) throw new SettingsError('two drivers have the same id');

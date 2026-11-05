@@ -64,7 +64,7 @@ export function openDb(dataDir: string): Db {
     CREATE TABLE IF NOT EXISTS http_cache (key TEXT PRIMARY KEY, fetched_at TEXT NOT NULL, body TEXT NOT NULL);
   `);
   // Columns added after the first release: ALTER only when missing.
-  addColumns(db, 'trips', { driver_id: 'TEXT', source: "TEXT NOT NULL DEFAULT 'truck'", start_stop_id: 'INTEGER', end_stop_id: 'INTEGER' });
+  addColumns(db, 'trips', { driver_id: 'TEXT', source: "TEXT NOT NULL DEFAULT 'truck'", start_stop_id: 'INTEGER', end_stop_id: 'INTEGER', city_miles: 'REAL', highway_miles: 'REAL', city_kwh: 'REAL', highway_kwh: 'REAL' });
   addColumns(db, 'charge_sessions', { driver_id: 'TEXT' });
   return db;
 }

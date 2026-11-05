@@ -1,0 +1,69 @@
+{
+ "id": "https://api.weather.gov/points/33.4484,-112.074",
+ "type": "Feature",
+ "geometry": {
+  "type": "Point",
+  "coordinates": [
+   -112.074,
+   33.4484
+  ]
+ },
+ "properties": {
+  "@id": "https://api.weather.gov/points/33.4484,-112.074",
+  "@type": "wx:Point",
+  "cwa": "PSR",
+  "type": "land",
+  "forecastOffice": "https://api.weather.gov/offices/PSR",
+  "gridId": "PSR",
+  "gridX": 159,
+  "gridY": 58,
+  "forecast": "https://api.weather.gov/gridpoints/PSR/159,58/forecast",
+  "forecastHourly": "https://api.weather.gov/gridpoints/PSR/159,58/forecast/hourly",
+  "forecastGridData": "https://api.weather.gov/gridpoints/PSR/159,58",
+  "observationStations": "https://api.weather.gov/gridpoints/PSR/159,58/stations",
+  "relativeLocation": {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -112.0901324,
+     33.5721544
+    ]
+   },
+   "properties": {
+    "city": "Phoenix",
+    "state": "AZ",
+    "distance": {
+     "unitCode": "wmoUnit:m",
+     "value": 0
+    },
+    "bearing": {
+     "unitCode": "wmoUnit:degree_(angle)",
+     "value": 0
+    }
+   }
+  },
+  "forecastZone": "https://api.weather.gov/zones/forecast/AZZ543",
+  "county": "https://api.weather.gov/zones/county/AZC013",
+  "fireWeatherZone": "https://api.weather.gov/zones/fire/AZZ132",
+  "timeZone": "America/Phoenix",
+  "radarStation": "KIWA",
+  "astronomicalData": {
+   "sunrise": "2026-11-04T06:49:56-07:00",
+   "sunset": "2026-11-04T17:33:47-07:00",
+   "transit": "2026-11-04T12:11:52-07:00",
+   "civilTwilightBegin": "2026-11-04T06:24:12-07:00",
+   "civilTwilightEnd": "2026-11-04T17:59:31-07:00",
+   "nauticalTwilightBegin": "2026-11-04T05:54:42-07:00",
+   "nauticalTwilightEnd": "2026-11-04T18:29:01-07:00",
+   "astronomicalTwilightBegin": "2026-11-04T05:25:35-07:00",
+   "astronomicalTwilightEnd": "2026-11-04T18:58:08-07:00"
+  },
+  "nwr": {
+   "transmitter": "KEC94",
+   "sameCode": "004013",
+   "areaBroadcast": "https://api.weather.gov/radio/KEC94/broadcast",
+   "pointBroadcast": "https://api.weather.gov/points/33.4484,-112.074/radio"
+  }
+ }
+}

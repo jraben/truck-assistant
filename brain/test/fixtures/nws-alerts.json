@@ -1,0 +1,247 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.a3ea89c38ef92d029872b844bea11b59d3fc7f35.001.1",
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -111.95,
+       33.43
+      ],
+      [
+       -111.98,
+       33.43
+      ],
+      [
+       -112.03,
+       33.41
+      ],
+      [
+       -112.08,
+       33.42
+      ],
+      [
+       -112.1,
+       33.41
+      ],
+      [
+       -112.2,
+       33.39
+      ],
+      [
+       -112.26,
+       33.38
+      ],
+      [
+       -112.26,
+       33.39
+      ],
+      [
+       -112.16,
+       33.41
+      ],
+      [
+       -112.14,
+       33.42
+      ],
+      [
+       -112.13,
+       33.41
+      ],
+      [
+       -112.07,
+       33.43
+      ],
+      [
+       -112.03,
+       33.42
+      ],
+      [
+       -112,
+       33.43
+      ],
+      [
+       -111.98,
+       33.44
+      ],
+      [
+       -111.95,
+       33.44
+      ],
+      [
+       -111.95,
+       33.43
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.a3ea89c38ef92d029872b844bea11b59d3fc7f35.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.a3ea89c38ef92d029872b844bea11b59d3fc7f35.001.1",
+    "areaDesc": "Maricopa, AZ",
+    "geocode": {
+     "SAME": [
+      "004013"
+     ],
+     "UGC": [
+      "AZC013"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/county/AZC013"
+    ],
+    "references": [],
+    "sent": "2026-11-05T12:48:00-07:00",
+    "effective": "2026-11-05T12:48:00-07:00",
+    "onset": "2026-11-05T12:48:00-07:00",
+    "expires": "2026-11-05T23:00:00-07:00",
+    "ends": "2026-11-05T23:00:00-07:00",
+    "status": "Actual",
+    "messageType": "Update",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Likely",
+    "urgency": "Expected",
+    "event": "Flood Warning",
+    "sender": "w-nws.webmaster@noaa.gov",
+    "senderName": "NWS Phoenix AZ",
+    "headline": "Flood Warning issued November 5 at 12:48PM MST until November 5 at 11:00PM MST by NWS Phoenix AZ",
+    "description": "* WHAT...Urban areas and small streams flooding caused by upstream\ndam release continues.\n\n* WHERE...Maricopa County in south central Arizona...\n\n* WHEN...Until 1100 PM MST Thursday.\n\n* IMPACTS...Floo",
+    "instruction": null,
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "FLWPSR"
+     ],
+     "WMOidentifier": [
+      "WGUS45 KPSR 051948"
+     ],
+     "NWSheadline": [
+      "FLOOD WARNING FOR THE UPSTREAM RELEASE OF SALT RIVER BELOW TEMPE TOWN LAKE ON THE SALT RIVER NOW IN EFFECT UNTIL 11 PM MST THIS EVENING"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.EXT.KPSR.FA.W.0038.000000T0000Z-261106T0600Z/"
+     ],
+     "eventEndingTime": [
+      "2026-11-05T23:00:00-07:00"
+     ],
+     "expiredReferences": [
+      "w-nws.webmaster@noaa.gov,urn:oid:2.49.0.1.840.0.5fd556ead1d33a20150e8c29fbc93391a1b98dc5.001.1,2026-11-02T05:04:00-07:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "FLW"
+     ],
+     "NationalWeatherService": [
+      "FAW"
+     ]
+    }
+   }
+  },
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.74255a5786e457f57ac2577c7efaad4ad4fa1fcc.001.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.74255a5786e457f57ac2577c7efaad4ad4fa1fcc.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.74255a5786e457f57ac2577c7efaad4ad4fa1fcc.001.1",
+    "areaDesc": "Lake Havasu and Fort Mohave; Lake Mohave - AZ side; San Bernardino County-Upper Colorado River Valley; Lake Mohave - NV side",
+    "geocode": {
+     "SAME": [
+      "004015",
+      "006071",
+      "032003"
+     ],
+     "UGC": [
+      "AZZ002",
+      "AZZ571",
+      "CAZ527",
+      "NVZ026"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/AZZ002",
+     "https://api.weather.gov/zones/forecast/AZZ571",
+     "https://api.weather.gov/zones/forecast/CAZ527",
+     "https://api.weather.gov/zones/forecast/NVZ026"
+    ],
+    "references": [],
+    "sent": "2026-11-05T01:43:00-08:00",
+    "effective": "2026-11-05T01:43:00-08:00",
+    "onset": "2026-11-06T04:00:00-08:00",
+    "expires": "2026-11-05T14:00:00-08:00",
+    "ends": "2026-11-07T16:00:00-08:00",
+    "status": "Actual",
+    "messageType": "Update",
+    "category": "Met",
+    "severity": "Moderate",
+    "certainty": "Likely",
+    "urgency": "Expected",
+    "event": "Lake Wind Advisory",
+    "sender": "w-nws.webmaster@noaa.gov",
+    "senderName": "NWS Las Vegas NV",
+    "headline": "Lake Wind Advisory issued November 5 at 1:43AM PST until November 7 at 4:00PM PST by NWS Las Vegas NV",
+    "description": "* WHAT...North winds 15 to 25 mph with gusts up to 40 mph expected.\n\n* WHERE...Lake Mohave and Lake Havasu.\n\n* WHEN...From early Friday morning to Saturday afternoon.\n\n* IMPACTS...Strong winds and rou",
+    "instruction": null,
+    "response": "Execute",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "NPWVEF"
+     ],
+     "WMOidentifier": [
+      "WWUS75 KVEF 050943"
+     ],
+     "NWSheadline": [
+      "LAKE WIND ADVISORY IN EFFECT FROM 4 AM PST / 5 AM MST FRIDAY TO 4PM PST / 5 PM MST SATURDAY"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "VTEC": [
+      "/O.CON.KVEF.LW.Y.0010.261106T1200Z-261108T0000Z/"
+     ],
+     "eventEndingTime": [
+      "2026-11-07T16:00:00-08:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "NWS"
+     ],
+     "NationalWeatherService": [
+      "LWY"
+     ]
+    }
+   }
+  }
+ ],
+ "title": "Current watches, warnings, and advisories for Arizona",
+ "updated": "2026-11-05T20:35:06+00:00"
+}

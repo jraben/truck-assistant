@@ -16,6 +16,7 @@ import { ImportError } from './import/phone.ts';
 import { VehicleError, type MenuLevel } from './gas/vehicles.ts';
 import { NOT_CONFIGURED } from './ha/client.ts';
 import type { TimelineItem } from './types.ts';
+import { registerDriveRoutes } from './drive/routes.ts';
 
 const optStr = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const srcOf = (v: unknown) => (v === 'phone' || v === 'truck' ? v : null);
@@ -243,6 +244,8 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   app.delete<{ Params: { id: string } }>('/api/charges/:id', async (req, reply) => {
     return brain.charges.delete(Number(req.params.id)) ? reply.code(204).send() : reply.code(404).send({ error: 'no such session' });
   });
+
+  registerDriveRoutes(app, brain.drive);
 
   // ---- UI --------------------------------------------------------------------
   const uiBuilt = existsSync(path.join(config.uiDir, 'index.html'));

@@ -25,6 +25,7 @@ import { GasService, POLL_MS } from './gas/gas.ts';
 import { VehicleLookup } from './gas/vehicles.ts';
 import { PhoneImporter } from './import/phone.ts';
 import { NetManager, pickBackend, SimBackend, UnavailableBackend } from './network.ts';
+import { DriveService } from './drive/service.ts';
 import type { CompareVehicle, Driver, Health, NowPlaying, Settings, State, Stop } from './types.ts';
 
 /** Ignore GPS jumps faster than this between fixes (multipath, cold start). */
@@ -57,6 +58,7 @@ export class Brain extends EventEmitter {
   readonly vehicles: VehicleLookup;
   readonly importer: PhoneImporter;
   readonly net: NetManager;
+  readonly drive: DriveService;
   private netTimer: NodeJS.Timeout | null = null;
   readonly mqtt: MqttLink | null;
   private gpsd: GpsdClient | null = null;
@@ -116,6 +118,7 @@ export class Brain extends EventEmitter {
       trip: null, truckbox: false, nowPlaying: null,
       driver: null, driverSuggestion: null, place: null,
       network: null as unknown as State['network'],
+      drive: null,
     };
     this.mqtt = config.mqttDisabled ? null : new MqttLink(config.mqttUrl, statusTopic(st.truckId));
     settings.onChange((next, prev) => this.onSettings(next, prev));
@@ -124,6 +127,19 @@ export class Brain extends EventEmitter {
     this.importer.onDone = () => this.emit('import');
     this.net = new NetManager(new UnavailableBackend('starting up'), () => this.settings.get(), () => this.driverId,
       kvGet(db, 'netBytes'), (b) => { try { kvSet(db, 'netBytes', b); } catch { /* best effort */ } }, () => this.changed());
+    this.drive = new DriveService({
+      db, settings, version: config.version, sim: config.sim,
+      charges: () => this.charges.store.list(null, null, null),
+      tripsSince: (iso) => this.trips.between(iso, null, { source: 'truck' }),
+      tiers: () => this.stops.tiers(),
+      changed: () => this.changed(),
+    }, () => ({
+      speedMph: this.s.speedMph, gps: this.s.gps, soc: this.soc.value, socSource: this.soc.value === null ? null : this.soc.source,
+      cabinTempF: this.s.cabinTempF, ignition: this.s.ignition, tilt: this.s.tilt, tripId: this.s.trip?.id ?? null,
+      online: this.net.status?.link !== 'offline' || this.net.status?.backend !== 'nmcli',
+      placeName: this.s.place?.name ?? null,
+    }));
+    this.charges.onChange(() => this.drive.refreshSince());
   }
 
   start() {
@@ -150,6 +166,7 @@ export class Brain extends EventEmitter {
       .then((b) => { this.net.setBackend(b); console.log(`[net] ${b.kind}${b.kind === 'nmcli' ? ` on ${config.netClientIface}` : ''}`); return this.net.tick(); })
       .catch((e) => console.error('[net]', e));
     this.netTimer = setInterval(() => void this.net.tick(), 20_000);
+    this.drive.start();
   }
 
   async stop() {
@@ -158,6 +175,7 @@ export class Brain extends EventEmitter {
     if (this.refreshSoon) clearTimeout(this.refreshSoon);
     this.sim?.stop();
     this.gpsd?.stop();
+    this.drive.stop();
     this.saveSoc(true);
     await this.mqtt?.stop().catch(() => {});
   }
@@ -256,6 +274,7 @@ export class Brain extends EventEmitter {
   }
 
   private onTruckbox(sub: string, payload: string) {
+    this.drive.onTruckbox(sub, payload);
     const p = parseTruckbox(sub, payload);
     if (!p) return;
     if (p.truckbox === undefined && !this.s.truckbox) this.s.truckbox = true; // data implies it is up
@@ -283,7 +302,8 @@ export class Brain extends EventEmitter {
 
   private addMiles(mi: number) {
     const st = this.settings.get();
-    this.soc.addMiles(mi, st.efficiencyMiPerKwh, st.packKwh);
+    this.soc.addMiles(mi, this.drive.efficiencyNow() || st.efficiencyMiPerKwh, st.packKwh);
+    this.drive.onMiles(mi, this.s.trip?.id ?? null);
     if (this.s.trip) {
       this.s.trip.miles = Math.round((this.s.trip.miles + mi) * 1000) / 1000;
       this.trips.addMiles(this.s.trip.id, mi);
@@ -370,8 +390,9 @@ export class Brain extends EventEmitter {
   private endTrip(at: Date, pos: { lat: number; lon: number } | null, reason: string, endStopId: number | null) {
     if (!this.s.trip) return;
     const st = this.settings.get();
-    const t = this.trips.end(this.s.trip.id, at, this.soc.value, pos, st.efficiencyMiPerKwh, reason, endStopId);
+    let t = this.trips.end(this.s.trip.id, at, this.soc.value, pos, st.efficiencyMiPerKwh, reason, endStopId);
     this.s.trip = null;
+    if (t) { this.drive.onTripEnd(t.id); t = this.trips.get(t.id) ?? t; }
     if (t) {
       console.log(`[trips] #${t.id} ended (${reason}): ${t.miles.toFixed(1)} mi`);
       this.mqtt?.publish(tripEndedTopic(st.truckId), JSON.stringify(t), { qos: 1 });
@@ -447,6 +468,7 @@ export class Brain extends EventEmitter {
       driverSuggestion: this.s.driverSuggestion ? { ...this.s.driverSuggestion } : null,
       place: this.s.place ? { ...this.s.place } : null,
       network: { ...this.net.status, bytesThisMonth: { ...this.net.status.bytesThisMonth } },
+      drive: this.drive.state(),
     };
   }
 

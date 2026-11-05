@@ -1,5 +1,7 @@
 // The shapes in docs/contract.md, verbatim. Change the contract first.
 import type { ThemeSettings } from './themes.ts';
+import type { DriveSettings, DriveState, DriverDrive, TruckLook } from './drive/types.ts';
+export type * from './drive/types.ts';
 export type { Theme, ThemeSettings } from './themes.ts';
 
 export type Gear = 'P' | 'R' | 'N' | 'D';
@@ -28,6 +30,7 @@ export type State = {
   driverSuggestion: { id: string; name: string; reason: string } | null;
   place: { stopId: number; name: string | null; since: string } | null;
   network: NetworkStatus;
+  drive: DriveState | null;         // Track A: range modes, weather, limits, lockout, heat, brightness
 };
 
 export type NetworkStatus = {
@@ -98,6 +101,8 @@ export type Settings = {
   placesFeed: { url: string | null };
   homeWifi: WifiNet | null;
   saveDataOnHotspot: boolean;
+  truck: TruckLook;                 // Track A: what the truck looks like (tilt drawing)
+  drive: DriveSettings;             // Track A
   drivers: Driver[];
 };
 
@@ -115,6 +120,7 @@ export type Driver = {
   compareVehicle: CompareVehicle | null;
   hotspot: WifiNet | null;
   btTetherMac: string | null;
+  drive: DriverDrive;               // Track A: speedometer style, over-limit warning
 };
 
 export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel';
@@ -137,6 +143,8 @@ export type Trip = {
   driverId: string | null;
   source: 'truck' | 'phone';
   from: StopRef | null; to: StopRef | null;
+  cityMiles: number | null; highwayMiles: number | null;   // Track A: null before the split was recorded
+  cityKwh: number | null; highwayKwh: number | null;
 };
 
 export type StopRef = { stopId: number; name: string | null };

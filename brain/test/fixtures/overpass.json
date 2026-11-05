@@ -1,0 +1,141 @@
+{
+ "version": 0.6,
+ "generator": "Overpass API 0.7.62.4 2390de5a",
+ "osm3s": {
+  "timestamp_osm_base": "2026-11-05T20:37:13Z",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+ },
+ "elements": [
+  {
+   "type": "way",
+   "id": 236498060,
+   "bounds": {
+    "minlat": 33.4945157,
+    "minlon": -111.9607906,
+    "maxlat": 33.4946205,
+    "maxlon": -111.9520607
+   },
+   "geometry": [
+    {
+     "lat": 33.4945157,
+     "lon": -111.9607906
+    },
+    {
+     "lat": 33.4945166,
+     "lon": -111.9606351
+    },
+    {
+     "lat": 33.4945274,
+     "lon": -111.9604227
+    },
+    {
+     "lat": 33.4945489,
+     "lon": -111.9591331
+    },
+    {
+     "lat": 33.4945523,
+     "lon": -111.9586064
+    },
+    {
+     "lat": 33.49456,
+     "lon": -111.9580861
+    },
+    {
+     "lat": 33.4945685,
+     "lon": -111.957511
+    },
+    {
+     "lat": 33.4945687,
+     "lon": -111.9574973
+    },
+    {
+     "lat": 33.4945782,
+     "lon": -111.9568501
+    },
+    {
+     "lat": 33.4945852,
+     "lon": -111.9564075
+    },
+    {
+     "lat": 33.4945919,
+     "lon": -111.9552879
+    },
+    {
+     "lat": 33.4946136,
+     "lon": -111.9536828
+    },
+    {
+     "lat": 33.4946205,
+     "lon": -111.9520607
+    }
+   ],
+   "tags": {
+    "cycleway": "lane",
+    "highway": "tertiary",
+    "lanes": "2",
+    "lanes:backward": "1",
+    "lanes:forward": "1",
+    "name": "East Lafayette Boulevard",
+    "oneway": "no",
+    "postal_code": "85018",
+    "smoothness": "good",
+    "surface": "asphalt"
+   }
+  },
+  {
+   "type": "way",
+   "id": 900001,
+   "bounds": {},
+   "geometry": [
+    {
+     "lat": 33.494,
+     "lon": -111.97
+    },
+    {
+     "lat": 33.494,
+     "lon": -111.9633333
+    },
+    {
+     "lat": 33.494,
+     "lon": -111.9566667
+    },
+    {
+     "lat": 33.494,
+     "lon": -111.95
+    }
+   ],
+   "tags": {
+    "highway": "primary",
+    "name": "Test Road (fixture)",
+    "maxspeed": "35 mph"
+   }
+  },
+  {
+   "type": "way",
+   "id": 900002,
+   "geometry": [
+    {
+     "lat": 33.48,
+     "lon": -111.96
+    },
+    {
+     "lat": 33.49,
+     "lon": -111.96
+    },
+    {
+     "lat": 33.5,
+     "lon": -111.96
+    },
+    {
+     "lat": 33.51,
+     "lon": -111.96
+    }
+   ],
+   "tags": {
+    "highway": "secondary",
+    "name": "Metric Street (fixture)",
+    "maxspeed": "50"
+   }
+  }
+ ]
+}
