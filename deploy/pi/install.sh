@@ -59,6 +59,9 @@ if ! nmcli -t -f NAME connection show 2>/dev/null | grep -qx slate-ap; then
 fi
 ip link show wlan1 >/dev/null 2>&1 || echo "   note: no wlan1 yet. Plug in the USB Wi-Fi adapter (deploy/pi/README.md, Network) for hotspot / home Wi-Fi."
 
+echo "== updater (releases dir, path unit, sudoers rule for restarting the brain only)"
+bash "$APP/deploy/pi/updater/setup.sh" --from-install
+
 echo "== brain service"
 install -m 0644 "$APP/deploy/pi/slate-brain.service" /etc/systemd/system/slate-brain.service
 systemctl daemon-reload

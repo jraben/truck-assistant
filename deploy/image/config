@@ -1,0 +1,15 @@
+# pi-gen config for the Slate Cockpit image (deploy/image/build.sh copies this in).
+IMG_NAME=slate-cockpit
+TARGET_HOSTNAME=slate
+LOCALE_DEFAULT=en_US.UTF-8
+KEYBOARD_KEYMAP=us
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT=America/Phoenix
+FIRST_USER_NAME=pi
+DISABLE_FIRST_BOOT_USER_RENAME=1
+# SSH off: nothing on the truck's Wi-Fi should be listening for logins. Turn it on by hand on the bench.
+ENABLE_SSH=0
+DEPLOY_COMPRESSION=xz
+# stage3 = minimal desktop (Wayland/labwc) for the Chromium kiosk; stage-slate adds the app.
+STAGE_LIST="stage0 stage1 stage2 stage3 stage-slate"
+# FIRST_USER_PASS is appended by build.sh (random, saved next to the image).

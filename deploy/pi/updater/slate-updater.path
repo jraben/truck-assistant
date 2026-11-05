@@ -1,0 +1,11 @@
+# /etc/systemd/system/slate-updater.path  (updater/setup.sh puts it there)
+# The brain writes request.json to ask for an install or rollback; this starts the updater.
+[Unit]
+Description=Slate Cockpit: watch for update requests from the brain
+
+[Path]
+PathExists=/var/lib/slate-cockpit/update/request.json
+Unit=slate-updater.service
+
+[Install]
+WantedBy=multi-user.target

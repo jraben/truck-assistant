@@ -406,3 +406,136 @@ order above, and switches with `nmcli connection up`. Data use is read from
   the repo or `.env`.
 - **Simulation:** `SIM=1` makes the brain invent GPS, speed and truck-box
   data so everything runs on a desk.
+
+## Track D: Logs and ops
+
+Mileage log, maintenance, updates, backups, the login gate and first-boot
+setup. Config lives in `DATA_DIR/ops.json` (not settings.json); shapes are in
+`brain/src/ops/types.ts` (pure, imported by the UI). Code: `brain/src/ops/`,
+`ui/src/ops/`, `deploy/pi/updater/`, `deploy/pi/backup/`, `deploy/image/`.
+
+### Login gate
+
+- From `localhost` (the dash) everything is open (`auth.trustLocal`, default
+  true). From any other address, once a password is set: `/settings*`,
+  `/truck*` redirect to `/login?next=…`; `/api/*` and `/ws` answer 401
+  `{error}`. Always open: `/`, static assets, `/login`, `/api/health`,
+  `/api/about`, `/api/update/version`, `/api/auth/*`. No password set = open
+  (first boot; the wizard's first step sets one).
+- `GET /api/auth/status` → `{passwordSet, authed, local, trustLocal}`
+- `POST /api/auth/login` `{password}` → sets cookie `slate_session`
+  (HttpOnly, SameSite=Strict, 30 days); 401 wrong; 429 + `Retry-After` after 5
+  failures in 15 min per address (15 min lock)
+- `POST /api/auth/logout`; `POST /api/auth/password` `{current?, next}` (current
+  required once one is set; at least 8 characters; logs out every other session)
+- `PUT /api/security/config` `{trustLocal}`; `POST /api/security/logout-everywhere`
+- `GET /api/about` → `{name, shortName, notice, license, copyright, version, installed}`
+  (the project name comes from `brain/src/project.ts`, one constant)
+
+### Setup wizard
+
+- `GET /api/setup` → `{done, steps: {step: 'done'|'skipped'}, stepsList, passwordSet, apInitialPassword}`;
+  steps: `password, ap, truck, home, drivers, ha, hotspot, vehicle`
+- `PUT /api/setup` `{step, status: 'done'|'skipped'|null}` | `{done: boolean}` | `{reset: true}`
+  (every step answered = done). The cockpit shows the wizard until `done`
+  ("Finish later" hides it for that browser session; `?nosetup` never shows it).
+- `POST /api/setup/ap-password` `{password}` (8-63) → `{applied, message}`:
+  `nmcli connection modify slate-ap wifi-sec.psk …` (the polkit rule allows it);
+  simulated on a desk. The other steps use the existing settings and drivers routes.
+
+### Mileage
+
+- `GET /api/mileage?year=&from=&to=&driver=&purpose=` (`purpose` may be
+  `untagged`) → `{rows: MileageRow[], totals: MileageTotals, period, config, odometerNow}`.
+  Only ended trips. Phone trips are included with `approximate: true` and no odometer.
+- `PUT /api/mileage/tags` `{tripIds: number[], purpose?: Purpose|null, note?: string}`
+  → `{changed}`. `purpose: null` = back to automatic; `note` omitted = unchanged.
+- `GET|PUT /api/mileage/config` → `OpsConfig['mileage']`:
+  `{odometerAnchor: {odometer, at}|null, rates: [{from: 'YYYY-MM-DD', centsPerMile, source}],
+  driverDefaults: {driverId: Purpose}, placeTags: {placeId: 'business'|'client'|'personal'|'commute'}, feedIsBusiness}`
+- `GET /api/odometer` → `{estimate, anchor, source: 'estimate'}`
+- `GET /api/mileage/export.csv?…` (Date, Driver, Purpose, Business purpose /
+  note, From, To, Start/End odometer (est.), Miles, Approximate, Rate,
+  Deduction; totals at the end) and `/api/mileage/export.html?…` (printable)
+- Purpose, first match: set by hand; the destination saved place's tag
+  (client = business); destination named from the places feed → business
+  (`feedIsBusiness`); the driver's default; else untagged.
+- Odometer: anchor + truck-trip miles counted forward (and back for earlier
+  trips), until CAN gives the real one.
+- Default IRS rates: 70¢ (2025, Notice 2025-5), 72.5¢ (from 2026-01-01, Notice
+  2026-10), 76¢ (from 2026-07-01, Announcement 2026-11). Check every year.
+
+```ts
+type Purpose = 'business' | 'personal' | 'commute' | 'other';
+type MileageRow = { tripId: number; startedAt: string; endedAt: string | null; date: string;
+  driverId: string | null; driver: string; purpose: Purpose | null;
+  purposeSource: 'manual' | 'place' | 'feed' | 'driver' | null; note: string | null;
+  from: string; to: string; startOdometer: number | null; endOdometer: number | null;
+  miles: number; approximate: boolean; source: 'truck' | 'phone';
+  rateCents: number | null; deduction: number | null };
+type MileageTotals = { trips: number; miles: number; byPurpose: Record<Purpose | 'untagged', number>;
+  businessMiles: number; deduction: number; untaggedTrips: number; approximateMiles: number; ratesUsed: MileageRate[] };
+```
+
+### Maintenance and TPMS
+
+- `GET /api/maintenance` → `{log: MaintEntry[], reminders: ReminderStatus[], odometer, notifyService}`
+- `GET /api/maintenance/due` → `{odometer, items: ReminderStatus[]}` (due first, then soon): the Drive card
+- `POST /api/maintenance/log` `{date, item?, reminderId?, odometer?, cost?, shop?, note?}`
+  (a `reminderId` marks that reminder done); `PUT|DELETE /api/maintenance/log/:id`
+- `POST /api/maintenance/log/:id/receipt`: body = the photo or PDF itself
+  (`image/jpeg|png|webp|heic|heif`, `application/pdf`, up to 15 MB), stored in
+  `DATA_DIR/receipts/`; `GET /api/maintenance/receipts/:name`
+- `PUT /api/maintenance/reminders` `{reminders: [{id?, name, everyMiles|null, everyMonths|null, note}]}`
+  (replaces the list; history kept by id); `POST /api/maintenance/reminders/:id/done` `{at?, odometer?}`
+- `PUT /api/maintenance/notify` `{service}`: HA `notify.<service>`, one message a
+  day per due item, 9:00-21:00
+- `GET /api/tpms/history?days=30` → `{fl|fr|rl|rr: [{t, psi, tempF}]}`. Sampled from
+  `State.tpms` every minute, stored on a 0.5 psi change or every 10 min, kept 400 days.
+- Defaults: tire rotation, cabin air filter, wiper blades, 12V battery check,
+  brake fluid, with **no intervals** ("Set from the owner's manual"). States:
+  `due | soon | ok | unset | needs-odometer`; soon = within max(300 mi, 10%) or 30 days.
+- Layout widget types: `maintenance`, `mileage`.
+
+### Updates
+
+- `GET /api/update` → `UpdateStatus` `{phase, message, repo, channel, installed, latest, releases, checkedAt, job, canInstall, installNote, canRollback}`;
+  phases `idle, checking, up-to-date, available, requested, downloading, building, restarting, verifying, done, rolled-back, failed`
+- `POST /api/update/check`; `POST /api/update/install` `{tag?}`; `POST /api/update/rollback`;
+  `PUT /api/update/config` `{repo, channel: 'stable'|'main'}`; `GET /api/update/version` → the
+  installed `{version, tag, sha, channel, installedAt}` (from `release.json`)
+- Stable: GitHub releases (non-draft, non-prerelease; the asset
+  `slate-cockpit-<tag>.tar.gz` from `.github/workflows/release.yml` is preferred),
+  else version tags. Main: the latest commit; changelog = commits since the installed sha.
+- Brain to updater: `DATA_DIR/update/request.json` (`Job`) → `slate-updater.path`
+  runs `update.sh` → `DATA_DIR/update/status.json` `{id, phase, message, at, tag, previous}`.
+  Checked every 6 h when online; never installs by itself.
+
+### Backups
+
+- `GET /api/backup` → `{config, status: BackupStatus, targetLabel, local}`;
+  `PUT /api/backup/config` `{enabled, hour, keep, keepLocal, includeSecrets, target}`;
+  target `{kind:'none'} | {kind:'path', path} | {kind:'rsync', dest:'user@host:/dir', sshKey, port} | {kind:'http', url, auth}`
+- `POST /api/backup/run`; `GET /api/backup/list` → `{local, target: {names|null, error}}`;
+  `GET /api/backup/download/:name`; `POST /api/backup/restore` `{name, from: 'local'|'target'}`;
+  `POST /api/backup/restore-upload` (body = the .tar.gz)
+- File: `slate-backup-<truck>-YYYYMMDD-HHMMSS.tar.gz` with `manifest.json`
+  (sha256 per file), `cockpit.db` (VACUUM INTO), `settings.json` and `ops.json`
+  (keys, tokens, passwords and the admin hash stripped unless `includeSecrets`),
+  the clips index JSON (`clips.json`, `clips-index.json`, `clips/*.json`; never
+  video), `receipts/`.
+- Nightly after `hour`, only on home Wi-Fi (`network.link === 'home'`), not
+  during a trip, once a day; a failure retries after an hour. Retention: the newest
+  `keep` on the target (path, rsync; an HTTP server keeps its own), `keepLocal` on the truck.
+- Restore is staged in `DATA_DIR/restore-pending/` and applied at the next
+  start, before the DB opens; the replaced files go to
+  `backups/before-restore-<stamp>/`. Secrets missing from the backup are kept
+  from the truck's current settings; the current password hash and backup
+  target are kept. Under systemd the brain restarts itself.
+
+### MQTT / Home Assistant
+
+- `slate/brain/ops` (retained) `OpsSummary`: `{maintenanceDue, maintenanceSoon, dueItems, lastBackupAt, lastBackupOk, backupTarget, updateAvailable, version, odometerEst}`
+- Discovery (the same "Slate Truck" device, when `homeAssistant.bridge`): sensors
+  `maintenance_due` (count; items as attributes), `last_backup` (timestamp),
+  `update_available`, `odometer_est` (mi); binary_sensor `backup_problem`.

@@ -123,3 +123,31 @@ nmcli -f NAME,TYPE,DEVICE,AUTOCONNECT-PRIORITY connection show   # slate-ap on w
 nmcli device wifi list ifname wlan1                               # what the client radio can see
 journalctl -u slate-brain | grep '\[net\]'                        # switches the brain made
 ```
+
+## Updates, rollback and backups (Track D)
+
+`install.sh` also runs `updater/setup.sh --from-install`:
+
+| What | Where | Does |
+|---|---|---|
+| Releases | `/opt/slate-cockpit-releases/` (owned by `slate`), `current` and `previous` symlinks | the brain runs from `current` (drop-in `slate-brain.service.d/10-release.conf`); `install.sh` points `current` at `/opt/slate-cockpit` |
+| `slate-updater.path` + `.service` | `/etc/systemd/system/` | the brain writes `/var/lib/slate-cockpit/update/request.json`; the path unit runs `update.sh` as `slate` |
+| `update.sh` | `/usr/local/lib/slate-cockpit/` (root-owned) | download (release tarball from the release workflow, else source tarball, or `UPDATE_METHOD=git`), `npm ci` (+ build), switch `current`, restart, health check, automatic switch back if `/api/health` doesn't answer on the new version within 2 min |
+| `slate-updater.sudoers` | `/etc/sudoers.d/slate-updater` | the updater's only root right: `systemctl restart slate-brain` |
+
+Repository URL and channel (stable tags or `main`) are on `/settings`,
+Software updates, with the changelog, Install and Roll back. Progress:
+`/var/lib/slate-cockpit/update/status.json`; build output: `update/build.log`.
+`update.sh` is copied when `setup.sh` runs, so re-run `setup.sh` (or
+`install.sh`) when a release changes it.
+
+Backups (Settings, Backups) go to a mounted share, rsync over SSH or an
+HTTP PUT. Helpers:
+
+```sh
+sudo ./deploy/pi/backup/setup-backup.sh nas //nas.local/slate-backups backupuser   # SMB at /mnt/nas-backup
+sudo ./deploy/pi/backup/setup-backup.sh ssh-key                                    # key for rsync over SSH
+```
+
+Security model and what to do if the truck is stolen: `docs/security.md`.
+A flashable image with all of this baked in: `deploy/image/`.

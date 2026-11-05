@@ -1,0 +1,37 @@
+# Flashable Raspberry Pi image (pi-gen, arm64), started by hand. Takes about an
+# hour on a hosted runner (qemu emulation); the usual path is building on a
+# Linux box (deploy/image/README.md). Uses the release tarball of the given tag.
+name: image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to bake in (must already have a release tarball)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the release tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release download "$TAG" --pattern "slate-cockpit-${TAG}.tar.gz" --dir deploy/image/stage-slate/00-app/files
+      - name: Build with pi-gen
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq qemu-user-static binfmt-support
+          APP_TARBALL="slate-cockpit-${TAG}.tar.gz" ./deploy/image/build.sh
+      - name: Attach the image to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" deploy/image/work/pi-gen/deploy/*.img.xz --clobber
