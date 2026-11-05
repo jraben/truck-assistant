@@ -244,6 +244,22 @@ body.portal { overflow: auto; }
 .portal section.card { overflow: visible; }
 .portal h2 { margin: 0; font-family: var(--display); font-size: 24px; letter-spacing: .04em; }
 .portal p.help { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.5; }
+.settings-tabs { position: sticky; top: 0; z-index: 6; display: flex; gap: 6px; overflow-x: auto; padding: 10px 0; margin-bottom: 4px;
+  background: var(--bg); border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.settings-tabs::-webkit-scrollbar { display: none; }
+@media (min-width: 821px) { .settings-tabs { flex-wrap: wrap; overflow-x: visible; } }
+.settings-tabs a { flex: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--fg); text-decoration: none; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .03em; white-space: nowrap; }
+.settings-tabs a:hover { background: var(--panel-2); }
+.settings-tabs a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+[data-tab] { display: grid; gap: 16px; }
+[data-tab][hidden] { display: none !important; }
+[data-tab] section.card > h2[role="button"] { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; min-height: 44px; }
+[data-tab] section.card > h2[role="button"]::after { content: "▾"; font-size: .8em; color: var(--dim); transition: transform .15s; }
+[data-tab] section.card.folded > h2[role="button"]::after { transform: rotate(-90deg); }
+[data-tab] section.card.folded > :not(h2) { display: none !important; }
+[data-tab] section.card.folded { padding-block: 8px; }
+@media (max-width: 820px) { .savebar .btn.big { min-height: 48px; padding: 0 16px; font-size: 15px; } .savebar { padding: 8px 0; } }
 .savebar { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; border-top: 1px solid var(--line); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; z-index: 5; }
 table.tou { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.tou td { padding: 4px; vertical-align: middle; }
