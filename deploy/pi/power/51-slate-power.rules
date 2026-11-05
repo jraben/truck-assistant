@@ -1,0 +1,14 @@
+// /etc/polkit-1/rules.d/51-slate-power.rules  (install.sh puts it there)
+// Lets the brain's service user (slate) power the Pi off after a remote wake
+// with no viewer (brain/src/remote/service.ts: `systemctl poweroff`, which asks
+// logind over D-Bus; no sudo, so the unit's NoNewPrivileges stays on). The
+// watch drops the car power board's IGN line first; the board cuts 5V after
+// its own delay, by which time the Pi has shut down cleanly.
+polkit.addRule(function (action, subject) {
+  if (subject.user !== "slate") return polkit.Result.NOT_HANDLED;
+  if (action.id === "org.freedesktop.login1.power-off" ||
+      action.id === "org.freedesktop.login1.power-off-multiple-sessions") {
+    return polkit.Result.YES;
+  }
+  return polkit.Result.NOT_HANDLED;
+});

@@ -118,3 +118,15 @@ export function guideX(g: { bottomWidth: number; topWidth: number; top: number; 
   const half = (g.bottomWidth + (g.topWidth - g.bottomWidth) * f) / 2;
   return (0.5 + g.offsetX + side * half) * 100;
 }
+
+/** 3x3 OpenStreetMap tiles around the position, the pin in the middle. No map library. */
+export function tileView(lat: number, lon: number, z = 15) {
+  const n = 2 ** z;
+  const px = ((lon + 180) / 360) * n * 256;
+  const r = (lat * Math.PI) / 180;
+  const py = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n * 256;
+  const tx = Math.floor(px / 256), ty = Math.floor(py / 256);
+  const tiles: string[] = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) tiles.push(`https://tile.openstreetmap.org/${z}/${(tx + dx + n) % n}/${ty + dy}.png`);
+  return { tiles, offX: px - (tx - 1) * 256, offY: py - (ty - 1) * 256 };
+}

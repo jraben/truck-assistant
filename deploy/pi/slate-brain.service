@@ -15,6 +15,11 @@ Environment=DATA_DIR=/var/lib/slate-cockpit
 Environment=MQTT_URL=mqtt://localhost:1883
 # The USB Wi-Fi adapter that joins the driver's hotspot / home Wi-Fi; wlan0 stays the slate-truck access point.
 Environment=NET_CLIENT_IFACE=wlan1
+# Cameras: go2rtc from install.sh; the brain runs it and keeps the dashcam loop on the SSD.
+Environment=GO2RTC_BIN=/usr/local/bin/go2rtc
+Environment=DASHCAM_DIR=/var/lib/slate-cockpit/dashcam
+# USB cameras and capture sticks (/dev/video*).
+SupplementaryGroups=video
 # Environment=SIM=1   # simulated truck, for bench testing
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning /opt/slate-cockpit/brain/dist/index.js
 Restart=always

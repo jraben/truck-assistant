@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { CamPlayer } from '../components/camplayer.tsx';
 import { ClipPlayer } from '../components/cams.tsx';
-import { fmtBytes, rapi, useCamStatus, useViewerHeartbeat, wake, withToken, type Clip, type TruckSnapshot } from '../lib/cams.ts';
+import { fmtBytes, rapi, tileView, useCamStatus, useViewerHeartbeat, wake, withToken, type Clip, type TruckSnapshot } from '../lib/cams.ts';
 import { paintTheme, pickTheme } from '../lib/theme.ts';
 
 const ago = (iso: string | null) => {
@@ -18,18 +18,6 @@ const ago = (iso: string | null) => {
   return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 const v = (x: number | null | undefined, d = 0, unit = '') => (x === null || x === undefined ? '—' : `${x.toFixed(d)}${unit}`);
-
-/** 3x3 OpenStreetMap tiles around the position, the pin in the middle. No map library. */
-export function tileView(lat: number, lon: number, z = 15) {
-  const n = 2 ** z;
-  const px = ((lon + 180) / 360) * n * 256;
-  const r = (lat * Math.PI) / 180;
-  const py = ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n * 256;
-  const tx = Math.floor(px / 256), ty = Math.floor(py / 256);
-  const tiles: string[] = [];
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) tiles.push(`https://tile.openstreetmap.org/${z}/${(tx + dx + n) % n}/${ty + dy}.png`);
-  return { tiles, offX: px - (tx - 1) * 256, offY: py - (ty - 1) * 256 };
-}
 
 function MapBox({ pos }: { pos: TruckSnapshot['position'] }) {
   if (!pos) return <div class="map"><div class="noloc">No position yet</div></div>;

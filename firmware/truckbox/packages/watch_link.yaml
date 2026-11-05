@@ -1,0 +1,54 @@
+# Truck box <-> tier 1 watch (firmware/watch, a LilyGO T-SIM7080G-S3 on LTE-M).
+#
+# The watch deep-sleeps and has no Wi-Fi; the truck box keeps its relays and
+# safety logic. They share three wires: GND, box TX -> watch RX, watch TX -> box RX.
+# 9600 baud, 3.3 V on both sides, one line per message:
+#   watch: "S?"          box: "S r=010000 ign=1 rev=0 v=12.61 t=78.2 lv=0"
+#   watch: "R3=1"        box: relay_3 on, through the same gate as every ON
+#                        (low-voltage lockout, compressor interlock); "R3=0" off.
+# Wiring: README "Tier 1 watch link". GPIO39 is input-only with no pull-up:
+# fit a 10k pull-up to 3V3 so a sleeping watch doesn't leave it floating.
+substitutions:
+  pin_watch_tx: GPIO5      # strapping pin, idles HIGH as a UART TX: fine at boot
+  pin_watch_rx: GPIO39     # input-only (VN): external 10k pull-up to 3V3
+
+uart:
+  - id: watch_uart
+    tx_pin: ${pin_watch_tx}
+    rx_pin: ${pin_watch_rx}
+    baud_rate: 9600
+
+interval:
+  - interval: 50ms
+    then:
+      - lambda: |-
+          static std::string buf;
+          uint8_t c;
+          while (id(watch_uart).available() && id(watch_uart).read_byte(&c)) {
+            if (c != '\n') { if (c != '\r' && buf.size() < 32) buf += (char) c; continue; }
+            std::string line = buf;
+            buf.clear();
+            switch_::Switch *outs[6] = {id(relay_1_out), id(relay_2_out), id(relay_3_out),
+                                        id(relay_4_out), id(relay_5_out), id(relay_6_out)};
+            if (line == "S?") {
+              char r[7];
+              for (int i = 0; i < 6; i++) r[i] = outs[i]->state ? '1' : '0';
+              r[6] = 0;
+              char out[112];
+              snprintf(out, sizeof(out), "S r=%s ign=%d rev=%d v=%.2f t=%.1f lv=%d\n", r,
+                       id(ignition).state ? 1 : 0, id(reverse).state ? 1 : 0,
+                       id(aux_battery_v).state, id(cabin_temp).state, id(lv_lockout) ? 1 : 0);
+              id(watch_uart).write_str(out);
+            } else if (line.size() == 4 && line[0] == 'R' && line[1] >= '1' && line[1] <= '6' && line[2] == '=') {
+              int idx = line[1] - '0';
+              if (line[3] == '1') {
+                ESP_LOGI("watch", "relay_%d ON from the watch", idx);
+                id(relay_request_on).execute(idx);
+              } else if (line[3] == '0') {
+                ESP_LOGI("watch", "relay_%d OFF from the watch", idx);
+                outs[idx - 1]->turn_off();
+              }
+            } else if (!line.empty()) {
+              ESP_LOGW("watch", "ignored line from the watch: %s", line.c_str());
+            }
+          }
