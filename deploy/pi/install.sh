@@ -13,8 +13,8 @@ KIOSK_USER="${KIOSK_USER:-${SUDO_USER:-pi}}"
 
 echo "== packages"
 apt-get update -qq
-apt-get install -y -qq mosquitto mosquitto-clients gpsd gpsd-clients curl rsync chromium >/dev/null \
-  || apt-get install -y -qq mosquitto mosquitto-clients gpsd gpsd-clients curl rsync chromium-browser >/dev/null
+apt-get install -y -qq mosquitto mosquitto-clients gpsd gpsd-clients curl rsync network-manager bluez chromium >/dev/null \
+  || apt-get install -y -qq mosquitto mosquitto-clients gpsd gpsd-clients curl rsync network-manager bluez chromium-browser >/dev/null
 
 echo "== node 24"
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 24 ]; then
@@ -45,6 +45,19 @@ if [ -f /etc/default/gpsd ] && ! grep -q '^GPSD_OPTIONS="-n"' /etc/default/gpsd;
   sed -i 's/^USBAUTO=.*/USBAUTO="true"/' /etc/default/gpsd
 fi
 systemctl enable --now gpsd.socket || true
+
+echo "== network: NetworkManager, the slate-truck access point, and the brain's rights"
+# The brain switches the USB client radio (wlan1) between home Wi-Fi, the driver's
+# hotspot and Bluetooth tethering through nmcli; polkit lets the slate user do that.
+install -m 0644 "$APP/deploy/pi/network/50-slate-network.rules" /etc/polkit-1/rules.d/50-slate-network.rules
+systemctl enable --now NetworkManager >/dev/null 2>&1 || true
+systemctl enable --now bluetooth >/dev/null 2>&1 || true
+# First run only: create the truck's own Wi-Fi on wlan0. Interactive installs are asked
+# for a password; unattended ones get a random one, printed once (never in the repo).
+if ! nmcli -t -f NAME connection show 2>/dev/null | grep -qx slate-ap; then
+  if [ -t 0 ]; then bash "$APP/deploy/pi/network/setup-ap.sh"; else bash "$APP/deploy/pi/network/setup-ap.sh" --random; fi
+fi
+ip link show wlan1 >/dev/null 2>&1 || echo "   note: no wlan1 yet. Plug in the USB Wi-Fi adapter (deploy/pi/README.md, Network) for hotspot / home Wi-Fi."
 
 echo "== brain service"
 install -m 0644 "$APP/deploy/pi/slate-brain.service" /etc/systemd/system/slate-brain.service

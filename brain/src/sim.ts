@@ -15,7 +15,7 @@ export const SIM_ROUTE: Leg[] = [
 export const SIM_HOME = SIM_ROUTE[0][0];
 
 type Phase = 'parked' | 'reverse' | 'drive' | 'arrived';
-const PHASE_S: Record<Exclude<Phase, 'drive'>, number> = { parked: 25, reverse: 5, arrived: 12 };
+const PHASE_S: Record<Exclude<Phase, 'drive'>, number> = { parked: 200, reverse: 5, arrived: 12 };
 
 export class SimTruck {
   private t = 0;

@@ -25,6 +25,10 @@ export const config = {
   mqttDisabled: flag(process.env.MQTT_DISABLED),
   gpsdHost: process.env.GPSD_HOST ?? '127.0.0.1',
   gpsdPort: Number(process.env.GPSD_PORT ?? 2947),
+  /** The USB Wi-Fi adapter that joins hotspots / home Wi-Fi. wlan0 stays the truck's access point. */
+  netClientIface: process.env.NET_CLIENT_IFACE ?? 'wlan1',
+  /** GEOCODE_DISABLED=1: never call OpenStreetMap (tests, offline desks). */
+  geocodeDisabled: flag(process.env.GEOCODE_DISABLED),
   uiDir: path.resolve(process.env.UI_DIR ?? path.join(BRAIN_ROOT, '../ui/dist')),
   version: version(),
 };

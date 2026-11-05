@@ -20,6 +20,8 @@ export function discoveryConfigs(id: string, version: string): Discovery[] {
     sensor('speed', 'Speed', { unit_of_measurement: 'mph', device_class: 'speed', state_class: 'measurement', value_template: '{{ value_json.speedMph | round(0) if value_json.speedMph is not none else None }}' }),
     sensor('now_playing', 'Now playing', { icon: 'mdi:music', value_template: '{{ value_json.nowPlaying.title if value_json.nowPlaying and value_json.nowPlaying.title else None }}', json_attributes_topic: stateTopic(id), json_attributes_template: '{{ {"artist": value_json.nowPlaying.artist, "album": value_json.nowPlaying.album, "source": value_json.nowPlaying.source} | tojson if value_json.nowPlaying else "{}" }}' }),
     sensor('trip_distance', 'Trip distance', { unit_of_measurement: 'mi', device_class: 'distance', icon: 'mdi:road-variant', value_template: '{{ value_json.trip.miles if value_json.trip else None }}' }),
+    sensor('place', 'Current place', { icon: 'mdi:map-marker-radius', value_template: "{{ (value_json.place.name or 'Unnamed stop') if value_json.place else ('Driving' if value_json.trip else None) }}", json_attributes_topic: stateTopic(id), json_attributes_template: '{{ {"since": value_json.place.since, "stop_id": value_json.place.stopId} | tojson if value_json.place else "{}" }}' }),
+    sensor('driver', 'Driver', { icon: 'mdi:account', value_template: '{{ value_json.driver.name if value_json.driver else None }}' }),
     {
       topic: `homeassistant/device_tracker/${id}/location/config`,
       payload: {

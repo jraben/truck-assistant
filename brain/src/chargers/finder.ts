@@ -2,7 +2,10 @@
 // Offline-first: a stale cache beats an error.
 import type { Db } from '../db.ts';
 import { haversineMi, metersBetween } from '../geo.ts';
-import type { Charger, Settings } from '../types.ts';
+import type { Charger, ChargingPrefs, Settings } from '../types.ts';
+
+/** Truck settings plus the active driver's charging prefs. */
+export type FinderSettings = Pick<Settings, 'keys' | 'packKwh' | 'efficiencyMiPerKwh'> & { charging: ChargingPrefs };
 import { rankChargers, type Station } from './score.ts';
 import { fetchAfdc, fetchOcm, mergeStations, type FetchFn } from './sources.ts';
 
@@ -23,9 +26,9 @@ export class ChargerFinder {
 
   constructor(db: Db, fetchFn: FetchFn = fetch) { this.db = db; this.fetchFn = fetchFn; }
 
-  private radius(s: Settings) { return Math.max(15, Math.ceil(s.charging.maxDetourMi * 2.5)); }
+  private radius(s: FinderSettings) { return Math.max(15, Math.ceil(s.charging.maxDetourMi * 2.5)); }
 
-  async find(lat: number, lon: number, soc: number | null, s: Settings): Promise<FindResult> {
+  async find(lat: number, lon: number, soc: number | null, s: FinderSettings): Promise<FindResult> {
     const haveKeys = !!(s.keys.afdc || s.keys.openChargeMap);
     const radius = this.radius(s);
     const key = `${(Math.round(lat / GRID) * GRID).toFixed(2)},${(Math.round(lon / GRID) * GRID).toFixed(2)},${radius}`;
@@ -71,7 +74,7 @@ export class ChargerFinder {
     try { const e = { at: row.fetched_at, stations: JSON.parse(row.body) as Station[] }; this.mem.set(key, e); return e; } catch { return undefined; }
   }
 
-  private fetchOnce(key: string, lat: number, lon: number, radius: number, s: Settings): Promise<Station[]> {
+  private fetchOnce(key: string, lat: number, lon: number, radius: number, s: FinderSettings): Promise<Station[]> {
     const existing = this.inflight.get(key);
     if (existing) return existing;
     const p = (async () => {

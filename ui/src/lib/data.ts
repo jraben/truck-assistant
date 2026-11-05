@@ -1,7 +1,8 @@
 // Shared fetches: chargers (one fetch serves Drive's next-charger card and the
 // Charge view) and charge sessions/summary.
 import { useEffect } from 'preact/hooks';
-import { api, stateStore, useStore, type Charger, type ChargeSession, type ChargeSummary } from './brain.ts';
+import { useState } from 'preact/hooks';
+import { api, stateStore, useStore, type Charger, type ChargeSession, type ChargeSummary, type GasStatus } from './brain.ts';
 
 type ChargerState = { list: Charger[]; message: string | null; loading: boolean; at: number; lat: number | null; lon: number | null };
 const chargerStore = (() => {
@@ -69,6 +70,28 @@ export function useCharges() {
     if (!chargesPolling) { chargesPolling = true; void refreshCharges(); setInterval(() => void refreshCharges(), 30_000); }
   }, []);
   return v;
+}
+
+/** Gas price status for the Charge view's "Gas nearby" line. Refreshed every 10 minutes. */
+export function useGas(driverId: string | null | undefined) {
+  const [g, setG] = useState<GasStatus | null>(null);
+  useEffect(() => {
+    let live = true;
+    const f = () => api<GasStatus>(`/api/gas${driverId ? `?driver=${encodeURIComponent(driverId)}` : ''}`).then((x) => { if (live) setG(x); }).catch(() => {});
+    void f();
+    const id = setInterval(f, 10 * 60_000);
+    return () => { live = false; clearInterval(id); };
+  }, [driverId]);
+  return g;
+}
+
+/** "2h ago", "5 min ago". */
+export function ago(iso: string, now = Date.now()) {
+  const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60_000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h}h ago` : `${Math.round(h / 24)} days ago`;
 }
 
 export async function saveSession(id: number | null, body: Partial<ChargeSession>) {

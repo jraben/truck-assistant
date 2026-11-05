@@ -5,7 +5,7 @@ import type { ChargeSession } from '../types.ts';
 type Row = {
   id: number; started_at: string; ended_at: string | null; place: string; network: string | null; station_name: string | null;
   lat: number | null; lon: number | null; kwh: number | null; cost: number | null; cost_source: string | null;
-  start_soc: number | null; end_soc: number | null; max_kw: number | null; note: string | null; source: string;
+  start_soc: number | null; end_soc: number | null; max_kw: number | null; note: string | null; source: string; driver_id: string | null;
 };
 
 const toSession = (r: Row): ChargeSession => ({
@@ -13,6 +13,7 @@ const toSession = (r: Row): ChargeSession => ({
   place: r.place as ChargeSession['place'], network: r.network, stationName: r.station_name,
   lat: r.lat, lon: r.lon, kwh: r.kwh, cost: r.cost, costSource: r.cost_source as ChargeSession['costSource'],
   startSoc: r.start_soc, endSoc: r.end_soc, maxKw: r.max_kw, note: r.note, source: r.source as ChargeSession['source'],
+  driverId: r.driver_id ?? null,
 });
 
 export class ChargeInputError extends Error {}
@@ -72,13 +73,17 @@ export function parseSessionInput(body: unknown): SessionInput {
   set('maxKw', optNum(b.maxKw, 'maxKw', 0, 2000));
   set('note', optStr(b.note, 'note', 500));
   set('source', optEnum(b.source, 'source', SOURCES) ?? undefined);
+  if (b.driverId !== undefined) {
+    if (b.driverId !== null && (typeof b.driverId !== 'string' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(b.driverId))) throw new ChargeInputError('driverId must be a driver id or null');
+    out.driverId = b.driverId as string | null;
+  }
   return out;
 }
 
 const COLS: Record<keyof Omit<ChargeSession, 'id'>, string> = {
   startedAt: 'started_at', endedAt: 'ended_at', place: 'place', network: 'network', stationName: 'station_name',
   lat: 'lat', lon: 'lon', kwh: 'kwh', cost: 'cost', costSource: 'cost_source', startSoc: 'start_soc', endSoc: 'end_soc',
-  maxKw: 'max_kw', note: 'note', source: 'source',
+  maxKw: 'max_kw', note: 'note', source: 'source', driverId: 'driver_id',
 };
 
 export class ChargeStore {
@@ -86,9 +91,10 @@ export class ChargeStore {
 
   constructor(db: Db) { this.db = db; }
 
-  list(fromIso?: string | null, toIso?: string | null): ChargeSession[] {
-    return (this.db.prepare('SELECT * FROM charge_sessions WHERE started_at >= ? AND started_at < ? ORDER BY started_at DESC')
-      .all(fromIso ?? '0000', toIso ?? '9999') as Row[]).map(toSession);
+  list(fromIso?: string | null, toIso?: string | null, driver?: string | null): ChargeSession[] {
+    const args = [fromIso ?? '0000', toIso ?? '9999', ...(driver ? [driver] : [])];
+    return (this.db.prepare(`SELECT * FROM charge_sessions WHERE started_at >= ? AND started_at < ?${driver ? ' AND driver_id = ?' : ''} ORDER BY started_at DESC`)
+      .all(...args) as Row[]).map(toSession);
   }
 
   get(id: number): ChargeSession | null {
@@ -122,7 +128,7 @@ export class ChargeStore {
   }
 }
 
-const CSV_FIELDS: (keyof ChargeSession)[] = ['id', 'startedAt', 'endedAt', 'place', 'network', 'stationName', 'lat', 'lon', 'kwh', 'cost', 'costSource', 'startSoc', 'endSoc', 'maxKw', 'note', 'source'];
+const CSV_FIELDS: (keyof ChargeSession)[] = ['id', 'startedAt', 'endedAt', 'place', 'network', 'stationName', 'lat', 'lon', 'kwh', 'cost', 'costSource', 'startSoc', 'endSoc', 'maxKw', 'note', 'source', 'driverId'];
 
 export function toCsv(sessions: ChargeSession[]): string {
   const esc = (v: unknown) => {

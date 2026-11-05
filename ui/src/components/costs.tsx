@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { stateStore, toast, useStore, type ChargeSession, type ChargeSummary } from '../lib/brain.ts';
-import { deleteSession, saveSession, useChargers, useCharges } from '../lib/data.ts';
+import { ago, deleteSession, saveSession, useChargers, useCharges, useGas } from '../lib/data.ts';
 import { fmtDateTime, fromLocalInput, money, toLocalInput } from '../lib/fmt.ts';
 import { Card, Modal, V } from './common.tsx';
 import type { WP } from './drive.tsx';
@@ -13,8 +13,9 @@ const lastMonths = (n: number) => {
 };
 const MON = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
-export function CostSummary(_: WP) {
+export function CostSummary({ s }: WP) {
   const c = useCharges();
+  const gas = useGas(s?.driver?.id);
   const [view, setView] = useState<'month' | 'year'>('month');
   const keys = lastMonths(12);
   const byKey = new Map(c.months.map((m) => [m.period, m]));
@@ -40,9 +41,18 @@ export function CostSummary(_: WP) {
       </div>
       <div class="dimtxt" style="font-size:13px">
         {cur?.gasEquivalent != null
-          ? <>A gas truck would have cost <b>{money(cur.gasEquivalent)}</b> for {cur.miles < 10 ? cur.miles.toFixed(1) : Math.round(cur.miles)} mi{saved !== null && saved > 0 ? <>, so you're <b style="color:var(--ok)">{money(saved)}</b> ahead</> : ''}.</>
+          ? <>vs. {cur.gasVehicle === 'Custom' ? 'a gas truck' : cur.gasVehicle}: {saved !== null && saved >= 0
+            ? <>you saved <b style="color:var(--ok)">{money(saved)}</b> this {view}</>
+            : <>gas would have been <b>{money(cur.gasEquivalent)}</b>, {money(-(saved ?? 0))} less than charging, this {view}</>} ({money(cur.gasEquivalent)} of fuel for {cur.miles < 10 ? cur.miles.toFixed(1) : Math.round(cur.miles)} mi).</>
           : 'Gas comparison appears once trips have miles.'}
       </div>
+      {gas?.source === 'ha' && (
+        <div class="dimtxt" style="font-size:13px">
+          {gas.today
+            ? <>Gas nearby: <b class="num">${gas.today.price.toFixed(2)}</b> {gas.fuel}{gas.today.station ? <> at {gas.today.station}</> : ''}, updated {ago(gas.today.updatedAt ?? gas.today.fetchedAt)}</>
+            : <>Gas nearby: {gas.message ?? 'no price yet'}{/settings page/.test(gas.message ?? '') && <> <a href="/settings#ha">Open settings</a></>}</>}
+        </div>
+      )}
       <div class="bars" aria-label="Charging cost, last 12 months">
         {rows.map((r, i) => {
           const pubH = ((r?.publicCost ?? 0) / max) * 100;

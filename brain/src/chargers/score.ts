@@ -1,5 +1,5 @@
 // Pure charger scoring. 0-100, with the reasons shown in the UI.
-import type { Charger, Settings } from '../types.ts';
+import type { Charger, ChargingPrefs, Settings } from '../types.ts';
 import { socForMiles } from '../soc.ts';
 
 /** A station before scoring. `level2Only` lets us know a kW ceiling without guessing a number. */
@@ -12,7 +12,7 @@ const L2_CEILING_KW = 19.2;
 export type ScoreContext = {
   distanceMi: number;
   soc: number | null;
-  settings: Pick<Settings, 'charging' | 'packKwh' | 'efficiencyMiPerKwh'>;
+  settings: Pick<Settings, 'packKwh' | 'efficiencyMiPerKwh'> & { charging: ChargingPrefs };
 };
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');

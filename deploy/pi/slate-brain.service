@@ -13,6 +13,8 @@ Environment=NODE_ENV=production
 Environment=PORT=8080
 Environment=DATA_DIR=/var/lib/slate-cockpit
 Environment=MQTT_URL=mqtt://localhost:1883
+# The USB Wi-Fi adapter that joins the driver's hotspot / home Wi-Fi; wlan0 stays the slate-truck access point.
+Environment=NET_CLIENT_IFACE=wlan1
 # Environment=SIM=1   # simulated truck, for bench testing
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning /opt/slate-cockpit/brain/dist/index.js
 Restart=always

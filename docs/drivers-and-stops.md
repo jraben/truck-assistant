@@ -39,8 +39,9 @@ A **stop** is anywhere the truck (or, for phone history, the phone) stays put.
 - **Naming**, first match wins, within each place's radius (default 120 m):
   1. saved places (named by the driver);
   2. Home Assistant zones (`zone.*`: home, work, etc.);
-  3. WOPR places: client/property records that have coordinates
-     (`/api/places` on WOPR), so a job site shows the client's name;
+  3. a places feed: any URL returning `[{name, lat, lon, radiusM?}]` (optional
+     Basic auth), e.g. WOPR's client/property records, so a job site shows the
+     client's name;
   4. reverse geocode (OpenStreetMap Nominatim, 1 request/second max, cached
      forever, only when online);
   5. "Unnamed stop", tap to name.

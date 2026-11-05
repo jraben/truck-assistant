@@ -45,6 +45,12 @@ export class TripDetector {
     return null;
   }
 
+  /** The brain ended the trip itself (a stop was detected). */
+  forceEnd() { this.active = false; this.stillSince = null; this.movingSince = null; }
+
+  /** A too-short stop was folded back into the trip: carry on. */
+  resume() { this.active = true; this.stillSince = null; this.movingSince = null; }
+
   private start(reason: 'ignition' | 'movement'): TripEvent {
     this.active = true; this.stillSince = null; this.movingSince = null;
     return { type: 'start', reason };

@@ -4,11 +4,10 @@ import { afdcStation, mergeStations, normalizeConnector, ocmStation } from '../s
 import { haversineMi } from '../src/geo.ts';
 import { defaultSettings } from '../src/settings.ts';
 
-const settings = () => {
-  const s = defaultSettings();
-  s.charging = { networks: ['Tesla', 'Electrify America'], avoidNetworks: ['Shady Volts'], minKw: 50, connector: 'NACS', maxDetourMi: 10, wantAmenities: ['restroom', 'food'], arriveMinSoc: 15 };
-  return s;
-};
+const settings = () => ({
+  ...defaultSettings(),
+  charging: { networks: ['Tesla', 'Electrify America'], avoidNetworks: ['Shady Volts'], minKw: 50, connector: 'NACS' as 'NACS' | 'CCS' | 'J1772' | 'any', maxDetourMi: 10, wantAmenities: ['restroom', 'food'], arriveMinSoc: 15 },
+});
 const st = (o: Partial<Station>): Station => ({
   id: 'x', source: 'afdc', name: 'X', network: null, lat: 33.45, lon: -112.07, maxKw: 150, connectors: ['NACS'], amenities: [], price: null, ...o,
 });

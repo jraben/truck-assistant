@@ -4,7 +4,7 @@ import { periodKey, summarize } from '../src/charges/summary.ts';
 import { ChargeService } from '../src/charges/service.ts';
 import { ChargeStore, parseSessionInput, toCsv } from '../src/charges/store.ts';
 import { openDb } from '../src/db.ts';
-import { defaultSettings } from '../src/settings.ts';
+import { customVehicle, defaultSettings } from '../src/settings.ts';
 import type { ChargeSession, Settings, TouPeriod } from '../src/types.ts';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -80,11 +80,11 @@ describe('home session pricing', () => {
 
 const sess = (o: Partial<ChargeSession>): ChargeSession => ({
   id: 1, startedAt: at(2027, 5, 10, 12).toISOString(), endedAt: null, place: 'public', network: null, stationName: null,
-  lat: null, lon: null, kwh: null, cost: null, costSource: null, startSoc: null, endSoc: null, maxKw: null, note: null, source: 'manual', ...o,
+  lat: null, lon: null, kwh: null, cost: null, costSource: null, startSoc: null, endSoc: null, maxKw: null, note: null, source: 'manual', driverId: null, ...o,
 });
 
 describe('summary math', () => {
-  const s = { compareMpg: 22, gasPrice: 3.5 };
+  const s = { vehicle: customVehicle(22), priceFor: () => 3.5 };
 
   it('groups by local month, splits home/public, computes $/kWh, $/mile and the gas comparison', () => {
     const sessions = [
@@ -103,6 +103,7 @@ describe('summary math', () => {
       period: '2027-05', sessions: 3, kwh: 70, cost: 21.5, homeCost: 2.4, publicCost: 19.1,
       costPerKwh: 0.236,   // (2.40 + 14.10) / 70; the $5 receipt without kWh is left out of the rate
       miles: 220, costPerMile: 0.098, gasEquivalent: 35, // 220 / 22 x 3.50
+      gasVehicle: 'Custom',
     });
     expect(june).toMatchObject({ period: '2027-06', sessions: 1, kwh: 10, cost: 0, costPerKwh: 0, miles: 44, costPerMile: 0, gasEquivalent: 7 });
   });
@@ -141,7 +142,7 @@ describe('charge detection', () => {
     settings.homeLocation = { lat: 33.4990, lon: -111.9800 };
     settings.homeRate = { flatPerKwh: 0.12, tou: [], fixedPerSession: 0 };
     const ctx = (gps: { lat: number; lon: number } | null, parked = true) => ({
-      settings, parked, gps, homeChargerKwh: null,
+      settings, parked, gps, homeChargerKwh: null, driverId: 'jeff',
       nearestStation: () => ({ id: 'afdc:1', source: 'afdc' as const, name: 'EA Tempe', network: 'Electrify America', lat: 33.43, lon: -111.9, maxKw: 150, connectors: ['CCS'], amenities: [], price: null }),
     });
     return { svc, ctx };

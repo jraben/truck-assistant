@@ -77,3 +77,49 @@ won't do 30.
 `http://localhost:8080/?carplaySim=1#carplay` plays a test clip through the
 same video, touch and now-playing path (touches show as dots). Regenerate the
 clip with `node scripts/make-carplay-sim-clip.mjs` (needs ffmpeg).
+
+## Network: the truck's Wi-Fi and getting online
+
+Design: `docs/connectivity.md`. Two radios, two jobs:
+
+| Radio | Job | Who manages it |
+|---|---|---|
+| Built-in Wi-Fi, `wlan0` | Access point **slate-truck** (10.42.0.1) for the ESP32 truck box and a phone opening `/settings` | NetworkManager profile `slate-ap`, made once by `network/setup-ap.sh`. The brain never touches it. |
+| USB Wi-Fi adapter, `wlan1` | Client: home Wi-Fi in the driveway, else the driver's phone hotspot | The brain, through `nmcli`, profiles named `slate-net-*` |
+| Built-in Bluetooth | Fallback: Bluetooth tethering (PAN) to the driver's phone | The brain, profile `slate-net-bt-<driver>` |
+
+**USB Wi-Fi adapter.** Any adapter with an in-kernel Raspberry Pi OS driver
+(no DKMS build): MT7601U, MT7610U/MT7612U, or RTL8811CU/RTL8821CU class,
+~$15. Check after plugging in: `ip link` shows `wlan1`, and
+`nmcli device` lists it as `wifi`. If it comes up as something else, set
+`NET_CLIENT_IFACE` in `/etc/systemd/system/slate-brain.service`. One radio
+doing both AP and client would pin the AP to the hotspot's channel and drop the
+truck box whenever the phone moves channel, so it is not supported.
+
+**The access point.** `install.sh` creates it the first time (asks for a
+password, or makes a random one when run unattended, prints it once and keeps
+it root-only in `/etc/slate-cockpit/ap-password`). Change it later with
+`sudo ./deploy/pi/network/setup-ap.sh --reset`. SSID override: `AP_SSID=… `.
+The truck box's ESPHome `secrets.yaml` needs the same SSID and password
+(`firmware/truckbox/secrets.example.yaml` still says `slate-cockpit`: set
+`wifi_ssid` to `slate-truck`, or run the setup with `AP_SSID=slate-cockpit`).
+
+**The brain's rights.** `network/50-slate-network.rules` (polkit) lets the
+`slate` user scan, add/modify/delete connections and bring them up. Without
+it every switch fails with "not authorized"; the network panel in the cockpit
+shows that error.
+
+**Settings.** Home Wi-Fi (truck) and each driver's hotspot name/password and
+Bluetooth address (Drivers) go on `/settings`, masked like the API keys. For
+Bluetooth tethering, pair the phone once (`bluetoothctl`, then `pair`,
+`trust` the phone's address) and turn on Bluetooth Personal Hotspot / tethering
+on the phone. `GET /api/network` shows what the brain sees and which network it
+picked, and why it couldn't use one.
+
+Checking it:
+
+```sh
+nmcli -f NAME,TYPE,DEVICE,AUTOCONNECT-PRIORITY connection show   # slate-ap on wlan0, slate-net-* on wlan1
+nmcli device wifi list ifname wlan1                               # what the client radio can see
+journalctl -u slate-brain | grep '\[net\]'                        # switches the brain made
+```

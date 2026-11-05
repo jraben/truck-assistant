@@ -1,8 +1,8 @@
 // Live link to the brain: /ws for State, /api for the rest. Reconnects by itself.
 import { useEffect, useState } from 'preact/hooks';
-import type { Settings, State } from '../../../brain/src/types.ts';
+import type { Driver, Settings, State } from '../../../brain/src/types.ts';
 
-export type { Charger, ChargeSession, ChargeSummary, Health, Layout, LayoutWidget, Settings, State, Trip, TripPoint } from '../../../brain/src/types.ts';
+export type { Charger, ChargeSession, ChargeSummary, CompareVehicle, Driver, GasSensor, NetCandidate, NetworkStatus, GasStatus, Health, ImportJob, Layout, LayoutWidget, Place, PlaceSuggestion, Settings, State, Stop, TimelineItem, Trip, TripPoint } from '../../../brain/src/types.ts';
 
 export type Store<T> = { get: () => T; set: (v: T) => void; sub: (f: () => void) => () => void };
 export function store<T>(init: T): Store<T> {
@@ -80,6 +80,24 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(msg);
   }
   return (res.status === 204 ? null : await res.json()) as T;
+}
+
+/** The profile in use: the brain's active driver, else the first named one. */
+export function activeDriver(s: Settings | null, st: State | null): Driver | null {
+  if (!s) return null;
+  return s.drivers.find((d) => d.id === st?.driver?.id) ?? s.drivers.find((d) => !d.guest) ?? s.drivers[0] ?? null;
+}
+
+/** PUT /api/drivers/:id, then refresh settings so every view follows. */
+export async function putDriver(id: string, patch: Record<string, unknown>): Promise<Driver> {
+  const d = await api<Driver>(`/api/drivers/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(patch) });
+  await loadSettings();
+  return d;
+}
+
+export async function pickDriver(id: string) {
+  try { await api('/api/driver', { method: 'POST', body: JSON.stringify({ id }) }); }
+  catch (e) { toast(`Driver not changed: ${(e as Error).message}`); }
 }
 
 export async function loadSettings(): Promise<Settings | null> {

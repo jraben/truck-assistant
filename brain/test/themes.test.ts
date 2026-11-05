@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isDaytime, sunTimes } from '../src/sun.ts';
 import { checkContrast, contrastRatio, defaultThemeSettings, migrateTheme, PRESETS, validateThemeSettings, ThemeError } from '../src/themes.ts';
-import { defaultSettings, mergeSettings, SettingsError } from '../src/settings.ts';
+import { mergeDriver, newDriver, SettingsError } from '../src/settings.ts';
 
 const PHX = { lat: 33.4484, lon: -112.074 };
 const minutesOff = (d: Date, iso: string) => Math.abs(d.getTime() - Date.parse(iso)) / 60_000;
@@ -54,15 +54,15 @@ describe('contrast', () => {
 describe('theme settings', () => {
   it('migrates the old string form', () => {
     expect(migrateTheme('day')).toMatchObject({ active: 'day', auto: { enabled: false } });
-    expect(mergeSettings(defaultSettings(), { theme: 'auto' }).theme.auto.enabled).toBe(true);
+    expect(mergeDriver(newDriver('x', 'X'), { theme: 'auto' }).theme.auto.enabled).toBe(true);
   });
 
   it('accepts a custom theme and rejects bad ones', () => {
     const custom = { ...PRESETS[0], id: 'my-night', name: 'Mine' };
-    const s = mergeSettings(defaultSettings(), { theme: { active: 'my-night', custom: [custom] } });
+    const s = mergeDriver(newDriver('x', 'X'), { theme: { active: 'my-night', custom: [custom] } });
     expect(s.theme.active).toBe('my-night');
     expect(() => validateThemeSettings({ ...defaultThemeSettings(), active: 'nope' })).toThrow(ThemeError);
-    expect(() => mergeSettings(defaultSettings(), { theme: { custom: [{ ...custom, id: 'night' }] } })).toThrow(SettingsError);
-    expect(() => mergeSettings(defaultSettings(), { theme: { custom: [{ ...custom, colors: { ...custom.colors, bg: 'red' } }] } })).toThrow(/bg/);
+    expect(() => mergeDriver(newDriver('x', 'X'), { theme: { custom: [{ ...custom, id: 'night' }] } })).toThrow(SettingsError);
+    expect(() => mergeDriver(newDriver('x', 'X'), { theme: { custom: [{ ...custom, colors: { ...custom.colors, bg: 'red' } }] } })).toThrow(/bg/);
   });
 });

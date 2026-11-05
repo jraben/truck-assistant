@@ -30,6 +30,14 @@ Built for Jeff's truck first, published for other Slate owners later.
   `?carplaySim=1` plays a test clip through the same path. Pi setup and
   dongle notes: `deploy/pi/README.md`. Not yet: camera feeds, WOPR voice,
   streaming accounts.
+- **Drivers, stops, phone history, gas prices, getting online (2026-11-05):**
+  driver profiles (Jeff, Sam, Jordan, Guest) with their own theme, layout,
+  charging prefs and gas comparison vehicle; stops named from saved places,
+  HA zones, a places feed or OpenStreetMap; trips shown stop → stop; replay of
+  a phone's location history from Home Assistant; GasBuddy prices via HA;
+  the cockpit online through the driver's hotspot (NetworkManager). Design:
+  `docs/drivers-and-stops.md`, `docs/connectivity.md`. Needs the HA URL and a
+  long-lived token on `/settings`; without them everything else still works.
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
 - **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a

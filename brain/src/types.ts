@@ -24,29 +24,68 @@ export type State = {
   trip: { id: number; startedAt: string; miles: number } | null;
   truckbox: boolean;
   nowPlaying: NowPlaying | null;
+  driver: DriverRef | null;
+  driverSuggestion: { id: string; name: string; reason: string } | null;
+  place: { stopId: number; name: string | null; since: string } | null;
+  network: NetworkStatus;
 };
+
+export type NetworkStatus = {
+  link: 'home' | 'hotspot' | 'bt' | 'offline';
+  label: string;
+  ssid: string | null;
+  driverId: string | null;
+  signal: number | null;
+  manual: boolean;
+  saveData: boolean;
+  bytesThisTrip: number;
+  bytesThisMonth: Record<string, number>;
+  backend: 'nmcli' | 'sim' | 'unavailable';
+  bluetooth: string;
+  error: string | null;
+};
+
+export type NetCandidate = {
+  id: string;
+  kind: 'home' | 'hotspot' | 'bt';
+  label: string; ssid: string | null; driverId: string | null;
+  inRange: boolean; signal: number | null; active: boolean;
+};
+
+export type WifiNet = { ssid: string; password?: string };
+
+export type DriverRef = { id: string; name: string; initials: string; color: string };
 
 /** What CarPlay is playing, reported by the cockpit UI. Text only; album art stays in the UI. */
 export type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: 'carplay' };
 
 export type TouPeriod = { name: string; days: number[]; start: string; end: string; perKwh: number };
 
+export type ChargingPrefs = {
+  networks: string[];
+  avoidNetworks: string[];
+  minKw: number;
+  connector: 'NACS' | 'CCS' | 'J1772' | 'any';
+  maxDetourMi: number;
+  wantAmenities: string[];
+  arriveMinSoc: number;
+};
+
+export type GasSettings = {
+  source: 'manual' | 'ha';
+  manualPrice: number;
+  haEntities: string[];
+  pick: 'cheapest' | 'average';
+};
+
+/** Truck-level settings. Per-driver prefs live in drivers[]. */
 export type Settings = {
   truckId: string;
   packKwh: number;
   efficiencyMiPerKwh: number;
   relays: Record<string, string>;
-  charging: {
-    networks: string[];
-    avoidNetworks: string[];
-    minKw: number;
-    connector: 'NACS' | 'CCS' | 'J1772' | 'any';
-    maxDetourMi: number;
-    wantAmenities: string[];
-    arriveMinSoc: number;
-  };
-  keys: { afdc?: string; openChargeMap?: string };
-  homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string };
+  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string };
+  homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; url: string | null; token?: string };
   homeRate: {
     flatPerKwh: number | null;
     tou: TouPeriod[];
@@ -54,11 +93,32 @@ export type Settings = {
   };
   /** Where "home" is (within 150 m = a home charge session). */
   homeLocation: { lat: number; lon: number } | null;
-  compareMpg: number;
-  gasPrice: number;
+  compareVehicle: CompareVehicle;
+  gas: GasSettings;
+  placesFeed: { url: string | null };
+  homeWifi: WifiNet | null;
+  saveDataOnHotspot: boolean;
+  drivers: Driver[];
+};
+
+export type Driver = {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+  guest: boolean;
+  tracker: string | null;
   theme: ThemeSettings;
   layout: Layout;
+  charging: ChargingPrefs;
+  favouritePlaceIds: number[];
+  compareVehicle: CompareVehicle | null;
+  hotspot: WifiNet | null;
+  btTetherMac: string | null;
 };
+
+export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel';
+export type CompareVehicle = { id: number | null; label: string; mpgCity: number; mpgHighway: number; mpgCombined: number; fuel: FuelGrade };
 
 export type Charger = {
   id: string; source: 'afdc' | 'ocm';
@@ -74,7 +134,46 @@ export type Trip = {
   miles: number; durationS: number;
   startSoc: number | null; endSoc: number | null; kwhEst: number | null;
   start: { lat: number; lon: number }; end: { lat: number; lon: number } | null;
+  driverId: string | null;
+  source: 'truck' | 'phone';
+  from: StopRef | null; to: StopRef | null;
 };
+
+export type StopRef = { stopId: number; name: string | null };
+
+export type Stop = {
+  id: number; driverId: string | null; source: 'truck' | 'phone';
+  arrivedAt: string; departedAt: string | null;
+  durationS: number;
+  lat: number; lon: number;
+  reason: 'ignition' | 'dwell';
+  name: string | null;
+  nameSource: 'place' | 'zone' | 'feed' | 'geocode' | null;
+  placeId: number | null;
+};
+
+export type Place = { id: number; name: string; lat: number; lon: number; radiusM: number; visits: number; lastVisit: string | null };
+export type PlaceSuggestion = { lat: number; lon: number; visits: number; suggestedName: string | null; stopIds: number[] };
+export type TimelineItem = ({ kind: 'stop' } & Stop) | ({ kind: 'trip' } & Trip);
+
+export type ImportJob = {
+  id: number; driverId: string; tracker: string; from: string; to: string;
+  state: 'running' | 'done' | 'error';
+  daysDone: number; daysTotal: number;
+  points: number; dropped: number;
+  trips: number; stops: number;
+  startedAt: string; finishedAt: string | null; error: string | null;
+};
+
+export type GasStatus = {
+  source: 'manual' | 'ha';
+  fuel: FuelGrade;
+  today: { price: number; station: string | null; fuel: string | null; fetchedAt: string; updatedAt: string | null } | null;
+  manualPrice: number;
+  message: string | null;
+  days: { day: string; fuel: string; price: number; station: string | null }[];
+};
+export type GasSensor = { entityId: string; name: string; price: number | null; unit: string | null; attribution: string | null };
 
 export type TripPoint = { t: string; lat: number; lon: number; speedMph: number | null; headingDeg: number | null };
 
@@ -92,6 +191,7 @@ export type ChargeSession = {
   maxKw: number | null;
   note: string | null;
   source: 'manual' | 'detected' | 'home-charger';
+  driverId: string | null;
 };
 
 export type ChargeSummary = {
@@ -102,6 +202,7 @@ export type ChargeSummary = {
   miles: number;
   costPerMile: number | null;
   gasEquivalent: number | null;
+  gasVehicle: string;
 };
 
 export type LayoutWidget = { type: string; col: number; row: number; w: number; h: number; props?: Record<string, unknown> };
@@ -109,4 +210,4 @@ export type Layout = {
   views: { id: string; label: string; widgets: LayoutWidget[] }[];
 };
 
-export type Health = { ok: boolean; version: string; mqtt: string; gps: string; uptimeS: number };
+export type Health = { ok: boolean; version: string; mqtt: string; gps: string; ha: string; uptimeS: number };

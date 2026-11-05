@@ -1,11 +1,12 @@
 // The brain's core: one State, fed by the truck box (MQTT or SIM) and GPS
-// (gpsd or SIM), with SoC, trips and charge sessions derived from it.
+// (gpsd or SIM), with SoC, trips, stops and charge sessions derived from it.
 import { EventEmitter } from 'node:events';
 import { config } from './config.ts';
 import { kvGet, kvSet, type Db } from './db.ts';
-import { haversineMi } from './geo.ts';
+import { haversineMi, metersBetween } from './geo.ts';
 import { GpsdClient, type GpsFix } from './gps.ts';
 import { chargesTopic, discoveryConfigs, haEntityStateTopic, stateTopic, statusTopic, tripEndedTopic } from './ha.ts';
+import { HaClient, presenceOf } from './ha/client.ts';
 import { MqttLink } from './mqtt.ts';
 import { RELAY_IDS, type SettingsStore } from './settings.ts';
 import { SimTruck } from './sim.ts';
@@ -13,27 +14,59 @@ import { rangeMi, SocModel, type SocChange, type SocSnapshot } from './soc.ts';
 import { TripDetector } from './tripDetector.ts';
 import { TripStore } from './trips.ts';
 import { applyTruckbox, parseTruckbox } from './truckbox.ts';
-import { ChargerFinder } from './chargers/finder.ts';
+import { ChargerFinder, type FinderSettings } from './chargers/finder.ts';
 import { ChargeService } from './charges/service.ts';
 import { ChargeStore } from './charges/store.ts';
 import { sameNowPlaying } from './media.ts';
-import type { Health, NowPlaying, Settings, State } from './types.ts';
+import { StopDetector, type StopEvent } from './stops/detector.ts';
+import { StopService } from './stops/service.ts';
+import { Geocoder } from './places/geocode.ts';
+import { GasService, POLL_MS } from './gas/gas.ts';
+import { VehicleLookup } from './gas/vehicles.ts';
+import { PhoneImporter } from './import/phone.ts';
+import { NetManager, pickBackend, SimBackend, UnavailableBackend } from './network.ts';
+import type { CompareVehicle, Driver, Health, NowPlaying, Settings, State, Stop } from './types.ts';
 
 /** Ignore GPS jumps faster than this between fixes (multipath, cold start). */
 const MAX_PLAUSIBLE_MPH = 120;
 /** GPS jitter while parked shouldn't drain the estimate or grow a trip. */
 const MIN_MOVING_MPH = 1;
+/** A phone tracker this close to the truck, heard from this recently, is "at the truck". */
+export const PRESENCE_M = 150;
+export const PRESENCE_MAX_AGE_MS = 10 * 60_000;
+/** The suggestion may still pick the driver while the trip is this young; after that it never switches. */
+const SUGGEST_WINDOW_MS = 2 * 60_000;
+const SUGGEST_WINDOW_MI = 0.3;
+
+/** Drivers whose phone is at the truck: within PRESENCE_M and heard from in the last PRESENCE_MAX_AGE_MS. Pure. */
+export function driversAtTruck(drivers: Driver[], presence: Map<string, { lat: number; lon: number; at: number } | null>, truck: { lat: number; lon: number }, now = Date.now()): Driver[] {
+  return drivers.filter((d) => {
+    const p = d.tracker ? presence.get(d.tracker) : null;
+    return !!p && now - p.at <= PRESENCE_MAX_AGE_MS && metersBetween(p, truck) <= PRESENCE_M;
+  });
+}
 
 export class Brain extends EventEmitter {
   readonly startedAt = Date.now();
   readonly trips: TripStore;
   readonly finder: ChargerFinder;
   readonly charges: ChargeService;
+  readonly ha: HaClient;
+  readonly stops: StopService;
+  readonly gas: GasService;
+  readonly vehicles: VehicleLookup;
+  readonly importer: PhoneImporter;
+  readonly net: NetManager;
+  private netTimer: NodeJS.Timeout | null = null;
   readonly mqtt: MqttLink | null;
   private gpsd: GpsdClient | null = null;
   private sim: SimTruck | null = null;
   private soc: SocModel;
   private detector: TripDetector;
+  private stopDet: StopDetector;
+  private openStop: Stop | null = null;
+  private lastClosedStop: { id: number; at: number } | null = null;
+  private driverId: string;
   private tilt = { pitch: null as number | null, roll: null as number | null };
   private lastFix: GpsFix | null = null;
   private lastGpsAt = 0;
@@ -41,6 +74,9 @@ export class Brain extends EventEmitter {
   private s: State;
   private tickTimer: NodeJS.Timeout | null = null;
   private stateTimer: NodeJS.Timeout | null = null;
+  private slowTimer: NodeJS.Timeout | null = null;
+  private geoTimer: NodeJS.Timeout | null = null;
+  private refreshSoon: NodeJS.Timeout | null = null;
   private lastStatePub = 0;
   private socSaveAt = 0;
   private discoveryOn = false;
@@ -59,8 +95,18 @@ export class Brain extends EventEmitter {
     if (orphans) console.log(`[trips] closed ${orphans} trip(s) left open by a restart`);
     this.finder = new ChargerFinder(db);
     this.charges = new ChargeService(new ChargeStore(db));
+    this.ha = new HaClient(() => this.settings.get());
+    this.stops = new StopService(db, this.ha, () => this.settings.get(), config.geocodeDisabled ? null : new Geocoder(db, config.version));
+    this.gas = new GasService(db, this.ha, () => this.settings.get());
+    this.vehicles = new VehicleLookup(db);
+    this.importer = new PhoneImporter(db, this.trips, this.stops, this.ha, settings);
     this.soc = new SocModel(kvGet<SocSnapshot>(db, 'soc') ?? undefined, (c) => this.onSocAnchor(c));
     this.detector = new TripDetector(false);
+    this.stopDet = new StopDetector(config.sim ? config.simSpeedup : 1);
+    const saved = kvGet<string>(db, 'activeDriver');
+    this.driverId = settings.driver(saved)?.id ?? st.drivers.find((d) => !d.guest)?.id ?? st.drivers[0].id;
+    this.openStop = this.stops.stops.openTruckStop();
+    if (this.openStop) this.stopDet.restore({ at: Date.parse(this.openStop.arrivedAt), lat: this.openStop.lat, lon: this.openStop.lon, reason: this.openStop.reason });
     this.s = {
       ts: new Date().toISOString(),
       speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null,
@@ -68,10 +114,16 @@ export class Brain extends EventEmitter {
       relays: Object.fromEntries(RELAY_IDS.map((id) => [id, { name: st.relays[id], on: null }])),
       fiveSwitch: [null, null, null, null, null],
       trip: null, truckbox: false, nowPlaying: null,
+      driver: null, driverSuggestion: null, place: null,
+      network: null as unknown as State['network'],
     };
     this.mqtt = config.mqttDisabled ? null : new MqttLink(config.mqttUrl, statusTopic(st.truckId));
     settings.onChange((next, prev) => this.onSettings(next, prev));
     this.charges.onChange(() => this.publishCharges());
+    this.stops.on('renamed', () => this.refreshPlace());
+    this.importer.onDone = () => this.emit('import');
+    this.net = new NetManager(new UnavailableBackend('starting up'), () => this.settings.get(), () => this.driverId,
+      kvGet(db, 'netBytes'), (b) => { try { kvSet(db, 'netBytes', b); } catch { /* best effort */ } }, () => this.changed());
   }
 
   start() {
@@ -89,15 +141,95 @@ export class Brain extends EventEmitter {
     }
     this.tickTimer = setInterval(() => this.tick(), 1000);
     this.tick();
+    // Home Assistant zones, the places feed and gas prices: every 30 min (no-ops without HA).
+    void this.slowRefresh();
+    this.slowTimer = setInterval(() => void this.slowRefresh(), POLL_MS);
+    if (!config.geocodeDisabled) this.geoTimer = setInterval(() => void this.stops.geocodePass(), 60_000);
+    this.refreshPlace();
+    void pickBackend({ sim: config.sim, iface: config.netClientIface, makeSim: () => new SimBackend(() => (this.s.gps?.fix ? this.s.gps : null), () => this.settings.get(), () => this.driverId) })
+      .then((b) => { this.net.setBackend(b); console.log(`[net] ${b.kind}${b.kind === 'nmcli' ? ` on ${config.netClientIface}` : ''}`); return this.net.tick(); })
+      .catch((e) => console.error('[net]', e));
+    this.netTimer = setInterval(() => void this.net.tick(), 20_000);
   }
 
   async stop() {
-    if (this.tickTimer) clearInterval(this.tickTimer);
+    for (const t of [this.tickTimer, this.slowTimer, this.geoTimer, this.netTimer]) if (t) clearInterval(t);
     if (this.stateTimer) clearTimeout(this.stateTimer);
+    if (this.refreshSoon) clearTimeout(this.refreshSoon);
     this.sim?.stop();
     this.gpsd?.stop();
     this.saveSoc(true);
     await this.mqtt?.stop().catch(() => {});
+  }
+
+  async slowRefresh() {
+    try { await this.stops.refreshZones(); } catch (e) { console.error('[stops] zones', e); }
+    try { await this.stops.refreshFeed(); } catch (e) { console.error('[stops] feed', e); }
+    try { if (await this.gas.poll()) this.emit('gas'); } catch (e) { console.error('[gas] poll', e); }
+  }
+
+  // ---- drivers ---------------------------------------------------------------
+
+  activeDriver(): Driver {
+    const st = this.settings.get();
+    return this.settings.driver(this.driverId) ?? st.drivers.find((d) => !d.guest) ?? st.drivers[0];
+  }
+
+  /** The truck's settings with the active driver's charging prefs, for the charger finder. */
+  finderSettings(): FinderSettings { return { ...this.settings.get(), charging: this.activeDriver().charging }; }
+
+  /** The gas vehicle to compare against: the driver's override, else the truck's. */
+  compareVehicle(driverId?: string | null): CompareVehicle {
+    const d = driverId ? this.settings.driver(driverId) : null;
+    return d?.compareVehicle ?? this.settings.get().compareVehicle;
+  }
+
+  /** POST /api/driver. A pick during a trip re-attributes that trip: a correction, not a switch. */
+  setDriver(id: string): { ok: boolean; error?: string } {
+    const d = this.settings.driver(id);
+    if (!d) return { ok: false, error: `no driver "${id}"` };
+    this.driverId = d.id;
+    kvSet(this.db, 'activeDriver', d.id);
+    if (this.s.trip) this.trips.setDriver(this.s.trip.id, d.id);
+    if (this.openStop) { this.stops.stops.setDriver(this.openStop.id, d.id); this.openStop = { ...this.openStop, driverId: d.id }; }
+    this.s.driverSuggestion = null;
+    void this.net.tick(); // the driver's phone moves up the list at once
+    this.changed();
+    return { ok: true };
+  }
+
+  dismissSuggestion() { this.s.driverSuggestion = null; this.changed(); }
+
+  /**
+   * On ignition: whose phone is at the truck? Exactly one tracker within
+   * PRESENCE_M, heard in the last PRESENCE_MAX_AGE_MS: preselect that driver.
+   * Otherwise the last driver stays. Never changes a trip that's under way.
+   */
+  async suggestDriver(): Promise<void> {
+    const cur = this.activeDriver();
+    const gps = this.s.gps?.fix ? this.s.gps : null;
+    let reason = 'Last driver';
+    let pick: Driver | null = null;
+    if (!this.ha.configured()) reason = 'Last driver (connect Home Assistant on the settings page to spot phones)';
+    else if (!gps) reason = 'Last driver (no GPS fix to match phones against)';
+    else {
+      const drivers = this.settings.get().drivers;
+      const presence = new Map<string, { lat: number; lon: number; at: number } | null>();
+      for (const d of drivers) {
+        if (!d.tracker || presence.has(d.tracker)) continue;
+        try { presence.set(d.tracker, presenceOf(await this.ha.state(d.tracker))); } catch { presence.set(d.tracker, null); /* that tracker or HA is away */ }
+      }
+      const near = driversAtTruck(drivers, presence, gps);
+      if (near.length === 1) { pick = near[0]; reason = `${pick.name}'s phone is at the truck`; }
+      else if (near.length > 1) reason = `${near.map((d) => d.name).join(' and ')} are both here: pick one`;
+      else reason = 'Last driver (no phone at the truck)';
+    }
+    const t = this.s.trip;
+    const young = !t || (Date.now() - Date.parse(t.startedAt) < SUGGEST_WINDOW_MS && t.miles < SUGGEST_WINDOW_MI);
+    if (pick && pick.id !== cur.id && young) this.setDriver(pick.id);
+    const shown = pick && young ? pick : cur;
+    this.s.driverSuggestion = { id: shown.id, name: shown.name, reason };
+    this.changed();
   }
 
   // ---- inputs ------------------------------------------------------------
@@ -191,6 +323,7 @@ export class Brain extends EventEmitter {
         gps: this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null,
         homeChargerKwh: st.homeAssistant.homeChargerEnergyEntity ? this.haKwh : null,
         nearestStation: (lat, lon) => this.finder.nearestKnown(lat, lon),
+        driverId: this.driverId,
       });
       if (session) console.log(`[charges] ${session.place} session #${session.id}: ${c.prev}% -> ${c.next}%${session.cost !== null ? `, $${session.cost.toFixed(2)}` : ', cost to enter'}`);
     } catch (e) { console.error('[charges] detection failed', e); }
@@ -206,26 +339,85 @@ export class Brain extends EventEmitter {
       this.s.speedMph = null;
       this.changed();
     }
-    const ev = this.detector.update({ t: now, ignition: this.s.ignition, speedMph: this.s.speedMph });
     const st = this.settings.get();
     const pos = this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null;
+    // Stops first: one can end the trip (backdated to when the truck stopped).
+    if (pos) {
+      try { for (const e of this.stopDet.update({ t: now, lat: pos.lat, lon: pos.lon, speedMph: this.s.speedMph, ignition: this.s.ignition })) this.onStopEvent(e); }
+      catch (e) { console.error('[stops]', e); }
+    }
+    const ev = this.detector.update({ t: now, ignition: this.s.ignition, speedMph: this.s.speedMph });
     if (ev?.type === 'start') {
-      const t = this.trips.start(new Date(now), this.soc.value, pos);
+      const from = this.openStop?.id ?? (this.lastClosedStop && now - this.lastClosedStop.at < SUGGEST_WINDOW_MS ? this.lastClosedStop.id : null);
+      const t = this.trips.start(new Date(now), this.soc.value, pos, this.driverId, from);
       this.s.trip = { id: t.id, startedAt: t.startedAt, miles: 0 };
+      this.net.tripStarted();
       if (pos && this.lastFix) this.trips.addPoint(t.id, { t: new Date(now), lat: pos.lat, lon: pos.lon, speedMph: this.s.speedMph, headingDeg: this.s.gps?.headingDeg ?? null });
-      console.log(`[trips] #${t.id} started (${ev.reason})`);
+      console.log(`[trips] #${t.id} started (${ev.reason}), driver ${this.driverId}`);
+      if (ev.reason === 'ignition') void this.suggestDriver().catch((e) => console.error('[drivers] suggest', e));
       this.changed();
     } else if (ev?.type === 'end' && this.s.trip) {
-      const t = this.trips.end(this.s.trip.id, new Date(now), this.soc.value, pos, st.efficiencyMiPerKwh, ev.reason);
-      this.s.trip = null;
-      if (t) {
-        console.log(`[trips] #${t.id} ended (${ev.reason}): ${t.miles.toFixed(1)} mi`);
-        this.mqtt?.publish(tripEndedTopic(st.truckId), JSON.stringify(t), { qos: 1 });
-        this.emit('trip', t);
-      }
-      this.saveSoc(true);
+      this.endTrip(new Date(now), pos, ev.reason, this.openStop?.id ?? null);
+    }
+    // The ignition prompt goes away once the drive is properly under way.
+    const t = this.s.trip;
+    if (this.s.driverSuggestion && t && (now - Date.parse(t.startedAt) > SUGGEST_WINDOW_MS || t.miles > SUGGEST_WINDOW_MI)) {
+      this.s.driverSuggestion = null;
       this.changed();
     }
+  }
+
+  private endTrip(at: Date, pos: { lat: number; lon: number } | null, reason: string, endStopId: number | null) {
+    if (!this.s.trip) return;
+    const st = this.settings.get();
+    const t = this.trips.end(this.s.trip.id, at, this.soc.value, pos, st.efficiencyMiPerKwh, reason, endStopId);
+    this.s.trip = null;
+    if (t) {
+      console.log(`[trips] #${t.id} ended (${reason}): ${t.miles.toFixed(1)} mi`);
+      this.mqtt?.publish(tripEndedTopic(st.truckId), JSON.stringify(t), { qos: 1 });
+      this.emit('trip', t);
+    }
+    this.saveSoc(true);
+    this.changed();
+  }
+
+  private onStopEvent(e: StopEvent) {
+    if (e.type === 'arrive') {
+      const stop = this.stops.stops.create({ driverId: this.driverId, source: 'truck', arrivedAt: new Date(e.at).toISOString(), departedAt: null, lat: e.lat, lon: e.lon, reason: e.reason });
+      this.openStop = stop;
+      if (this.s.trip) {
+        this.endTrip(new Date(e.at), { lat: e.lat, lon: e.lon }, e.reason === 'ignition' ? 'ignition off' : 'stop', stop.id);
+        this.detector.forceEnd();
+      }
+      this.openStop = this.stops.nameStop(stop.id) ?? stop;
+      console.log(`[stops] #${stop.id} at ${this.openStop.name ?? 'an unnamed spot'} (${e.reason})`);
+      this.refreshPlace();
+      return;
+    }
+    const stop = this.openStop;
+    this.openStop = null;
+    if (!stop) return;
+    if (e.short) {
+      // Under 3 minutes: not a stop. The trip that ended here carries on.
+      const prev = this.trips.endingAt(stop.id);
+      if (prev) {
+        const cur = this.s.trip && this.s.trip.id !== prev.id ? this.s.trip.id : null;
+        const t = this.trips.reopen(prev.id, cur);
+        if (t) { this.s.trip = { id: t.id, startedAt: t.startedAt, miles: t.miles }; this.detector.resume(); }
+      } else if (this.s.trip) this.trips.setStartStop(this.s.trip.id, null);
+      this.stops.stops.delete(stop.id);
+      console.log(`[stops] #${stop.id} lasted under 3 min: folded into the trip`);
+    } else {
+      this.stops.stops.close(stop.id, new Date(e.at).toISOString());
+      this.lastClosedStop = { id: stop.id, at: e.at };
+    }
+    this.refreshPlace();
+  }
+
+  private refreshPlace() {
+    if (this.openStop) this.openStop = this.stops.stops.get(this.openStop.id);
+    const p = this.openStop ? { stopId: this.openStop.id, name: this.openStop.name, since: this.openStop.arrivedAt } : null;
+    if (JSON.stringify(p) !== JSON.stringify(this.s.place)) { this.s.place = p; this.changed(); }
   }
 
   private saveSoc(force = false) {
@@ -240,6 +432,7 @@ export class Brain extends EventEmitter {
     const st = this.settings.get();
     const soc = this.soc.value === null ? null : Math.round(this.soc.value * 10) / 10;
     const r = rangeMi(soc, st.packKwh, st.efficiencyMiPerKwh);
+    const d = this.activeDriver();
     return {
       ...this.s,
       ts: new Date().toISOString(),
@@ -250,13 +443,17 @@ export class Brain extends EventEmitter {
       relays: Object.fromEntries(Object.entries(this.s.relays).map(([k, v]) => [k, { ...v }])),
       fiveSwitch: [...this.s.fiveSwitch],
       nowPlaying: this.s.nowPlaying ? { ...this.s.nowPlaying } : null,
+      driver: { id: d.id, name: d.name, initials: d.initials, color: d.color },
+      driverSuggestion: this.s.driverSuggestion ? { ...this.s.driverSuggestion } : null,
+      place: this.s.place ? { ...this.s.place } : null,
+      network: { ...this.net.status, bytesThisMonth: { ...this.net.status.bytesThisMonth } },
     };
   }
 
   health(): Health {
     const mqtt = !this.mqtt ? 'disabled' : this.mqtt.status === 'connected' ? 'connected' : `${this.mqtt.status}${this.mqtt.lastError ? ` (${this.mqtt.lastError})` : ''}`;
     const gps = this.sim ? 'sim' : this.gpsd?.status ?? 'no gpsd';
-    return { ok: true, version: config.version, mqtt, gps, uptimeS: Math.round((Date.now() - this.startedAt) / 1000) };
+    return { ok: true, version: config.version, mqtt, gps, ha: this.ha.status(), uptimeS: Math.round((Date.now() - this.startedAt) / 1000) };
   }
 
   private changed() {
@@ -306,6 +503,14 @@ export class Brain extends EventEmitter {
     }
     this.mqtt?.setSubscriptions(this.subscriptions(next));
     if (next.truckId !== prev.truckId || next.homeAssistant.bridge !== prev.homeAssistant.bridge) this.publishDiscovery(next, prev.truckId);
+    if (!this.settings.driver(this.driverId)) this.driverId = this.activeDriver().id;
+    if (JSON.stringify([next.homeWifi, next.drivers.map((d) => [d.hotspot, d.btTetherMac])]) !== JSON.stringify([prev.homeWifi, prev.drivers.map((d) => [d.hotspot, d.btTetherMac])])) void this.net.tick();
+    const ha = (s: Settings) => JSON.stringify([s.homeAssistant.url, s.homeAssistant.token, s.placesFeed, s.keys.placesFeed, s.gas]);
+    if (ha(next) !== ha(prev)) {
+      if (next.homeAssistant.url !== prev.homeAssistant.url || next.homeAssistant.token !== prev.homeAssistant.token) this.ha.lastError = null;
+      if (this.refreshSoon) clearTimeout(this.refreshSoon);
+      this.refreshSoon = setTimeout(() => { this.refreshSoon = null; void this.slowRefresh(); }, 500);
+    }
     this.changed();
   }
 }

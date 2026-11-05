@@ -40,8 +40,38 @@ export function openDb(dataDir: string): Db {
     );
     CREATE INDEX IF NOT EXISTS charge_sessions_started ON charge_sessions(started_at);
     CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS stops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      driver_id TEXT, source TEXT NOT NULL DEFAULT 'truck',
+      arrived_at TEXT NOT NULL, departed_at TEXT,
+      lat REAL NOT NULL, lon REAL NOT NULL,
+      reason TEXT NOT NULL DEFAULT 'dwell',
+      name TEXT, name_source TEXT, place_id INTEGER,
+      geocode_tried INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS stops_arrived ON stops(arrived_at);
+    CREATE TABLE IF NOT EXISTS places (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL,
+      radius_m REAL NOT NULL DEFAULT 120, created_at TEXT NOT NULL, created_by TEXT
+    );
+    CREATE TABLE IF NOT EXISTS geocode_cache (key TEXT PRIMARY KEY, name TEXT, fetched_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS gas_prices (
+      day TEXT NOT NULL, fuel TEXT NOT NULL, price REAL NOT NULL, station TEXT,
+      fetched_at TEXT NOT NULL, updated_at TEXT,
+      PRIMARY KEY (day, fuel)
+    );
+    CREATE TABLE IF NOT EXISTS http_cache (key TEXT PRIMARY KEY, fetched_at TEXT NOT NULL, body TEXT NOT NULL);
   `);
+  // Columns added after the first release: ALTER only when missing.
+  addColumns(db, 'trips', { driver_id: 'TEXT', source: "TEXT NOT NULL DEFAULT 'truck'", start_stop_id: 'INTEGER', end_stop_id: 'INTEGER' });
+  addColumns(db, 'charge_sessions', { driver_id: 'TEXT' });
   return db;
+}
+
+function addColumns(db: Db, table: string, cols: Record<string, string>) {
+  const have = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
+  for (const [name, type] of Object.entries(cols)) if (!have.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`);
 }
 
 export function kvGet<T>(db: Db, k: string): T | null {

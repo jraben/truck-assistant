@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { DEFAULT_LAYOUT } from '../../../brain/src/layout.ts';
-import { api, linkStore, loadSettings, settingsStore, stateStore, toast, toastStore, useStore, type Layout, type Settings, type State } from '../lib/brain.ts';
+import { activeDriver, linkStore, loadSettings, putDriver, settingsStore, stateStore, toast, toastStore, useStore, type Driver, type Layout, type State } from '../lib/brain.ts';
 import { allThemes, isLight, paintTheme, pickTheme, type Theme } from '../lib/theme.ts';
 import { carplay } from '../carplay/controller.ts';
 import { V } from './common.tsx';
 import { ChargePrompt } from './costs.tsx';
 import { widgetFor } from './widgets.tsx';
+import { DriverBadge, DriverPanel, DriverPrompt } from './drivers.tsx';
+import { NetPanel, NetPill } from './network.tsx';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -39,9 +41,12 @@ export function App() {
   const link = useStore(linkStore);
   const settings = useStore(settingsStore);
   const toastMsg = useStore(toastStore);
-  const layout = settings?.layout?.views?.length ? settings.layout : DEFAULT_LAYOUT;
+  const driver = activeDriver(settings, s);
+  const layout = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
   const [view, setView] = useState(() => viewFromHash(layout));
   const [picker, setPicker] = useState(false);
+  const [driverOpen, setDriverOpen] = useState(false);
+  const [netOpen, setNetOpen] = useState(false);
   const now = useClock();
 
   const go = (id: string) => { setView(id); history.replaceState(null, '', `#${id}`); };
@@ -67,7 +72,7 @@ export function App() {
   // Theme: auto or chosen; frozen while reversing so the camera view never flips mid-manoeuvre.
   const gpsPos = s?.gps?.fix ? { lat: s.gps.lat, lon: s.gps.lon } : null;
   const shown = useRef<Theme | null>(null);
-  const want = pickTheme(settings?.theme, gpsPos, now);
+  const want = pickTheme(driver?.theme, gpsPos, now);
   if (!reverse || !shown.current) shown.current = want;
   useEffect(() => { paintTheme(shown.current!); carplay.setNight(!isLight(shown.current!.colors.bg)); }, [shown.current]);
 
@@ -82,6 +87,8 @@ export function App() {
         <span class="pill" title={link.connected ? 'Connected to the brain' : 'Reconnecting to the brain…'}><span class={`dot ${link.connected ? 'ok' : 'bad'}`} />{link.connected ? 'Brain' : 'Reconnecting'}</span>
         <span class="pill hide-sm" title={s?.truckbox ? 'Truck box online' : 'Truck box offline: relays and sensors unavailable'}><span class={`dot ${s?.truckbox ? 'ok' : 'warn'}`} />Truck box {s?.truckbox ? 'online' : 'offline'}</span>
         <span class="pill hide-sm" title={s?.gps?.fix ? 'GPS fix' : 'No GPS fix'}><span class={`dot ${s?.gps?.fix ? 'ok' : 'warn'}`} />GPS</span>
+        <NetPill s={s} open={netOpen} onClick={() => setNetOpen(!netOpen)} />
+        {s?.place && <span class="pill hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? 'Unnamed stop'}</span>}
         <span class="sp" />
         <span class="hide-sm num">Cabin <V v={s?.cabinTempF?.toFixed(0)} why={s?.truckbox ? 'Not reported yet' : 'Truck box offline'} />°F</span>
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
@@ -94,7 +101,8 @@ export function App() {
           </a>
         ))}
         <button type="button" class="voice" onClick={() => toast('WOPR voice is a later phase')}><Ico d={MIC} />WOPR</button>
-        <button type="button" aria-expanded={picker} onClick={() => setPicker(!picker)}><Ico d={PALETTE} />Theme</button>
+        <button type="button" aria-expanded={driverOpen} title={s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver'} onClick={() => { setDriverOpen(!driverOpen); setPicker(false); }}><DriverBadge d={s?.driver ?? null} size={30} />{s?.driver?.name ?? 'Driver'}</button>
+        <button type="button" aria-expanded={picker} onClick={() => { setPicker(!picker); setDriverOpen(false); }}><Ico d={PALETTE} />Theme</button>
         <a href="/settings"><Ico d={GEAR} />Settings</a>
       </nav>
 
@@ -111,7 +119,10 @@ export function App() {
         </div>
       </main>
 
-      {picker && settings && <ThemePicker settings={settings} shown={shown.current!} onClose={() => setPicker(false)} />}
+      {cur.id === 'drive' && <DriverPrompt />}
+      {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} />}
+      {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
+      {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <ChargePrompt />
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
     </div>
@@ -123,15 +134,15 @@ function Swatch({ t }: { t: Theme }) {
 }
 
 /** Quick theme switch from the cockpit. Picking one turns auto off; "Auto" turns it back on. */
-function ThemePicker({ settings, shown, onClose }: { settings: Settings; shown: Theme; onClose: () => void }) {
-  const ts = settings.theme;
-  const save = async (patch: Partial<Settings['theme']>) => {
-    try { const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ theme: patch }) }); settingsStore.set(n); }
+function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme; onClose: () => void }) {
+  const ts = driver.theme;
+  const save = async (patch: Partial<Driver['theme']>) => {
+    try { await putDriver(driver.id, { theme: patch }); }
     catch (e) { toast(`Theme not saved: ${(e as Error).message}`); void loadSettings(); }
   };
   return (
     <div class="card picker" role="dialog" aria-label="Theme">
-      <div class="row between"><span class="lbl">Theme</span><button class="btn sm" type="button" onClick={onClose}>Close</button></div>
+      <div class="row between"><span class="lbl">Theme · {driver.name}</span><button class="btn sm" type="button" onClick={onClose}>Close</button></div>
       <button type="button" class={`item ${ts.auto.enabled ? 'sel' : ''}`} onClick={() => void save({ auto: { ...ts.auto, enabled: true } })}>
         <Swatch t={shown} /><span><b>Auto</b> <span class="dimtxt" style="font-size:13px">sunrise/sunset · {allThemes(ts).find((x) => x.id === ts.auto.day)?.name} / {allThemes(ts).find((x) => x.id === ts.auto.night)?.name}</span></span>
       </button>

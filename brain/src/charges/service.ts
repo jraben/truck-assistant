@@ -21,6 +21,7 @@ export type ChargeContext = {
   /** Latest value of Settings.homeAssistant.homeChargerEnergyEntity, if one has arrived. */
   homeChargerKwh: number | null;
   nearestStation: (lat: number, lon: number) => Station | null;
+  driverId: string | null;
 };
 
 export const isHome = (s: Settings, gps: { lat: number; lon: number } | null) =>
@@ -70,7 +71,7 @@ export class ChargeService {
       lat: ctx.gps?.lat ?? null, lon: ctx.gps?.lon ?? null,
       kwh: null, cost: null, costSource: null,
       startSoc: c.prev, endSoc: c.next, maxKw: st?.maxKw ?? null, note: null,
-      source: 'detected',
+      source: 'detected', driverId: ctx.driverId,
     };
     if (home) Object.assign(session, this.homePrice(c.prev, c.next, startedAt, ctx));
     const s = this.store.create(session);
@@ -85,7 +86,7 @@ export class ChargeService {
   }
 
   /** POST /api/charges: a hand-entered session. Home sessions without a cost are priced from the rate. */
-  createManual(input: SessionInput, settings: Settings, gps: { lat: number; lon: number } | null): ChargeSession {
+  createManual(input: SessionInput, settings: Settings, gps: { lat: number; lon: number } | null, driverId: string | null = null): ChargeSession {
     const startedAt = input.startedAt ?? new Date().toISOString();
     const place = input.place ?? (isHome(settings, input.lat != null && input.lon != null ? { lat: input.lat, lon: input.lon! } : gps) ? 'home' : 'public');
     let cost = input.cost ?? null;
@@ -105,6 +106,7 @@ export class ChargeService {
       kwh, cost, costSource,
       startSoc: input.startSoc ?? null, endSoc: input.endSoc ?? null, maxKw: input.maxKw ?? null,
       note: input.note ?? null, source: 'manual',
+      driverId: input.driverId !== undefined ? input.driverId : driverId,
     });
     this.changed();
     return s;

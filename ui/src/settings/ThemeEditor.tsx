@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { api, settingsStore, toast, type Settings } from '../lib/brain.ts';
+import { putDriver, toast, type Driver } from '../lib/brain.ts';
 import { allThemes, checkContrast, COLOR_KEYS, FONTS, MIN_CONTRAST, PRESETS, themeVars, type ColorKey, type Theme } from '../lib/theme.ts';
 import { Ring } from '../components/drive.tsx';
 
@@ -15,8 +15,9 @@ function uniqueId(base: string, taken: Set<string>) {
   return id;
 }
 
-export function ThemeEditor({ settings }: { settings: Settings }) {
-  const ts = settings.theme;
+/** Edits one driver's themes (themes are per driver). */
+export function ThemeEditor({ driver }: { driver: Driver }) {
+  const ts = driver.theme;
   const themes = allThemes(ts);
   const [baseId, setBaseId] = useState(ts.active);
   const [draft, setDraft] = useState<Theme>(() => structuredClone(themes.find((t) => t.id === ts.active) ?? PRESETS[0]));
@@ -33,11 +34,7 @@ export function ThemeEditor({ settings }: { settings: Settings }) {
     setMsg({ ok: true, text: 'Copy made. Change it, then Save.' });
   };
 
-  const put = async (theme: Partial<Settings['theme']>) => {
-    const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ theme }) });
-    settingsStore.set(n);
-    return n;
-  };
+  const put = (theme: Partial<Driver['theme']>) => putDriver(driver.id, { theme });
   const save = async () => {
     try {
       const custom = [...ts.custom.filter((c) => c.id !== draft.id), draft];

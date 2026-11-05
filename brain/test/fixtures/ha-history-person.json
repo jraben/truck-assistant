@@ -1,0 +1,480 @@
+[
+ [
+  {
+   "entity_id": "person.jeff",
+   "state": "home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4990,
+    "longitude": -111.9800,
+    "gps_accuracy": 10,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T07:00:00.000000+00:00",
+   "last_reported": "2026-11-03T07:00:00.000000+00:00",
+   "last_updated": "2026-11-03T07:00:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.49903,
+    "longitude": -111.97998,
+    "gps_accuracy": 12,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T07:00:00.000000+00:00",
+   "last_reported": "2026-11-03T14:10:00.000000+00:00",
+   "last_updated": "2026-11-03T14:10:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.501,
+    "longitude": -111.9800,
+    "gps_accuracy": 16,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T14:45:00.000000+00:00",
+   "last_updated": "2026-11-03T14:45:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4945,
+    "longitude": -111.96,
+    "gps_accuracy": 20,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T14:47:00.000000+00:00",
+   "last_updated": "2026-11-03T14:47:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4945,
+    "longitude": -111.9262,
+    "gps_accuracy": 14,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T14:50:00.000000+00:00",
+   "last_updated": "2026-11-03T14:50:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.46,
+    "longitude": -111.9262,
+    "gps_accuracy": 18,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T14:53:00.000000+00:00",
+   "last_updated": "2026-11-03T14:53:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.43,
+    "longitude": -111.9262,
+    "gps_accuracy": 22,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T14:56:00.000000+00:00",
+   "last_updated": "2026-11-03T14:56:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4256,
+    "longitude": -111.9399,
+    "gps_accuracy": 35,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T14:58:00.000000+00:00",
+   "last_updated": "2026-11-03T14:58:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.42575,
+    "longitude": -111.9401,
+    "gps_accuracy": 48,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T15:05:00.000000+00:00",
+   "last_updated": "2026-11-03T15:05:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.6,
+    "longitude": -112.2,
+    "gps_accuracy": 1500,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T15:20:00.000000+00:00",
+   "last_updated": "2026-11-03T15:20:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.42545,
+    "longitude": -111.93975,
+    "gps_accuracy": 65,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T14:45:00.000000+00:00",
+   "last_reported": "2026-11-03T15:30:00.000000+00:00",
+   "last_updated": "2026-11-03T15:30:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "unknown",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben"
+   },
+   "last_changed": "2026-11-03T15:50:00.000000+00:00",
+   "last_reported": "2026-11-03T15:50:00.000000+00:00",
+   "last_updated": "2026-11-03T15:50:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.42558,
+    "longitude": -111.94002,
+    "gps_accuracy": 30,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T16:10:00.000000+00:00",
+   "last_updated": "2026-11-03T16:10:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4255,
+    "longitude": -111.96,
+    "gps_accuracy": 20,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T16:15:00.000000+00:00",
+   "last_updated": "2026-11-03T16:15:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.437,
+    "longitude": -112.02,
+    "gps_accuracy": 15,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T16:18:00.000000+00:00",
+   "last_updated": "2026-11-03T16:18:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.448,
+    "longitude": -112.04,
+    "gps_accuracy": 15,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T16:22:00.000000+00:00",
+   "last_updated": "2026-11-03T16:22:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4484,
+    "longitude": -112.0738,
+    "gps_accuracy": 12,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T16:25:00.000000+00:00",
+   "last_updated": "2026-11-03T16:25:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.44852,
+    "longitude": -112.07395,
+    "gps_accuracy": 18,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T16:40:00.000000+00:00",
+   "last_updated": "2026-11-03T16:40:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.44835,
+    "longitude": -112.0737,
+    "gps_accuracy": 25,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T18:00:00.000000+00:00",
+   "last_updated": "2026-11-03T18:00:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.48,
+    "longitude": -112.074,
+    "gps_accuracy": 20,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T18:05:00.000000+00:00",
+   "last_updated": "2026-11-03T18:05:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4990,
+    "longitude": -112.074,
+    "gps_accuracy": 16,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T18:10:00.000000+00:00",
+   "last_updated": "2026-11-03T18:10:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "not_home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.4990,
+    "longitude": -112.02,
+    "gps_accuracy": 14,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T16:10:00.000000+00:00",
+   "last_reported": "2026-11-03T18:14:00.000000+00:00",
+   "last_updated": "2026-11-03T18:14:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.49885,
+    "longitude": -111.98005,
+    "gps_accuracy": 10,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T18:18:00.000000+00:00",
+   "last_reported": "2026-11-03T18:18:00.000000+00:00",
+   "last_updated": "2026-11-03T18:18:00.000000+00:00"
+  },
+  {
+   "entity_id": "person.jeff",
+   "state": "home",
+   "attributes": {
+    "editable": true,
+    "id": "jeff",
+    "device_trackers": [
+     "device_tracker.jeffs_iphone"
+    ],
+    "user_id": "5d0c3e6a9b2f4c1e8a7d6b5c4e3f2a10",
+    "friendly_name": "Jeff Raben",
+    "latitude": 33.49898,
+    "longitude": -111.98001,
+    "gps_accuracy": 9,
+    "source": "device_tracker.jeffs_iphone"
+   },
+   "last_changed": "2026-11-03T18:18:00.000000+00:00",
+   "last_reported": "2026-11-03T20:00:00.000000+00:00",
+   "last_updated": "2026-11-03T20:00:00.000000+00:00"
+  }
+ ]
+]
