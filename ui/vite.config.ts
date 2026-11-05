@@ -19,6 +19,8 @@ export default defineConfig({
   plugins: [preact(), settingsRoute()],
   build: {
     target: 'es2022',
+    // Audio worklets load as their own files (addModule); never inline them as data: URLs.
+    assetsInlineLimit: (file) => (/\.worklet\.js$/.test(file) ? false : undefined),
     rollupOptions: { input: { main: resolve(__dirname, 'index.html'), settings: resolve(__dirname, 'settings.html') } },
   },
   server: {

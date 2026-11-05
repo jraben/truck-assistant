@@ -16,7 +16,8 @@ import { applyTruckbox, parseTruckbox } from './truckbox.ts';
 import { ChargerFinder } from './chargers/finder.ts';
 import { ChargeService } from './charges/service.ts';
 import { ChargeStore } from './charges/store.ts';
-import type { Health, Settings, State } from './types.ts';
+import { sameNowPlaying } from './media.ts';
+import type { Health, NowPlaying, Settings, State } from './types.ts';
 
 /** Ignore GPS jumps faster than this between fixes (multipath, cold start). */
 const MAX_PLAUSIBLE_MPH = 120;
@@ -66,7 +67,7 @@ export class Brain extends EventEmitter {
       ignition: null, reverse: null, cabinTempF: null, aux12v: null, tilt: null, tpms: null,
       relays: Object.fromEntries(RELAY_IDS.map((id) => [id, { name: st.relays[id], on: null }])),
       fiveSwitch: [null, null, null, null, null],
-      trip: null, truckbox: false,
+      trip: null, truckbox: false, nowPlaying: null,
     };
     this.mqtt = config.mqttDisabled ? null : new MqttLink(config.mqttUrl, statusTopic(st.truckId));
     settings.onChange((next, prev) => this.onSettings(next, prev));
@@ -165,6 +166,13 @@ export class Brain extends EventEmitter {
     this.changed();
   }
 
+  /** Now playing from the cockpit (WS {"type":"media"}); null = nothing playing / CarPlay gone. */
+  setNowPlaying(np: NowPlaying | null) {
+    if (sameNowPlaying(this.s.nowPlaying, np)) return;
+    this.s.nowPlaying = np;
+    this.changed();
+  }
+
   /** Relay command (WS {"type":"relay"}). State changes only when the truck box echoes it. */
   setRelay(id: string, on: boolean): { ok: boolean; error?: string } {
     if (!(RELAY_IDS as readonly string[]).includes(id)) return { ok: false, error: `unknown relay ${id}` };
@@ -241,6 +249,7 @@ export class Brain extends EventEmitter {
       trip: this.s.trip ? { ...this.s.trip, miles: Math.round(this.s.trip.miles * 100) / 100 } : null,
       relays: Object.fromEntries(Object.entries(this.s.relays).map(([k, v]) => [k, { ...v }])),
       fiveSwitch: [...this.s.fiveSwitch],
+      nowPlaying: this.s.nowPlaying ? { ...this.s.nowPlaying } : null,
     };
   }
 

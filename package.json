@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "npm run build -w ui && npm run build -w brain",
-    "test": "npm test -w brain",
+    "test": "npm test -w brain && npm test -w ui",
     "typecheck": "npm run typecheck -w brain && npm run typecheck -w ui",
     "start": "npm start -w brain"
   }

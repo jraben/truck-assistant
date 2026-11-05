@@ -1,0 +1,14 @@
+{
+  "WebUsbAllowDevicesForUrls": [
+    {
+      "devices": [
+        { "vendor_id": 4884, "product_id": 5408 },
+        { "vendor_id": 4884, "product_id": 5409 }
+      ],
+      "urls": ["http://localhost:8080"]
+    }
+  ],
+  "AudioCaptureAllowedUrls": ["http://localhost:8080"],
+  "AutoplayAllowed": true,
+  "AutoplayAllowlist": ["http://localhost:8080"]
+}

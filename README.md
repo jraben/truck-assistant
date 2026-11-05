@@ -14,7 +14,7 @@ Built for Jeff's truck first, published for other Slate owners later.
   ```sh
   npm install
   npm run dev      # brain with SIM=1 on :8080 + Vite on http://localhost:5173
-  npm test         # brain unit tests (vitest)
+  npm test         # brain + UI unit tests (vitest)
   npm run build    # UI to ui/dist, brain to brain/dist
   npm start        # the built brain; serves the cockpit at / and settings at /settings
   ```
@@ -25,7 +25,11 @@ Built for Jeff's truck first, published for other Slate owners later.
   No MQTT broker or gpsd needed on a desk: the brain reports them in
   `/api/health` and keeps working. Pi install: `sudo ./deploy/pi/install.sh`
   (systemd unit, Chromium kiosk at 1920x720, Mosquitto with a home-bridge
-  template). Not yet: CarPlay embed, camera feeds, WOPR voice, streaming accounts.
+  template). CarPlay: the CarPlay view drives a Carlinkit dongle over WebUSB
+  (`ui/src/carplay/`, vendored node-carplay 4.1.0); on a desk,
+  `?carplaySim=1` plays a test clip through the same path. Pi setup and
+  dongle notes: `deploy/pi/README.md`. Not yet: camera feeds, WOPR voice,
+  streaming accounts.
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
 - **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a

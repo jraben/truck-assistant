@@ -36,7 +36,7 @@ describe('settings merge', () => {
 describe('truck box topics', () => {
   const blank = (): State => ({
     ts: '', speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null, ignition: null, reverse: null,
-    cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: { relay_1: { name: 'Bed lights', on: null } }, fiveSwitch: [null, null, null, null, null], trip: null, truckbox: false,
+    cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: { relay_1: { name: 'Bed lights', on: null } }, fiveSwitch: [null, null, null, null, null], trip: null, truckbox: false, nowPlaying: null,
   });
   it('parses ESPHome topics and derives gear R from reverse', () => {
     const s = blank(); const tilt = { pitch: null, roll: null };

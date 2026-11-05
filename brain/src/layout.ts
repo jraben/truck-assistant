@@ -5,13 +5,14 @@ import type { Layout } from './types.ts';
 export const DEFAULT_LAYOUT: Layout = {
   views: [
     { id: 'drive', label: 'Drive', widgets: [
-      { type: 'speed', col: 1, row: 1, w: 4, h: 2 },
-      { type: 'soc', col: 5, row: 1, w: 3, h: 2 },
-      { type: 'nextCharger', col: 8, row: 1, w: 5, h: 1 },
-      { type: 'trip', col: 8, row: 2, w: 2, h: 1 },
-      { type: 'cabin', col: 10, row: 2, w: 1, h: 1 },
-      { type: 'aux12v', col: 11, row: 2, w: 1, h: 1 },
-      { type: 'tilt', col: 12, row: 2, w: 1, h: 1 },
+      { type: 'speed', col: 1, row: 1, w: 3, h: 2 },
+      { type: 'soc', col: 4, row: 1, w: 3, h: 2 },
+      { type: 'nowPlaying', col: 7, row: 1, w: 3, h: 1 },
+      { type: 'nextCharger', col: 10, row: 1, w: 3, h: 1 },
+      { type: 'trip', col: 7, row: 2, w: 2, h: 1 },
+      { type: 'cabin', col: 9, row: 2, w: 1, h: 1 },
+      { type: 'aux12v', col: 10, row: 2, w: 1, h: 1 },
+      { type: 'tilt', col: 11, row: 2, w: 2, h: 1 },
     ] },
     { id: 'carplay', label: 'CarPlay', widgets: [
       { type: 'carplay', col: 1, row: 1, w: 10, h: 2 },

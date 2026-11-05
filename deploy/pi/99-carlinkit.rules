@@ -1,0 +1,8 @@
+# Carlinkit CPC200-CCPA / Autokit CarPlay dongles (USB 1314:1520 and 1314:1521,
+# node-carplay's knownDevices). Lets the kiosk user's Chromium open them over
+# WebUSB: uaccess for the logged-in seat user, plugdev as a fallback.
+# Installed by deploy/pi/install.sh to /etc/udev/rules.d/.
+SUBSYSTEM=="usb", ATTR{idVendor}=="1314", ATTR{idProduct}=="1520", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="1314", ATTR{idProduct}=="1521", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+# Keep USB autosuspend off for the dongle: a suspended dongle drops the phone.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1314", ATTR{idProduct}=="152[01]", TEST=="power/control", ATTR{power/control}="on"

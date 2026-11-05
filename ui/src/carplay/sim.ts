@@ -1,0 +1,119 @@
+// Dev simulator (?carplaySim=1): plays a local H.264 Annex-B clip through the
+// same decode / render / touch / now-playing path as the dongle, with fake
+// MediaData, so the CarPlay view is testable on a desk with no dongle.
+import { splitAccessUnits } from './h264.ts';
+
+export const SIM_CLIP_URL = '/carplay-sim/test.h264';
+const SIM_FPS = 30; // the clip is generated at 30 fps (scripts/make-carplay-sim-clip.mjs)
+
+const TRACKS = [
+  { MediaSongName: 'Desert Highway', MediaArtistName: 'The Simulators', MediaAlbumName: 'Bench Test', MediaSongDuration: 214_000 },
+  { MediaSongName: 'Regenerative Braking', MediaArtistName: 'Volt Riders', MediaAlbumName: 'Kilowatt Hours', MediaSongDuration: 187_000 },
+  { MediaSongName: 'Supercharger Blues', MediaArtistName: 'Range Anxiety', MediaAlbumName: 'Fifteen Percent', MediaSongDuration: 241_000 },
+];
+
+export type SimSink = {
+  status: (s: 'connecting' | 'waiting-phone' | 'connected' | 'failed', reason?: string) => void;
+  plugged: () => void;
+  video: (au: Uint8Array) => void;
+  /** Frames were skipped: the decoder must wait for the next keyframe. */
+  skipped: () => void;
+  media: (payload: unknown) => void;
+};
+
+export class SimSource {
+  private timers: ReturnType<typeof setTimeout>[] = [];
+  private raf = 0;
+  private units: Uint8Array[] = [];
+  private track = 0;
+  private trackStart = 0;
+  private running = false;
+
+  constructor(private sink: SimSink) {}
+
+  async start() {
+    if (this.running) return;
+    this.running = true;
+    this.sink.status('connecting');
+    try {
+      const res = await fetch(SIM_CLIP_URL);
+      if (!res.ok) throw new Error(`${SIM_CLIP_URL}: HTTP ${res.status}`);
+      this.units = splitAccessUnits(new Uint8Array(await res.arrayBuffer()));
+      if (!this.units.length) throw new Error('the clip has no frames');
+    } catch (e) {
+      this.running = false;
+      this.sink.status('failed', `simulator clip: ${(e as Error).message}`);
+      return;
+    }
+    if (!this.running) return;
+    this.sink.status('waiting-phone');
+    this.timers.push(setTimeout(() => {
+      this.sink.plugged();
+      this.sink.status('connected');
+      this.play();
+      this.nextTrack();
+      this.timers.push(setInterval(() => this.tickMedia(), 1000) as unknown as ReturnType<typeof setTimeout>);
+    }, 1200));
+  }
+
+  /** Push access units at real time from a wall clock; skipped ticks are skipped frames. */
+  private play() {
+    const t0 = performance.now();
+    let sent = 0;
+    const tick = () => {
+      if (!this.running) return;
+      const due = Math.floor(((performance.now() - t0) / 1000) * SIM_FPS);
+      if (due > sent) {
+        // Behind (a throttled tab)? Skip to now, like a real dongle stream would
+        // after a stall; the sink drops deltas until the next keyframe.
+        if (due - sent > 3) { sent = due - 1; this.sink.skipped(); }
+        this.sink.video(this.units[sent % this.units.length]);
+        sent++;
+      }
+      this.raf = requestAnimationFrame(tick);
+    };
+    this.raf = requestAnimationFrame(tick);
+  }
+
+  private nextTrack() {
+    this.track = (this.track + 1) % TRACKS.length;
+    this.trackStart = Date.now();
+    const t = TRACKS[this.track];
+    this.sink.media({ type: 1, media: { ...t, MediaAPPName: 'Simulator', MediaSongPlayTime: 0 } });
+    const art = coverArt(t.MediaAlbumName, this.track);
+    if (art) this.sink.media({ type: 3, base64Image: art });
+  }
+
+  private tickMedia() {
+    const t = TRACKS[this.track];
+    // Songs are "shortened" to 25 s each so the cycle shows on a desk.
+    const played = Date.now() - this.trackStart;
+    if (played > 25_000) { this.nextTrack(); return; }
+    // The dongle reports the position every few seconds, not every tick.
+    if (Math.floor(played / 1000) % 5 === 0) this.sink.media({ type: 1, media: { MediaSongPlayTime: Math.round((played / 25_000) * t.MediaSongDuration) } });
+  }
+
+  stop() {
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    for (const t of this.timers) { clearTimeout(t); clearInterval(t); }
+    this.timers = [];
+  }
+}
+
+/** A generated album cover (base64 PNG, no data: prefix), like the dongle's AlbumCover packets. */
+function coverArt(label: string, n: number): string | null {
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 160;
+    const g = c.getContext('2d')!;
+    const hues = [190, 25, 290];
+    const grad = g.createLinearGradient(0, 0, 160, 160);
+    grad.addColorStop(0, `hsl(${hues[n % 3]} 70% 45%)`);
+    grad.addColorStop(1, `hsl(${(hues[n % 3] + 60) % 360} 70% 20%)`);
+    g.fillStyle = grad; g.fillRect(0, 0, 160, 160);
+    g.fillStyle = '#fff'; g.font = 'bold 54px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(label.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase(), 80, 84);
+    return c.toDataURL('image/png').split(',')[1] ?? null;
+  } catch { return null; }
+}

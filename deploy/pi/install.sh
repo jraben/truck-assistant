@@ -52,6 +52,19 @@ systemctl daemon-reload
 systemctl enable slate-brain
 systemctl restart slate-brain
 
+echo "== CarPlay dongle: Chromium policy (WebUSB, mic, autoplay) and udev"
+# Both Chromium package names read their own policy dir; install to both.
+for d in /etc/chromium/policies/managed /etc/chromium-browser/policies/managed; do
+  install -d -m 0755 "$d"
+  install -m 0644 "$APP/deploy/pi/chromium-policy.json" "$d/slate-cockpit.json"
+done
+install -m 0644 "$APP/deploy/pi/99-carlinkit.rules" /etc/udev/rules.d/99-carlinkit.rules
+getent group plugdev >/dev/null || groupadd --system plugdev
+id -nG "$KIOSK_USER" | grep -qw plugdev || usermod -aG plugdev "$KIOSK_USER"
+id -nG "$KIOSK_USER" | grep -qw audio || usermod -aG audio "$KIOSK_USER"
+udevadm control --reload-rules
+udevadm trigger --subsystem-match=usb --attr-match=idVendor=1314 || true
+
 echo "== kiosk autostart for $KIOSK_USER"
 chmod +x "$APP/deploy/pi/kiosk.sh"
 HOME_DIR=$(getent passwd "$KIOSK_USER" | cut -d: -f6)

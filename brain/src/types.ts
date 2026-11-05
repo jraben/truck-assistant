@@ -23,7 +23,11 @@ export type State = {
   fiveSwitch: (boolean | null)[];
   trip: { id: number; startedAt: string; miles: number } | null;
   truckbox: boolean;
+  nowPlaying: NowPlaying | null;
 };
+
+/** What CarPlay is playing, reported by the cockpit UI. Text only; album art stays in the UI. */
+export type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: 'carplay' };
 
 export type TouPeriod = { name: string; days: number[]; start: string; end: string; perKwh: number };
 

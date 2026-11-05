@@ -4,8 +4,8 @@ import type { Settings, State } from '../../../brain/src/types.ts';
 
 export type { Charger, ChargeSession, ChargeSummary, Health, Layout, LayoutWidget, Settings, State, Trip, TripPoint } from '../../../brain/src/types.ts';
 
-type Store<T> = { get: () => T; set: (v: T) => void; sub: (f: () => void) => () => void };
-function store<T>(init: T): Store<T> {
+export type Store<T> = { get: () => T; set: (v: T) => void; sub: (f: () => void) => () => void };
+export function store<T>(init: T): Store<T> {
   let v = init;
   const subs = new Set<() => void>();
   return {
@@ -60,6 +60,13 @@ export function connect() {
 
 export function send(msg: Record<string, unknown>): boolean {
   if (!ws || ws.readyState !== WebSocket.OPEN) { toast('Not connected to the brain'); return false; }
+  ws.send(JSON.stringify(msg));
+  return true;
+}
+
+/** Like send(), but silent when the brain is away (for background updates the user didn't ask for). */
+export function sendQuiet(msg: Record<string, unknown>): boolean {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
   ws.send(JSON.stringify(msg));
   return true;
 }

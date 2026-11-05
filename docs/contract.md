@@ -47,14 +47,20 @@ Relay names (default, editable in settings): 1 Bed lights, 2 Light bar,
 | `slate/brain/status` | `online` / `offline` |
 | `slate/brain/state` | the JSON `state` object below, retained, at most 1/s |
 | `slate/brain/trip/ended` | a trip summary JSON (see `Trip`) |
-| `homeassistant/…/config` | HA discovery for: SoC, range, location (device_tracker), speed, charging, trip distance |
+| `homeassistant/…/config` | HA discovery for: SoC, range, location (device_tracker), speed, charging, trip distance, now playing (title; artist/album/source as attributes) |
 
 ## HTTP + WebSocket (brain, port 8080)
 
 - `GET  /ws` WebSocket. Server sends `{"type":"state","data":State}` on connect
   and on every change (at most 10/s). Client sends
   `{"type":"relay","id":"relay_1","on":true}` or
-  `{"type":"soc","value":72}` (manual charge level).
+  `{"type":"soc","value":72}` (manual charge level), or
+  `{"type":"media","title":"…","artist":"…","album":"…"}` (what CarPlay is
+  playing; strings or null, at most 200 characters each; no title and no
+  artist = nothing playing). The UI sends it when the song changes, not on
+  every position tick, and again after reconnecting. The brain keeps the
+  report from the cockpit that sent it and clears `nowPlaying` when that
+  socket closes. Album art never leaves the UI (not in State, not in MQTT).
 - `GET  /api/state` → `State`
 - `GET  /api/settings` → `Settings`; `PUT /api/settings` (partial merge)
 - `GET  /api/chargers?lat=&lon=&soc=` → ranked `Charger[]`
@@ -86,7 +92,10 @@ type State = {
   fiveSwitch: (boolean | null)[];   // 5 entries
   trip: { id: number; startedAt: string; miles: number } | null;  // current trip
   truckbox: boolean;                // truck box online
+  nowPlaying: NowPlaying | null;    // from the cockpit's CarPlay; null = nothing playing or CarPlay not connected
 };
+
+type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: 'carplay' };
 
 type Settings = {
   truckId: string;

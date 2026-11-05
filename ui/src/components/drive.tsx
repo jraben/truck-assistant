@@ -2,6 +2,7 @@ import type { State } from '../lib/brain.ts';
 import { useChargers } from '../lib/data.ts';
 import { fmtNum } from '../lib/fmt.ts';
 import { Card, V, whyGps, whySoc, whyTruck } from './common.tsx';
+import { NowPlayingMini } from './carplay.tsx';
 
 export type WP = { s: State | null; props?: Record<string, unknown>; go: (view: string) => void };
 
@@ -111,17 +112,6 @@ export function Tilt({ s }: WP) {
   );
 }
 
-export function CarPlay(_: WP) {
-  return (
-    <div class="cpscreen" id="carplay-host" data-aspect="1600x720">
-      <div>
-        <h2>CarPlay goes here</h2>
-        <p>The Carlinkit dongle's video lands in this panel once react-carplay is embedded (#carplay-host). Waze and music stay on the phone; the strip beside it is ours, so speed and battery never leave the screen.</p>
-      </div>
-    </div>
-  );
-}
-
 export function LiveStrip({ s }: WP) {
   return (
     <div class="strip-live">
@@ -130,6 +120,7 @@ export function LiveStrip({ s }: WP) {
         <div class="big num"><V v={fmtNum(s?.soc)} why={whySoc(s)} /><small>%</small></div>
       </Card>
       <Card label="Range"><div class="big num"><V v={fmtNum(s?.rangeMi)} why={whySoc(s)} /><small>mi</small></div></Card>
+      <NowPlayingMini />
     </div>
   );
 }

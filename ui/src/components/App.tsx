@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { DEFAULT_LAYOUT } from '../../../brain/src/layout.ts';
 import { api, linkStore, loadSettings, settingsStore, stateStore, toast, toastStore, useStore, type Layout, type Settings, type State } from '../lib/brain.ts';
-import { allThemes, paintTheme, pickTheme, type Theme } from '../lib/theme.ts';
+import { allThemes, isLight, paintTheme, pickTheme, type Theme } from '../lib/theme.ts';
+import { carplay } from '../carplay/controller.ts';
 import { V } from './common.tsx';
 import { ChargePrompt } from './costs.tsx';
 import { widgetFor } from './widgets.tsx';
@@ -68,7 +69,7 @@ export function App() {
   const shown = useRef<Theme | null>(null);
   const want = pickTheme(settings?.theme, gpsPos, now);
   if (!reverse || !shown.current) shown.current = want;
-  useEffect(() => { paintTheme(shown.current!); }, [shown.current]);
+  useEffect(() => { paintTheme(shown.current!); carplay.setNight(!isLight(shown.current!.colors.bg)); }, [shown.current]);
 
   const cur = layout.views.find((v) => v.id === view) ?? layout.views[0];
   const cols = Math.max(1, ...cur.widgets.map((w) => w.col + w.w - 1));

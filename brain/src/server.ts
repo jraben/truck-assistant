@@ -10,6 +10,7 @@ import { config } from './config.ts';
 import { maskSettings, SettingsError } from './settings.ts';
 import { summarize, type Period } from './charges/summary.ts';
 import { ChargeInputError, parseSessionInput, toCsv } from './charges/store.ts';
+import { parseMediaMessage } from './media.ts';
 
 /** Header carrying a human-readable note with GET /api/chargers (e.g. "no API keys yet"). */
 export const CHARGER_MESSAGE_HEADER = 'x-slate-message';
@@ -33,6 +34,9 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   };
   brain.on('change', broadcast);
 
+  // The cockpit whose CarPlay reported now playing; when it goes away, so does the report.
+  let mediaFrom: WebSocket | null = null;
+
   app.get('/ws', { websocket: true }, (socket) => {
     clients.add(socket);
     socket.send(JSON.stringify({ type: 'state', data: brain.getState() }));
@@ -44,10 +48,20 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
         if (!r.ok) socket.send(JSON.stringify({ type: 'error', message: r.error }));
       } else if (m.type === 'soc' && typeof m.value === 'number' && m.value >= 0 && m.value <= 100) {
         brain.setManualSoc(m.value);
+      } else if (m.type === 'media') {
+        const np = parseMediaMessage(m);
+        if (np === undefined) return;
+        if (np === null && mediaFrom !== null && mediaFrom !== socket) return; // another screen with no CarPlay doesn't clear it
+        mediaFrom = np ? socket : null;
+        brain.setNowPlaying(np);
       }
     });
-    socket.on('close', () => clients.delete(socket));
-    socket.on('error', () => clients.delete(socket));
+    const gone = () => {
+      clients.delete(socket);
+      if (mediaFrom === socket) { mediaFrom = null; brain.setNowPlaying(null); }
+    };
+    socket.on('close', gone);
+    socket.on('error', gone);
   });
 
   // ---- API -------------------------------------------------------------------

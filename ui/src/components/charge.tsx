@@ -5,6 +5,7 @@ import { refreshChargers, useChargers } from '../lib/data.ts';
 import { wazeUrl } from '../lib/fmt.ts';
 import { Card, Modal, V, whySoc } from './common.tsx';
 import { socLabel, type WP } from './drive.tsx';
+import { CarPlayWazeHint } from './carplay.tsx';
 
 const NEG = /below|past your|avoid|unknown|No .* plug|needs an adapter|not checked/i;
 
@@ -45,7 +46,7 @@ export function WazeModal({ ch, onClose }: { ch: Charger; onClose: () => void })
         <div class="qr" dangerouslySetInnerHTML={{ __html: svg }} aria-label="QR code for the Waze link" />
         <div class="grow" style="display:grid;gap:10px">
           <div style="font-family:var(--display);font-size:24px;font-weight:600">{ch.name}</div>
-          <div class="dimtxt">Scan with the phone camera, and Waze opens with the route. CarPlay shows it in the CarPlay view.</div>
+          <CarPlayWazeHint />
           <code style="word-break:break-all;font-size:13px">{url}</code>
           <div class="row wrap">
             <button class="btn" type="button" onClick={() => { void navigator.clipboard?.writeText(url).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy link'}</button>
