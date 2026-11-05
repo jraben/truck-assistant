@@ -10,7 +10,8 @@ import { config } from './config.ts';
 import { maskDriver, maskSettings, SettingsError } from './settings.ts';
 import { summarize, type Period } from './charges/summary.ts';
 import { ChargeInputError, parseSessionInput, toCsv } from './charges/store.ts';
-import { parseMediaMessage } from './media.ts';
+import { mediaSourceOf, NowPlayingHub, parseMediaMessage } from './media.ts';
+import { registerTrackB } from './trackb.ts';
 import { PlaceInputError } from './stops/service.ts';
 import { ImportError } from './import/phone.ts';
 import { VehicleError, type MenuLevel } from './gas/vehicles.ts';
@@ -51,11 +52,14 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   };
   brain.on('change', broadcast);
 
-  // The cockpit whose CarPlay reported now playing; when it goes away, so does the report.
-  let mediaFrom: WebSocket | null = null;
+  // Now playing: each cockpit socket (per source) and the brain's Spotify poller report; when a socket goes away, so do its reports.
+  const nowPlaying = new NowPlayingHub((np) => brain.setNowPlaying(np));
+  const socketIds = new WeakMap<WebSocket, number>();
+  let nextSocketId = 0;
 
   app.get('/ws', { websocket: true }, (socket) => {
     clients.add(socket);
+    socketIds.set(socket, ++nextSocketId);
     socket.send(JSON.stringify({ type: 'state', data: brain.getState() }));
     socket.on('message', (raw: Buffer) => {
       let m: Record<string, unknown>;
@@ -66,16 +70,14 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
       } else if (m.type === 'soc' && typeof m.value === 'number' && m.value >= 0 && m.value <= 100) {
         brain.setManualSoc(m.value);
       } else if (m.type === 'media') {
-        const np = parseMediaMessage(m);
-        if (np === undefined) return;
-        if (np === null && mediaFrom !== null && mediaFrom !== socket) return; // another screen with no CarPlay doesn't clear it
-        mediaFrom = np ? socket : null;
-        brain.setNowPlaying(np);
+        const np = parseMediaMessage(m), src = mediaSourceOf(m);
+        if (np === undefined || src === undefined) return;
+        nowPlaying.report(`ws${socketIds.get(socket)}:${src}`, np); // a screen with nothing playing doesn't clear another's
       }
     });
     const gone = () => {
       clients.delete(socket);
-      if (mediaFrom === socket) { mediaFrom = null; brain.setNowPlaying(null); }
+      nowPlaying.dropPrefix(`ws${socketIds.get(socket)}:`);
     };
     socket.on('close', gone);
     socket.on('error', gone);
@@ -243,6 +245,9 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   app.delete<{ Params: { id: string } }>('/api/charges/:id', async (req, reply) => {
     return brain.charges.delete(Number(req.params.id)) ? reply.code(204).send() : reply.code(404).send({ error: 'no such session' });
   });
+
+  // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----
+  await registerTrackB(app, brain, nowPlaying);
 
   // ---- UI --------------------------------------------------------------------
   const uiBuilt = existsSync(path.join(config.uiDir, 'index.html'));

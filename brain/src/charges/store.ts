@@ -22,7 +22,7 @@ export type SessionInput = Partial<Omit<ChargeSession, 'id'>>;
 
 const PLACES = ['home', 'public', 'other'] as const;
 const COST_SOURCES = ['receipt', 'home-rate', 'free'] as const;
-const SOURCES = ['manual', 'detected', 'home-charger'] as const;
+const SOURCES = ['manual', 'detected', 'home-charger', 'receipt'] as const;
 
 function optNum(v: unknown, name: string, min: number, max: number): number | null | undefined {
   if (v === undefined) return undefined;
