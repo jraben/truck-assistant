@@ -9,12 +9,17 @@ Built for Jeff's truck first, published for other Slate owners later.
 
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
-- **Hardware:** not chosen yet. Three paths are being planned independently,
-  then compared:
-  - `docs/plans/plan-pi5.md`: Raspberry Pi 5 + Carlinkit + 10" touchscreen
-  - `docs/plans/plan-android.md`: Android screen + Carlinkit (in progress)
-  - `docs/plans/plan-pi-esp32.md`: Pi brain + ESP32 touch display (in progress)
+- **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a
+  10.1" HDMI touch panel (CarPlay, cameras, browser) and/or a cheap ESP32-P4
+  panel (gauges, switches). Android head unit ruled out. Pi 4 vs Pi 5 is
+  settled on the bench. Comparison: `docs/options.html`.
+  - `docs/plans/plan-pi5.md`: the main-screen half
+  - `docs/plans/plan-pi-esp32.md`: the small-screen half
+  - `docs/plans/plan-android.md`: not chosen, kept for the record
 - **Feature ideas from other EVs:** `docs/ev-features.md`
+- **What the Slate forums say** (truck data, speakers, Five Switch, dash
+  sizes, backup camera): `docs/forum-findings.md`. Mostly claims from
+  prototypes; production deliveries for most reservations look like Q2 2027.
 
 ## Wants
 

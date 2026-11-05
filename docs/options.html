@@ -57,15 +57,20 @@ ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
   </header>
 
   <section class="verdict">
-    <span class="eyebrow">Recommendation</span>
-    <h2>Android head unit (TEYES CC3 360) + Carlinkit</h2>
-    <p>It covers every want, nine of them natively: CarPlay with Waze, a real browser, four cameras with 360° stitching, a built-in amp, and ignition and reverse wires. It has no battery to swell in a Phoenix cab. It costs about the same as the Pi 5 build and needs the least custom hardware, which also makes it the easiest for other Slate owners to copy.</p>
-    <p>The tradeoff is the look. CarPlay runs in its own app beside our dashboard, not inside it. If having CarPlay framed by our own gauges matters more than fewer weekends of wiring, pick the Pi 5. Pi + ESP32 is the cheapest by about $350, but Waze and the browser leave the screen.</p>
+    <span class="eyebrow">Decision · Jeff, Nov 5</span>
+    <h2>One Pi brain, two screens: options 2 and 3 merged</h2>
+    <p>The Android head unit is out. Options 2 and 3 share the same core: a Pi under the dash with the car power board, CAN, GPS, SSD, relays and the web portal. They differ only in the screen, so the build is one Pi brain that drives either or both:</p>
+    <ul style="margin:0;padding-left:20px;display:grid;gap:4px">
+      <li><b>Main screen:</b> a 10.1" HDMI touch panel in a printed tablet shell, with CarPlay (Waze), cameras and the browser drawn inside our own layout. This is option 2.</li>
+      <li><b>Small screen:</b> the $44 ESP32-P4 panel, for gauges and switches. It boots in 1–2 seconds and never stalls on video. This is option 3, as a second screen or a cheap start.</li>
+    </ul>
+    <p>Start cheap with the Pi and the ESP32 panel (about $415), then add the HDMI panel and the CarPlay dongle when the Tablet Mount is measured. Which Pi is still open: the Pi 4 has the hardware video decoder and runs cooler, while the Pi 5 has more headroom for CarPlay plus four cameras. Decide on the bench.</p>
+    <p class="note">The Android analysis is kept below for the record.</p>
   </section>
 
   <section class="cards" aria-label="The three paths">
-    <article class="card pick">
-      <span class="chip">RECOMMENDED</span>
+    <article class="card" style="opacity:.7">
+      <span class="chip">NOT CHOSEN</span>
       <h3>Android head unit + Carlinkit</h3>
       <div class="price">$780–960 <small>base</small></div>
       <div class="note">$1,050–1,330 with 360° kit + hitch cam</div>
@@ -77,8 +82,8 @@ ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
         <li>Native 4-camera 360° input and amplifier</li>
       </ul>
     </article>
-    <article class="card">
-      <span class="chip">MOST INTEGRATED</span>
+    <article class="card pick">
+      <span class="chip">CHOSEN · MAIN SCREEN</span>
       <h3>Raspberry Pi 5 + Carlinkit</h3>
       <div class="price">~$700 <small>base</small></div>
       <div class="note">$1,050–1,200 with budget 360° kit</div>
@@ -90,8 +95,8 @@ ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
         <li>Most to build, most to keep running</li>
       </ul>
     </article>
-    <article class="card">
-      <span class="chip">CHEAPEST</span>
+    <article class="card pick">
+      <span class="chip">CHOSEN · SMALL SCREEN</span>
       <h3>Pi 4 brain + ESP32-P4 screen</h3>
       <div class="price">~$415 <small>base</small></div>
       <div class="note">$460 with rear cam, $680 with 360°</div>
