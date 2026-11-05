@@ -6,7 +6,7 @@
 // condition lasts; event rules (motion, charging, geofence, theft) fire once
 // per event, cooldown permitting.
 import { metersBetween } from '../geo.ts';
-import { ALERT_META } from './store.ts';
+import { ALERT_META } from './alertMeta.ts';
 import type { AlertKind, AlertSettings } from './types.ts';
 
 export type AlertInput = {

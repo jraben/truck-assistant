@@ -16,8 +16,8 @@ async function main() {
   const remote = new RemoteService(brain, db, config.dataDir, config.sim);   // Track C: cameras, dashcam, alerts, remote
   await registerRemote(app, remote);
   brain.start();
-  await remote.start();
   await app.listen({ port: config.port, host: config.host });
+  await remote.start();
   console.log(`[brain] listening on http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`);
 
   let stopping = false;

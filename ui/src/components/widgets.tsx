@@ -5,18 +5,7 @@ import { Chargers, SocSlider } from './charge.tsx';
 import { CostSessions, CostSummary } from './costs.tsx';
 import { Trips } from './trips.tsx';
 import { CarPlay, NowPlayingW } from './carplay.tsx';
-
-function Cam({ s, props }: WP) {
-  const label = String(props?.label ?? 'Camera');
-  const live = !!props?.guides && s?.reverse === true;
-  return (
-    <div class={`cam ${live ? 'live' : ''}`}>
-      <span class="lbl">{label} · no feed yet</span>
-      {!!props?.guides && <div class="guides" />}
-      <span class="lbl">{String(props?.note ?? '')}</span>
-    </div>
-  );
-}
+import { CamsView, CamTile } from './cams.tsx';
 
 function Unknown({ props }: WP) {
   return <div class="card"><span class="lbl">Unknown widget</span><span class="dimtxt">{String(props?.type ?? '')}</span></div>;
@@ -28,6 +17,6 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   carplay: CarPlay, liveStrip: LiveStrip, nowPlaying: NowPlayingW,
   relays: Relays, fiveSwitch: FiveSwitch, tpms: Tpms,
   chargers: Chargers, socSlider: SocSlider, costSummary: CostSummary, costSessions: CostSessions,
-  trips: Trips, cam: Cam,
+  trips: Trips, cam: CamTile, cams: CamsView,
 };
 export const widgetFor = (t: string) => WIDGETS[t] ?? Unknown;

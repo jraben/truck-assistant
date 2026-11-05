@@ -7,6 +7,7 @@ import { ChargeForm, CostSessions, CostSummary } from '../components/costs.tsx';
 import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
+import { RemoteSection } from './RemoteSection.tsx';
 
 const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -185,6 +186,8 @@ export function SettingsApp() {
         </label>
         <p class="help">Read from HA's mqtt_statestream (base_topic: homeassistant) when the bridge is up; used for home session kWh instead of the charge-level estimate. The token is stored on the truck only and never shown again in full.</p>
       </Section>
+
+      <RemoteSection />
 
       <Section id="import" title="Phone history" help="Real trips and stops before the truck arrives: replay a driver's phone locations from Home Assistant.">
         <ImportSection settings={settings} haReady={haReady} />
