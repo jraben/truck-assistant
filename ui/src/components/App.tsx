@@ -8,6 +8,7 @@ import { ChargePrompt } from './costs.tsx';
 import { widgetFor } from './widgets.tsx';
 import { DriverBadge, DriverPanel, DriverPrompt } from './drivers.tsx';
 import { NetPanel, NetPill } from './network.tsx';
+import { WeatherOverlay, WeatherStrip } from '../drive/WeatherStrip.tsx';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -81,7 +82,7 @@ export function App() {
   const rows = Math.max(1, ...cur.widgets.map((w) => w.row + w.h - 1));
 
   return (
-    <div class="app">
+    <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
       <header class="strip">
         <span class="brand">SLATE</span>
         <span class="pill" title={link.connected ? 'Connected to the brain' : 'Reconnecting to the brain…'}><span class={`dot ${link.connected ? 'ok' : 'bad'}`} />{link.connected ? 'Brain' : 'Reconnecting'}</span>
@@ -90,7 +91,7 @@ export function App() {
         <NetPill s={s} open={netOpen} onClick={() => setNetOpen(!netOpen)} />
         {s?.place && <span class="pill hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? 'Unnamed stop'}</span>}
         <span class="sp" />
-        <span class="hide-sm num">Cabin <V v={s?.cabinTempF?.toFixed(0)} why={s?.truckbox ? 'Not reported yet' : 'Truck box offline'} />°F</span>
+        <WeatherStrip s={s} />
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
       </header>
 
@@ -103,7 +104,7 @@ export function App() {
         <button type="button" class="voice" onClick={() => toast('WOPR voice is a later phase')}><Ico d={MIC} />WOPR</button>
         <button type="button" aria-expanded={driverOpen} title={s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver'} onClick={() => { setDriverOpen(!driverOpen); setPicker(false); }}><DriverBadge d={s?.driver ?? null} size={30} />{s?.driver?.name ?? 'Driver'}</button>
         <button type="button" aria-expanded={picker} onClick={() => { setPicker(!picker); setDriverOpen(false); }}><Ico d={PALETTE} />Theme</button>
-        <a href="/settings"><Ico d={GEAR} />Settings</a>
+        <a href="/settings" class={s?.drive?.lockout.locked ? 'locked' : undefined} aria-disabled={s?.drive?.lockout.locked || undefined} title={s?.drive?.lockout.locked ? 'Settings open when the truck stops' : undefined}><Ico d={GEAR} />Settings</a>
       </nav>
 
       <main class="stage">
@@ -124,6 +125,7 @@ export function App() {
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <ChargePrompt />
+      <WeatherOverlay s={s} />
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
     </div>
   );

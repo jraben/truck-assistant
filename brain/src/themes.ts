@@ -18,6 +18,7 @@ export type Theme = {
   fonts: { display: string; body: string; mono: string };
   radius: number;                     // corner scale: 0 square .. 2 very round, 1 = default
   glow: number;                       // 0..1 accent glow on active controls, keep it subtle
+  speedo?: 'digital' | 'sweep' | 'fifty-seven' | 'ribbon' | 'minimal';  // Track A: the speedometer this theme pairs with (a driver's "auto")
 };
 
 export type ThemeSettings = {
@@ -53,6 +54,10 @@ export const PRESETS: Theme[] = [
   { ...base, id: 'clean-slate', name: 'Clean Slate', fonts: { ...base.fonts, body: 'Inter' }, colors: {
     bg: '#eceff1', panel: '#f8f9fa', panel2: '#e3e7ea', line: '#c8cfd4', fg: '#1b2024', dim: '#58636b',
     accent: '#37474f', accentInk: '#ffffff', ok: '#2e7d32', warn: '#8a5c00', bad: '#c62828' }, radius: 1.2 },
+  // Track A: cream and chrome, a turquoise accent and a red needle; pairs with the '57 speedometer.
+  { ...base, id: 'bel-air', name: 'Bel Air', fonts: { ...base.fonts, display: 'Barlow Condensed' }, colors: {
+    bg: '#e8dfc8', panel: '#f4eedd', panel2: '#ddd1b3', line: '#b4a27c', fg: '#2a1e15', dim: '#5e4f3d',
+    accent: '#16726f', accentInk: '#ffffff', ok: '#2f6b3a', warn: '#8a5300', bad: '#b11f24' }, radius: 1.6, speedo: 'fifty-seven' },
 ];
 
 export const defaultThemeSettings = (): ThemeSettings => ({ active: 'night', auto: { enabled: true, day: 'day', night: 'night' }, custom: [] });
@@ -113,7 +118,9 @@ export function validateTheme(t: unknown, i: number): Theme {
   const radius = Number(x.radius ?? 1), glow = Number(x.glow ?? 0);
   if (!(radius >= 0 && radius <= 2)) throw new ThemeError(`${where}.radius must be 0 to 2`);
   if (!(glow >= 0 && glow <= 1)) throw new ThemeError(`${where}.glow must be 0 to 1`);
-  return { id: x.id, name: x.name.trim().slice(0, 40), colors, fonts, radius, glow };
+  const out: Theme = { id: x.id, name: x.name.trim().slice(0, 40), colors, fonts, radius, glow };
+  if (['digital', 'sweep', 'fifty-seven', 'ribbon', 'minimal'].includes(x.speedo)) out.speedo = x.speedo;
+  return out;
 }
 
 export function validateThemeSettings(v: unknown): ThemeSettings {

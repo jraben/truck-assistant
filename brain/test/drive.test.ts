@@ -96,8 +96,8 @@ describe('since last charge', () => {
   it('picks the most recently ended session', () => {
     expect(lastEndedCharge([session({ id: 1 }), session({ id: 2, endedAt: '2027-05-03T00:00:00Z' }), session({ id: 3, endedAt: null })])?.id).toBe(2);
   });
-  it('uses the SoC drop when both ends are known', () => {
-    const r = sinceCharge(session({}), trips, { soc: 70, packKwh: 50, eff: { city: 4, highway: 3.2 } });
+  it('uses the SoC drop when the reading is real (CAN) and believable', () => {
+    const r = sinceCharge(session({}), trips, { soc: 70, socReal: true, packKwh: 50, eff: { city: 4, highway: 3.2 } });
     expect(r.miles).toBe(40);
     expect(r.pctUsed).toBe(20);
     expect(r.kwh).toBe(10);
@@ -105,16 +105,18 @@ describe('since last charge', () => {
     expect(r.miPerKwh).toBe(4);
     expect(r.costPerMile).toBeCloseTo((16 / 40) * 10 / 40, 3); // $0.40/kWh x 10 kWh / 40 mi
   });
-  it('falls back to miles / per-mode efficiency', () => {
-    const r = sinceCharge(session({ endSoc: null, cost: null }), trips, { soc: 70, packKwh: 50, eff: { city: 4, highway: 3.2 } });
-    expect(r.kwhSource).toBe('miles');
-    expect(r.kwh).toBe(11.3); // 20 city mi / 4 + 20 highway mi / 3.2, to 0.1
-    expect(r.pctUsed).toBeNull();
-    expect(r.costPerMile).toBeNull();
+  it('falls back to miles / per-mode efficiency for an estimated or implausible SoC', () => {
+    for (const now of [{ soc: 70, socReal: false }, { soc: 5, socReal: true }]) {
+      const r = sinceCharge(session({ cost: null }), trips, { ...now, packKwh: 50, eff: { city: 4, highway: 3.2 } });
+      expect(r.kwhSource).toBe('miles');
+      expect(r.kwh).toBe(11.3); // 20 city mi / 4 + 20 highway mi / 3.2, to 0.1
+      expect(r.pctUsed).toBeCloseTo(22.5, 1); // as a share of the 50 kWh pack
+      expect(r.costPerMile).toBeNull();
+    }
   });
   it('zero miles is zero, not NaN', () => {
-    const r = sinceCharge(session({ endSoc: null }), [], { soc: null, packKwh: 50, eff: { city: 4, highway: 3.2 } });
-    expect(r).toMatchObject({ miles: 0, kwh: 0, miPerKwh: null, costPerMile: null });
+    const r = sinceCharge(session({ endSoc: null }), [], { soc: null, socReal: false, packKwh: 50, eff: { city: 4, highway: 3.2 } });
+    expect(r).toMatchObject({ miles: 0, kwh: 0, miPerKwh: null, costPerMile: null, pctUsed: 0 });
   });
 });
 

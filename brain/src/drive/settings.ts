@@ -1,5 +1,6 @@
 // Defaults and validation for the Track A settings blocks: Settings.truck,
 // Settings.drive and Driver.drive. Pure. Called from ../settings.ts.
+import type { Layout } from '../types.ts';
 import { SPEEDO_STYLES, type DriverDrive, type DriveSettings, type TruckLook } from './types.ts';
 
 export class DriveSettingsError extends Error {}
@@ -128,4 +129,17 @@ export function validateDriverDrive(v: unknown, where = 'drive'): DriverDrive {
     overLimitWarn: bool(v.overLimitWarn, d.overLimitWarn),
     overLimitMph: num(v.overLimitMph, `${where}.overLimitMph`, 0, 25, d.overLimitMph),
   };
+}
+
+/** The Drive view's widgets before Track A (the old default). */
+const LEGACY_DRIVE = JSON.stringify(['speed', 'soc', 'nowPlaying', 'nextCharger', 'trip', 'cabin', 'aux12v', 'tilt']);
+export const DRIVE_VIEW = { id: 'drive', label: 'Drive', widgets: [{ type: 'drive', col: 1, row: 1, w: 12, h: 2 }] };
+
+/** A layout whose Drive view is still the old default gets the new Drive screen; a customised one is left alone. */
+export function migrateDriveLayout(l: Layout): Layout {
+  const i = l.views.findIndex((v) => v.id === 'drive');
+  if (i < 0 || JSON.stringify(l.views[i].widgets.map((w) => w.type)) !== LEGACY_DRIVE) return l;
+  const views = l.views.slice();
+  views[i] = { ...structuredClone(DRIVE_VIEW), label: l.views[i].label };
+  return { ...l, views };
 }

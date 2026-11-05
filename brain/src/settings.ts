@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { ChargingPrefs, CompareVehicle, Driver, Layout, Settings, WifiNet } from './types.ts';
 import { DEFAULT_LAYOUT } from './layout.ts';
-import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
+import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
 import { defaultThemeSettings, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
 
 export const RELAY_IDS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'] as const;
@@ -304,7 +304,7 @@ export function validateDriver(d: unknown, idHint: string | number = '?'): Drive
   if (x.tracker === undefined || x.tracker === '') x.tracker = null;
   if (x.tracker !== null && (typeof x.tracker !== 'string' || !/^(person|device_tracker)\.[a-z0-9_]+$/.test(x.tracker))) throw new SettingsError(`${where}: tracker must look like person.jeff or device_tracker.jeffs_iphone`);
   try { x.theme = validateThemeSettings(x.theme); } catch (e) { if (e instanceof ThemeError) throw new SettingsError(`${where}: ${e.message}`); throw e; }
-  x.layout = validateLayout(x.layout, `${where} layout`);
+  x.layout = migrateDriveLayout(validateLayout(x.layout, `${where} layout`));
   x.charging = validateCharging(x.charging, `${where} charging`);
   if (!Array.isArray(x.favouritePlaceIds) || x.favouritePlaceIds.some((n) => !Number.isInteger(n))) x.favouritePlaceIds = [];
   if (x.guest) x.favouritePlaceIds = [];

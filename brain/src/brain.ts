@@ -137,7 +137,6 @@ export class Brain extends EventEmitter {
       speedMph: this.s.speedMph, gps: this.s.gps, soc: this.soc.value, socSource: this.soc.value === null ? null : this.soc.source,
       cabinTempF: this.s.cabinTempF, ignition: this.s.ignition, tilt: this.s.tilt, tripId: this.s.trip?.id ?? null,
       online: this.net.status?.link !== 'offline' || this.net.status?.backend !== 'nmcli',
-      placeName: this.s.place?.name ?? null,
     }));
     this.charges.onChange(() => this.drive.refreshSince());
   }

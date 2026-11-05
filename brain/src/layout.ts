@@ -4,15 +4,9 @@ import type { Layout } from './types.ts';
 /** 12 columns x 2 rows on the 1920x720 bar, unless a view says otherwise. */
 export const DEFAULT_LAYOUT: Layout = {
   views: [
+    // The Track A Drive screen: speed, battery and range, context cards (ui/src/drive).
     { id: 'drive', label: 'Drive', widgets: [
-      { type: 'speed', col: 1, row: 1, w: 3, h: 2 },
-      { type: 'soc', col: 4, row: 1, w: 3, h: 2 },
-      { type: 'nowPlaying', col: 7, row: 1, w: 3, h: 1 },
-      { type: 'nextCharger', col: 10, row: 1, w: 3, h: 1 },
-      { type: 'trip', col: 7, row: 2, w: 2, h: 1 },
-      { type: 'cabin', col: 9, row: 2, w: 1, h: 1 },
-      { type: 'aux12v', col: 10, row: 2, w: 1, h: 1 },
-      { type: 'tilt', col: 11, row: 2, w: 2, h: 1 },
+      { type: 'drive', col: 1, row: 1, w: 12, h: 2 },
     ] },
     { id: 'carplay', label: 'CarPlay', widgets: [
       { type: 'carplay', col: 1, row: 1, w: 10, h: 2 },

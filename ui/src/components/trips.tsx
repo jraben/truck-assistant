@@ -3,6 +3,7 @@ import { api, settingsStore, useStore, type ImportJob, type Place, type PlaceSug
 import { fmtDate, fmtDuration, fmtTime } from '../lib/fmt.ts';
 import { Card, Modal, V } from './common.tsx';
 import type { WP } from './drive.tsx';
+import { DrivingLock, ModeSplit } from '../drive/Lock.tsx';
 
 type Detail = Trip & { points: TripPoint[] };
 type Tab = 'day' | 'trips' | 'places';
@@ -62,6 +63,7 @@ export function Trips({ s }: WP) {
   const nameOf = (id: string | null) => drivers.find((d) => d.id === id)?.name ?? null;
 
   return (
+    <DrivingLock what="list" summary={s?.trip ? <>This trip: <b class="num">{s.trip.miles.toFixed(1)} mi</b></> : null}>
     <div class="trips">
       <Card label="Trips" right={
         <div class="row" style="gap:4px">
@@ -125,10 +127,12 @@ export function Trips({ s }: WP) {
       <Card class="route" label={detail ? `${tripTitle(detail)} · ${detail.miles.toFixed(1)} mi` : 'Route'} right={detail && (detail.source === 'phone'
         ? <PhoneTag />
         : <span class="dimtxt num" style="font-size:13px">SoC <V v={detail.startSoc?.toFixed(0)} why="Charge level unknown at start" />% → <V v={detail.endSoc?.toFixed(0)} why={detail.endedAt ? 'Charge level unknown at end' : 'Trip in progress'} />%</span>)}>
+        {detail && <ModeSplit t={detail} kwh />}
         {detail ? <RoutePlot pts={detail.points} /> : <div class="dimtxt">Pick a trip.</div>}
       </Card>
       {naming && <NameStop stopId={naming.stopId} initial={naming.name} onClose={(saved) => { setNaming(null); if (saved) void load(); }} />}
     </div>
+    </DrivingLock>
   );
 }
 
@@ -162,6 +166,7 @@ function TripRow({ t, sel, onClick, showDate, driverName }: { t: Trip; sel: bool
         <span class="num">{t.source === 'phone' ? '~' : ''}{t.miles.toFixed(1)} mi</span><span>{fmtDuration(t.durationS)}</span>
         {t.kwhEst !== null && <span class="num">~{t.kwhEst.toFixed(1)} kWh</span>}
         {driverName && <span>{driverName}</span>}
+        <ModeSplit t={t} />
         {t.source === 'phone' && <PhoneTag />}
       </div>
     </button>

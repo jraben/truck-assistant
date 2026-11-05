@@ -27,7 +27,6 @@ export type DriveInputs = {
   tilt: { pitch: number; roll: number } | null;
   tripId: number | null;
   online: boolean;
-  placeName: string | null;              // the stop the truck is at, if named
 };
 
 export type DriveDeps = {
@@ -63,6 +62,7 @@ export class DriveService {
   private bright: { backend: Backend | null; pct: number | null; writtenAt: number; error: string | null } = { backend: null, pct: null, writtenAt: 0, error: null };
   private snapAt = 0;
   private last: string = '';
+  private placeNow: string | null = null;
 
   constructor(d: DriveDeps, inputs: () => DriveInputs) {
     this.d = d;
@@ -130,7 +130,7 @@ export class DriveService {
       const c = lastEndedCharge(this.d.charges());
       if (!c) { this.since = null; this.sinceWhy = 'No charge logged yet: it starts counting when a charge session ends'; return; }
       const i = this.inputs();
-      this.since = sinceCharge(c, this.d.tripsSince(c.endedAt!).filter((t) => t.source === 'truck'), { soc: i.soc, packKwh: st.packKwh, eff: { city: this.range.eff('city'), highway: this.range.eff('highway') } });
+      this.since = sinceCharge(c, this.d.tripsSince(c.endedAt!).filter((t) => t.source === 'truck'), { soc: i.soc, socReal: i.socSource === 'can', packKwh: st.packKwh, eff: { city: this.range.eff('city'), highway: this.range.eff('highway') } });
       this.sinceWhy = null;
     } catch (e) { console.error('[drive] since charge', e); }
   }
@@ -146,9 +146,9 @@ export class DriveService {
     this.lock = lockStep(this.lock, i.speedMph, now, st.drive.lockoutMph);
     const pos: LatLon | null = i.gps?.fix ? { lat: i.gps.lat, lon: i.gps.lon } : null;
 
-    if (this.n % 10 === 0) this.refreshSince();
+    if (this.n % 10 === 0) { this.refreshSince(); this.placeNow = pos ? resolveName(pos, this.d.tiers())?.name ?? null : null; }
     if (this.n % 30 === 1 && pos && needsRefresh(this.weather.lastFetch(), pos, now, i.online)) {
-      void this.weather.refresh(pos, (p) => i.placeName ?? resolveName(p, this.d.tiers())?.name ?? null).then((ok) => { if (ok) this.d.changed(); });
+      void this.weather.refresh(pos, (p) => resolveName(p, this.d.tiers())?.name ?? null).then((ok) => { if (ok) this.d.changed(); });
     }
     if (st.drive.speedLimits && pos) this.speedLimit(pos, i, now);
     else if (!st.drive.speedLimits) this.limit = null;
@@ -233,7 +233,7 @@ export class DriveService {
       sinceCharge: this.since, sinceChargeWhy: this.since ? null : this.sinceWhy,
       speedLimit: this.limit,
       speedLimitWhy: this.limit ? null : !st.drive.speedLimits ? 'Speed limits are off in settings' : !pos ? 'No GPS fix' : !i.online ? 'Offline: limits come from OpenStreetMap' : this.limits.error ?? 'No limit mapped for this road yet',
-      weather: r ? briefOf(r, now) : null,
+      weather: r ? { ...briefOf(r, now), place: this.placeNow ?? r.place } : null,
       weatherWhy: r ? null : !pos ? 'Waiting for a GPS fix' : !i.online ? 'Offline: no weather yet' : this.weather.error ?? 'Fetching weather…',
       lockout: { locked: this.lock.locked, bigTargets: bigTargets(i.speedMph) },
       heat: { cpuC: this.cpu.c, source: this.cpu.source, level, parkedInSun: sun, message: heatMessage(level, this.cpu.c, sun, i.cabinTempF) },
