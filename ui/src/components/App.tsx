@@ -137,9 +137,7 @@ export function App() {
         <div class="card picker more-menu" role="menu" aria-label="More">
           <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setPicker(true); }}><Ico d={PALETTE} />Theme</button>
           <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setLogs('mileage'); }}><Ico d={LOGS} />Mileage &amp; maintenance</button>
-          {s?.drive?.lockout.locked
-            ? <span class="dimtxt" role="menuitem" aria-disabled="true"><Ico d={GEAR} />Settings open when the truck stops</span>
-            : <a href="/settings" role="menuitem"><Ico d={GEAR} />Settings</a>}
+          <a href="/settings" role="menuitem"><Ico d={GEAR} />Settings</a>
           <button type="button" class="tag" onClick={() => setMoreOpen(false)}>Close</button>
         </div>
       )}
