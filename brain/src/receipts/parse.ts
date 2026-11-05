@@ -83,7 +83,7 @@ function toIso(d: Ymd, min: number, tz: string | null, defaultTz: string | null)
 export function parseDuration(s: string): number | null {
   let m = /\b(\d{1,2}):(\d{2}):(\d{2})\b/.exec(s);
   if (m) return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
-  m = /(?:(\d+)\s*(?:h|hr|hrs|hours?))?\s*(?:(\d+)\s*(?:m|min|mins|minutes?))?\s*(?:(\d+)\s*(?:s|sec|secs|seconds?))?/i.exec(s);
+  m = /(?:(\d+)\s*(?:hours?|hrs?|h)\b)?\s*(?:(\d+)\s*(?:minutes?|mins?|m)\b)?\s*(?:(\d+)\s*(?:seconds?|secs?|s)\b)?/i.exec(s);
   if (m && (m[1] || m[2] || m[3])) return (Number(m[1] ?? 0) * 3600) + (Number(m[2] ?? 0) * 60) + Number(m[3] ?? 0);
   return null;
 }
@@ -139,7 +139,7 @@ export function parseReceipt(input: ReceiptInput): ReceiptParse | null {
   const missing: string[] = [];
 
   // station and address
-  const stationName = after(lines, /^(?:station(?:\s+name)?|location|site|supercharger(?:\s+location)?|charging\s+location)\b/i)?.replace(/\s+-\s+\d.*$/, '').slice(0, 120) ?? null;
+  const stationName = after(lines, /^(?:station(?!\s+address)(?:\s+name)?|location|site(?!\s+address)|supercharger(?:\s+location)?|charging\s+location)\b/i)?.replace(/\s+-\s+\d.*$/, '').slice(0, 120) ?? null;
   const address = after(lines, /^(?:station\s+)?address\b/i)?.slice(0, 160) ?? null;
 
   // times: a "start" line, an "end" line, or one "date ... time - time" line
