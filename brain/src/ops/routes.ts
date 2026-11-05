@@ -11,6 +11,7 @@ import { loginPage, safeNext } from './loginPage.ts';
 import { OpsInputError, PURPOSES, type Purpose } from './config.ts';
 import { targetLabel } from './backup.ts';
 import { OpsService } from './service.ts';
+import { setAdminSessionCheck } from '../remote/auth.ts';
 
 export const SETUP_STEPS = ['password', 'ap', 'truck', 'home', 'drivers', 'ha', 'hotspot', 'vehicle'] as const;
 
@@ -42,6 +43,8 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
   const sessionOf = (req: FastifyRequest) => parseCookies(req.headers.cookie)[SESSION_COOKIE];
   const trusted = (req: FastifyRequest) => ops.store.get().auth.trustLocal && isLocal(req.ip);
   const authed = (req: FastifyRequest) => !ops.store.get().auth.passwordHash || trusted(req) || ops.sessions.valid(sessionOf(req));
+  // A real login (password set + valid session) also opens the remote/camera routes.
+  setAdminSessionCheck((req) => !!ops.store.get().auth.passwordHash && ops.sessions.valid(parseCookies(typeof req.headers.cookie === 'string' ? req.headers.cookie : undefined)[SESSION_COOKIE]));
 
   // ---- the gate ------------------------------------------------------------------
   app.addHook('onRequest', async (req, reply) => {

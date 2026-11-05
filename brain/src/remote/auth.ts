@@ -53,9 +53,19 @@ export function tokenFrom(req: ReqLike): string | null {
 
 const same = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
 
-/** The one check. Pure. */
+/**
+ * Someone logged in to /settings with the admin password may use everything the
+ * remote token opens. Set by the ops module (it owns the password and sessions);
+ * it must answer false while no password is set, so an unprotected truck still
+ * needs the token from outside.
+ */
+let adminSession: ((req: ReqLike) => boolean) | null = null;
+export function setAdminSessionCheck(fn: ((req: ReqLike) => boolean) | null): void { adminSession = fn; }
+
+/** The one check. Pure apart from the admin-session hook. */
 export function allowed(req: ReqLike, token: string | undefined, trusted: string[]): boolean {
   if (ipInNets(req.ip, trusted)) return true;
+  if (adminSession?.(req)) return true;
   const t = tokenFrom(req);
   return !!(token && t && same(t, token));
 }
