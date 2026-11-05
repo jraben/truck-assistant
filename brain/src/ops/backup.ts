@@ -16,6 +16,8 @@ import type { Db } from '../db.ts';
 import { PROJECT_NAME } from '../project.ts';
 import { OpsInputError, type BackupTarget, type OpsConfig } from './config.ts';
 import { readTar, writeTar, type TarEntry } from './tar.ts';
+import type { BackupStatus } from './types.ts';
+export type { BackupStatus } from './types.ts';
 
 export const NAME_RE = /^slate-backup-([a-z0-9_-]{1,32})-(\d{8}-\d{6})\.tar\.gz$/i;
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -265,13 +267,6 @@ export function makeTarget(t: BackupTarget, exec: Exec = realExec, fetchFn: type
   };
 }
 
-export type BackupStatus = {
-  running: boolean;
-  lastAt: string | null; lastOk: boolean | null; lastError: string | null;
-  lastName: string | null; lastSize: number | null;
-  lastSuccessAt: string | null;
-  sentTo: string | null;              // where the last good one went
-};
 export const EMPTY_STATUS: BackupStatus = { running: false, lastAt: null, lastOk: null, lastError: null, lastName: null, lastSize: null, lastSuccessAt: null, sentTo: null };
 
 export function targetLabel(t: BackupTarget): string {

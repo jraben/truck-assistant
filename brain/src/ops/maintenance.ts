@@ -8,14 +8,9 @@ import path from 'node:path';
 import type { Db } from '../db.ts';
 import type { State, Wheel } from '../types.ts';
 import { OpsInputError, OWNER_MANUAL, type OpsStore, type Reminder } from './config.ts';
+import type { DueState, MaintEntry, ReminderStatus, TpmsPoint } from './types.ts';
+export type { DueState, MaintEntry, ReminderStatus, TpmsPoint } from './types.ts';
 
-export type DueState = 'ok' | 'soon' | 'due' | 'unset' | 'needs-odometer';
-export type ReminderStatus = Reminder & {
-  state: DueState;
-  milesLeft: number | null; daysLeft: number | null;
-  dueAtMiles: number | null; dueOn: string | null;
-  why: string;
-};
 
 /** "Soon" when this close: the larger of 300 mi and 10% of the interval, or 30 days. */
 export const SOON_MI = 300;
@@ -94,10 +89,6 @@ export function mergeReminders(cur: Reminder[], body: unknown, odometer: number 
   });
 }
 
-export type MaintEntry = {
-  id: number; date: string; odometer: number | null; item: string; reminderId: string | null;
-  cost: number | null; shop: string | null; note: string | null; receipt: string | null;
-};
 
 export const RECEIPT_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'application/pdf': 'pdf' };
 export const RECEIPT_MAX = 15 * 1024 * 1024;
@@ -112,7 +103,6 @@ export const TPMS_MIN_DELTA = 0.5;
 export const TPMS_EVERY_MS = 10 * 60_000;
 export const TPMS_KEEP_DAYS = 400;
 
-export type TpmsPoint = { t: string; psi: number | null; tempF: number | null };
 
 /** Should this reading be stored, given the last stored one for that wheel? Pure. */
 export function keepTpms(last: { t: number; psi: number | null } | undefined, psi: number | null, t: number): boolean {

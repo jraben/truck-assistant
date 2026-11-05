@@ -3,15 +3,12 @@
 // collides with the truck/driver settings. Written atomically like settings.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import type { MileageRate, OpsConfig, Reminder } from './types.ts';
+import { PURPOSES, PLACE_TAGS } from './types.ts';
+export { PURPOSES, PLACE_TAGS } from './types.ts';
+export type { BackupTarget, MileageRate, OpsConfig, PlaceTag, Purpose, Reminder } from './types.ts';
 
-export const PURPOSES = ['business', 'personal', 'commute', 'other'] as const;
-export type Purpose = (typeof PURPOSES)[number];
-/** What a saved place stands for. client = business. */
-export type PlaceTag = 'business' | 'client' | 'personal' | 'commute';
-export const PLACE_TAGS: PlaceTag[] = ['business', 'client', 'personal', 'commute'];
 
-/** One IRS rate, in effect from `from` (YYYY-MM-DD) until the next one. */
-export type MileageRate = { from: string; centsPerMile: number; source: string };
 
 /**
  * IRS business standard mileage rates. MUST be checked every year (and the
@@ -27,17 +24,6 @@ export const DEFAULT_RATES: MileageRate[] = [
   { from: '2026-07-01', centsPerMile: 76, source: 'IRS Announcement 2026-11 (mid-year increase)' },
 ];
 
-export type Reminder = {
-  id: string;                       // lowercase, digits, "-"
-  name: string;
-  everyMiles: number | null;        // null = not set
-  everyMonths: number | null;
-  /** Where the interval came from, shown next to it. Defaults say "set from the owner's manual". */
-  note: string;
-  lastDone: { at: string; odometer: number | null } | null;
-  /** Counting starts here when it has never been done (set when the interval is first set). */
-  since: { at: string; odometer: number | null };
-};
 
 export const OWNER_MANUAL = "Set from the owner's manual";
 
@@ -48,37 +34,6 @@ export function defaultReminders(now = new Date()): Reminder[] {
   return [r('tire-rotation', 'Tire rotation'), r('cabin-filter', 'Cabin air filter'), r('wiper-blades', 'Wiper blades'), r('battery-12v', '12V battery check'), r('brake-fluid', 'Brake fluid')];
 }
 
-export type BackupTarget =
-  | { kind: 'none' }
-  | { kind: 'path'; path: string }                                    // a mounted SMB/NFS share, e.g. /mnt/nas/slate-backups
-  | { kind: 'rsync'; dest: string; sshKey: string | null; port: number } // user@nas:/volume1/backups/slate
-  | { kind: 'http'; url: string; auth: string | null };               // PUT <url>/<file>; auth = "user:password"
-
-export type OpsConfig = {
-  mileage: {
-    odometerAnchor: { odometer: number; at: string } | null;
-    rates: MileageRate[];
-    driverDefaults: Record<string, Purpose>;
-    placeTags: Record<string, PlaceTag>;   // Place id -> tag
-    feedIsBusiness: boolean;               // places-feed stops (client records) count as business
-  };
-  maintenance: {
-    reminders: Reminder[];
-    notifyService: string | null;          // HA notify service, e.g. "mobile_app_jeffs_iphone"
-    notifiedOn: Record<string, string>;    // reminder id -> last day notified (YYYY-MM-DD)
-  };
-  updater: { repo: string | null; channel: 'stable' | 'main' };
-  backup: {
-    enabled: boolean;
-    hour: number;                          // local hour to run, when on home Wi-Fi
-    target: BackupTarget;
-    keep: number;                          // on the target
-    keepLocal: number;                     // in DATA_DIR/backups
-    includeSecrets: boolean;               // keys/tokens/passwords; default false
-  };
-  auth: { passwordHash: string | null; trustLocal: boolean };
-  setup: { done: boolean; steps: Record<string, 'done' | 'skipped'> };
-};
 
 export function defaultOps(): OpsConfig {
   return {

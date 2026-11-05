@@ -11,21 +11,13 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { OpsInputError } from './config.ts';
+import type { Installed, Job, Phase, Release, UpdateStatus } from './types.ts';
+export type { Installed, Job, Phase, Release, UpdateStatus } from './types.ts';
 
-export type Release = {
-  tag: string; name: string; sha: string | null;
-  publishedAt: string | null; notes: string;
-  tarballUrl: string;                 // source tarball
-  assetUrl: string | null;            // prebuilt slate-cockpit-<tag>.tar.gz from the release workflow
-  prerelease: boolean;
-};
 
-export type Installed = { version: string; tag: string | null; sha: string | null; channel: string | null; installedAt: string | null };
 
-export type Phase = 'idle' | 'checking' | 'up-to-date' | 'available' | 'requested' | 'downloading' | 'building' | 'restarting' | 'verifying' | 'done' | 'rolled-back' | 'failed';
 export const BUSY: Phase[] = ['requested', 'downloading', 'building', 'restarting', 'verifying'];
 
-export type Job = { id: string; action: 'install' | 'rollback'; tag: string | null; sha: string | null; repo: string; channel: 'stable' | 'main'; assetUrl: string | null; tarballUrl: string | null; requestedAt: string };
 export type Report = { id: string; phase: Exclude<Phase, 'idle' | 'checking' | 'up-to-date' | 'available' | 'requested'>; message: string; at: string; tag?: string | null; previous?: string | null };
 
 export interface Runner {
@@ -37,16 +29,6 @@ export interface Runner {
   hasPrevious(): boolean;
 }
 
-export type UpdateStatus = {
-  phase: Phase; message: string | null;
-  repo: string | null; channel: 'stable' | 'main';
-  installed: Installed;
-  latest: Release | null; releases: Release[];
-  checkedAt: string | null;
-  job: Job | null;
-  canInstall: boolean; installNote: string | null;
-  canRollback: boolean;
-};
 
 /** "v1.2.3" vs "1.2.10": -1, 0, 1. Non-numeric parts compare as text; a pre-release sorts before its release. */
 export function compareVersions(a: string, b: string): number {

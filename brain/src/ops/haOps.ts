@@ -2,17 +2,11 @@
 // estimated odometer. One retained JSON on <truck>/brain/ops. Pure builders.
 import { statusTopic, type Discovery } from '../ha.ts';
 import { PROJECT_NAME } from '../project.ts';
+import type { OpsSummary } from './types.ts';
+export type { OpsSummary } from './types.ts';
 
 export const opsTopic = (id: string) => `${id}/brain/ops`;
 
-export type OpsSummary = {
-  maintenanceDue: number; maintenanceSoon: number;
-  dueItems: string[];               // names, due first
-  lastBackupAt: string | null; lastBackupOk: boolean | null; backupTarget: string | null;
-  updateAvailable: string | null;   // tag, or null
-  version: string;
-  odometerEst: number | null;
-};
 
 export function opsDiscovery(id: string, version: string): Discovery[] {
   const device = { identifiers: [`${id}_cockpit`], name: 'Slate Truck', manufacturer: `${PROJECT_NAME} (DIY)`, model: 'Pi brain', sw_version: version };

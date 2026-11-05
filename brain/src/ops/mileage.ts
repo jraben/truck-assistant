@@ -12,37 +12,11 @@
 import type { Db } from '../db.ts';
 import type { TripStore } from '../trips.ts';
 import type { Settings, Trip } from '../types.ts';
+import type { EndStopInfo, MileageRow, MileageTotals, PurposeSource, Tag } from './types.ts';
+export type { EndStopInfo, MileageRow, MileageTotals, PurposeSource, Tag } from './types.ts';
 import { OpsInputError, PLACE_TAGS, PURPOSES, type MileageRate, type OpsConfig, type OpsStore, type PlaceTag, type Purpose } from './config.ts';
 
-export type PurposeSource = 'manual' | 'place' | 'feed' | 'driver';
-export type EndStopInfo = { nameSource: string | null; placeId: number | null };
-export type Tag = { purpose: Purpose | null; note: string | null };
 
-export type MileageRow = {
-  tripId: number;
-  startedAt: string; endedAt: string | null;
-  date: string;                       // local YYYY-MM-DD the trip started
-  driverId: string | null; driver: string;
-  purpose: Purpose | null; purposeSource: PurposeSource | null;
-  note: string | null;
-  from: string; to: string;
-  startOdometer: number | null; endOdometer: number | null;
-  miles: number;
-  approximate: boolean;               // phone trip: straight lines between sparse points
-  source: 'truck' | 'phone';
-  rateCents: number | null;           // IRS rate in effect that day (business rows)
-  deduction: number | null;           // USD, business rows only
-};
-
-export type MileageTotals = {
-  trips: number; miles: number;
-  byPurpose: Record<Purpose | 'untagged', number>;
-  businessMiles: number;
-  deduction: number;
-  untaggedTrips: number;
-  approximateMiles: number;
-  ratesUsed: MileageRate[];
-};
 
 export type MileageFilter = { from?: string | null; to?: string | null; driver?: string | null; purpose?: Purpose | 'untagged' | null };
 
