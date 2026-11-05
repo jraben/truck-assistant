@@ -4,9 +4,11 @@ import { config } from './config.ts';
 import { openDb } from './db.ts';
 import { buildServer } from './server.ts';
 import { SettingsStore } from './settings.ts';
+import { applyPendingRestore } from './ops/backup.ts';
 
 async function main() {
   console.log(`[brain] v${config.version}, data in ${config.dataDir}${config.sim ? ', SIM=1' : ''}`);
+  applyPendingRestore(config.dataDir); // a restore staged from /settings, before anything opens the files
   const db = openDb(config.dataDir);
   const settings = new SettingsStore(config.dataDir);
   const brain = new Brain(db, settings);
