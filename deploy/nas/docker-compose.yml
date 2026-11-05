@@ -1,0 +1,41 @@
+# Slate Cockpit on the NAS (or any Docker host in the homelab).
+# LAN only: port 3950 is not forwarded and must not be. /settings and /truck
+# have their own password (set in the first-boot wizard); the cockpit view at /
+# is open on the LAN, like the dash itself.
+#
+#   cd ~/slate-cockpit/deploy/nas
+#   sudo -n /usr/local/bin/docker-compose pull && sudo -n /usr/local/bin/docker-compose up -d
+#
+# Never --remove-orphans: other stacks share this host.
+name: slate-cockpit
+
+services:
+  slate-cockpit:
+    image: ghcr.io/jraben/slate-cockpit:${SLATE_IMAGE_TAG:-latest}
+    container_name: slate-cockpit
+    restart: unless-stopped
+    ports:
+      - "3950:8080"
+    environment:
+      # No truck here: SIM=1 drives a simulated truck so the screens have data.
+      # Set SIM=0 to run with only real connections (HA, WOPR, phone history).
+      SIM: ${SLATE_SIM:-1}
+      TZ: America/Phoenix
+      # The home broker, once you want HA discovery from this copy:
+      MQTT_DISABLED: ${SLATE_MQTT_DISABLED:-1}
+      MQTT_URL: ${SLATE_MQTT_URL:-mqtt://192.168.1.20:1883}
+      # Never power anything off from a server.
+      HEAT_SHUTDOWN: "0"
+      POWEROFF_CMD: ""
+    volumes:
+      # A named volume, not a bind mount: Synology ACLs on home folders have
+      # blocked container users before, and the image owns /data as `node`.
+      - slate-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+
+volumes:
+  slate-data:
