@@ -148,7 +148,7 @@ Jeff prints these himself, and every file is published with the project (STEP + 
 
 | Source | What it gives | Access |
 |---|---|---|
-| **NREL AFDC Alt-Fuel Stations API** | Every US public station, network (`ev_network`), connector types, DC fast count, power, `ev_pricing` text, status codes, hours, amenities via facility type | Free API key, developer.nrel.gov [V fields; 2026 status not re-verified] |
+| **NREL AFDC Alt-Fuel Stations API** | Every US public station, network (`ev_network`), connector types, DC fast count, power, `ev_pricing` text, status codes, hours, amenities via facility type | Free API key, developer.nlr.gov [V fields; 2026 status not re-verified] |
 | **Open Charge Map API** | Community POIs, connectors, kW, usage cost text, photos, comments | Free key, open data |
 | **Google Places API (New) `evChargeOptions`** | **Live-ish availability**: per connector type/kW, `availableCount`, `outOfServiceCount`, `availabilityLastUpdateTime`, plus ratings and nearby amenities | Paid per call (Google Maps Platform); freshness not documented [V fields] |
 | **Tesla Superchargers** | Slate has a NACS port and Supercharger access [V], up to 120 kW DC [V] | No public station API for non-Tesla accounts. Use AFDC/OCM for locations; pricing is in the Tesla app [U] |
@@ -418,7 +418,7 @@ Config is **pull-based**: the truck polls `/api/truck/bundle?since=<version>` wh
 - ATOTO 10" units (~550 nits): https://www.atotodirect.com/products/x10g110e-10inch-single-din-car-stereo
 - 360 camera kits and Android compatibility: https://tadibrothers.com/products/360-degree-truck-camera-system-in-3d-for-surround-view-with-dvr-4-cameras ; https://audiotechdirect.com/atd-cam360-full-360-camera-kit-birdseye-panaromic-view-for-android-s10-s9-head-unit-range/ ; https://epi.dometic.com/en/professional/special-vehicle-and-truck-solutions/camera-systems/360-degree-systems/dometic-perfectview-cam360ahd-235720
 - Waze EV stations on CarPlay/Android Auto: https://www.phonearena.com/news/waze-ev-charging-stations-android-auto-carplay-cars_id147488 ; https://9to5mac.com/2024/04/08/these-are-the-best-carplay-apps-for-ev-owners/
-- NREL AFDC API fields (via altfuelr docs): https://ftp.fau.de/cran/web/packages/altfuelr/refman/altfuelr.html ; official docs: https://developer.nrel.gov/docs/transportation/alt-fuel-stations-v1/
+- NREL AFDC API fields (via altfuelr docs): https://ftp.fau.de/cran/web/packages/altfuelr/refman/altfuelr.html ; official docs: https://developer.nlr.gov/docs/transportation/alt-fuel-stations-v1/
 - Google Places EV ConnectorAggregation (availableCount etc.): https://docs.cloud.google.com/nodejs/docs/reference/places/latest/places/protos.google.maps.places.v1.evchargeoptions.iconnectoraggregation
 - ABRP / Iternio Telemetry API: https://iternio.com/api ; https://community.home-assistant.io/t/build-rest-command-to-send-data-to-abetterrouteplanner-com/307380
 - Spotify extended-access change (May 2025): https://developer.spotify.com/blog/2025-04-15-updating-the-criteria-for-web-api-extended-access ; https://dev.to/leemartin/the-state-of-spotify-web-api-report-2025-4gh3 ; https://github.com/spotify/spotify-web-api-ts-sdk/issues/159

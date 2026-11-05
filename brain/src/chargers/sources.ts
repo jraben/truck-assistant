@@ -1,9 +1,13 @@
-// Station data: NREL AFDC and Open Charge Map, mapped to one Station shape,
-// then merged so a site listed by both shows once.
+// Station data: NREL AFDC, Open Charge Map and (optionally) Google Places,
+// mapped to one Station shape, then merged so a site listed twice shows once.
+//
+// AFDC moved: NREL became the National Laboratory of the Rockies and
+// developer.nrel.gov stopped resolving (NXDOMAIN, checked 2026-11-05). The same
+// API and keys answer at developer.nlr.gov.
 import { metersBetween } from '../geo.ts';
 import type { Station } from './score.ts';
 
-export const AFDC_URL = 'https://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json';
+export const AFDC_URL = 'https://developer.nlr.gov/api/alt-fuel-stations/v1/nearest.json';
 export const OCM_URL = 'https://api.openchargemap.io/v3/poi';
 const TIMEOUT_MS = 10_000;
 
@@ -120,4 +124,91 @@ export function mergeStations(afdc: Station[], ocm: Station[]): Station[] {
     else res.push(s);
   }
   return res;
+}
+
+// ── Google Places: live stall availability ────────────────────────────────
+// Places API (New) Nearby Search with `evChargeOptions`: per-connector counts
+// and, where the network shares it, how many are free right now. Google has no
+// prices. It is billed (the evChargeOptions field is an Enterprise-tier field;
+// ~1,000 free requests a month at the time of writing), so the finder throttles
+// it hard (GOOGLE_MIN_INTERVAL_MS) and this module never retries.
+
+export const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchNearby';
+const GOOGLE_FIELDS = 'places.id,places.displayName,places.location,places.evChargeOptions';
+/** Google caps a nearby-search circle at 50 km. */
+const GOOGLE_MAX_RADIUS_M = 50_000;
+/** A connector at or above this counts as DC fast for the availability summary. */
+const DC_KW = 25;
+/** Google pins a place, not the stalls: allow more slack than AFDC/OCM. */
+export const GOOGLE_DEDUPE_M = 150;
+
+export async function fetchGoogle(key: string, lat: number, lon: number, radiusMi: number, f: FetchFn = fetch): Promise<Station[]> {
+  const res = await f(GOOGLE_PLACES_URL, {
+    method: 'POST',
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    headers: { 'content-type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': GOOGLE_FIELDS },
+    body: JSON.stringify({
+      includedTypes: ['electric_vehicle_charging_station'],
+      maxResultCount: 20,
+      rankPreference: 'DISTANCE',
+      locationRestriction: { circle: { center: { latitude: lat, longitude: lon }, radius: Math.min(GOOGLE_MAX_RADIUS_M, Math.round(radiusMi * 1609.34)) } },
+    }),
+  });
+  if (!res.ok) throw new Error(`Google Places answered ${res.status}${res.status === 403 || res.status === 401 ? ' (check the API key and that Places API (New) is enabled)' : ''}`);
+  const body = (await res.json()) as { places?: Record<string, any>[] };
+  return (body.places ?? []).map(googleStation).filter((s): s is Station => s !== null);
+}
+
+export function googleStation(p: Record<string, any>): Station | null {
+  const lat = Number(p.location?.latitude), lon = Number(p.location?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const aggs: Record<string, any>[] = Array.isArray(p.evChargeOptions?.connectorAggregation) ? p.evChargeOptions.connectorAggregation : [];
+  const kws = aggs.map((a) => Number(a.maxChargeRateKw)).filter((k) => Number.isFinite(k) && k > 0);
+  const connectors = uniq(aggs.map((a) => normalizeConnector(String(a.type ?? ''))).filter((c): c is string => !!c));
+  return {
+    id: `google:${p.id}`, source: 'google',
+    name: String(p.displayName?.text ?? 'Charger'),
+    network: null,   // Google's name is the site's, not a network: not guessed
+    lat, lon,
+    maxKw: kws.length ? Math.max(...kws) : null,
+    connectors, amenities: [], price: null,
+    availability: googleAvailability(aggs),
+    level2Only: kws.length > 0 && Math.max(...kws) < DC_KW,
+  };
+}
+
+/**
+ * Stall counts. Fast stalls only when the site has any (the truck won't wait
+ * at a Level 2 post beside a busy DC row); null when Google sent no live count.
+ */
+export function googleAvailability(aggs: Record<string, any>[]): Station['availability'] {
+  const dc = aggs.filter((a) => Number(a.maxChargeRateKw) >= DC_KW);
+  const pick = (dc.length ? dc : aggs).filter((a) => a.availableCount !== undefined && a.availableCount !== null);
+  if (!pick.length) return null;
+  const n = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const times = pick.map((a) => a.availabilityLastUpdateTime).filter((t): t is string => typeof t === 'string').sort();
+  return {
+    available: pick.reduce((s, a) => s + n(a.availableCount), 0),
+    total: pick.reduce((s, a) => s + n(a.count), 0),
+    outOfService: pick.reduce((s, a) => s + n(a.outOfServiceCount), 0),
+    updatedAt: times.length ? times[0] : null,   // the oldest count is the one to doubt
+  };
+}
+
+/**
+ * Lay Google over the AFDC/OCM list: a twin within GOOGLE_DEDUPE_M gets the
+ * live counts (and kW/plugs if it lacked them); a Google site nobody else
+ * lists is added as its own row.
+ */
+export function mergeGoogle(base: Station[], google: Station[]): Station[] {
+  const out = base.map((s) => ({ ...s }));
+  for (const g of google) {
+    let twin: Station | null = null, best = Infinity;
+    for (const s of out) { if (s.source === 'google') continue; const d = metersBetween(s, g); if (d <= GOOGLE_DEDUPE_M && d < best) { twin = s; best = d; } }
+    if (!twin) { out.push({ ...g }); continue; }
+    twin.availability = g.availability ?? twin.availability ?? null;
+    twin.maxKw ??= g.maxKw;
+    if (!twin.connectors.length) twin.connectors = g.connectors;
+  }
+  return out;
 }

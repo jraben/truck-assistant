@@ -65,7 +65,14 @@ Relay names (default, editable in settings): 1 Bed lights, 2 Light bar,
 - `GET  /api/settings` → `Settings` (secrets masked); `PUT /api/settings` (partial
   merge). `drivers` is not written through this route: use `/api/drivers`.
 - `GET  /api/chargers?lat=&lon=&soc=` → ranked `Charger[]` (ranked by the
-  active driver's `charging` prefs)
+  active driver's `charging` prefs). Sources: AFDC at `developer.nlr.gov`
+  (NREL became the National Laboratory of the Rockies; `developer.nrel.gov`
+  stopped resolving 2026-11-05, same keys) and Open Charge Map, cached 30 min
+  per ~0.7 mi cell; Google Places (`keys.googlePlaces`) layered on for live
+  stall counts, called at most once per 5 min truck-wide and dropped after
+  30 min (a count older than 30 min is shown, not scored); `lastPaid` joined
+  from `charge_sessions` on every request (by position within 200 m, else by
+  station name + network). Google has no prices and none is guessed.
 - `GET  /api/drivers` → `Driver[]`; `POST /api/drivers` `{name, initials?, color?,
   tracker?}` → `Driver` (theme/layout/charging start from the defaults);
   `PUT /api/drivers/:id` (partial merge like settings; `layout` replaced whole,
@@ -164,7 +171,7 @@ type Settings = {
   packKwh: number;                  // usable pack, default 52.7 (verify at delivery)
   efficiencyMiPerKwh: number;       // default 3.5, refined from trips
   relays: Record<string, string>;   // id -> display name
-  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string };  // entered in the settings page, never in files; placesFeed = "user:password" (Basic auth)
+  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string };  // entered in the settings page, never in files; placesFeed = "user:password" (Basic auth); googlePlaces = optional, billed (live stall counts)
   homeAssistant: {
     bridge: boolean;                // publish MQTT discovery
     homeChargerEnergyEntity?: string;  // HA sensor with the wall charger's session kWh
@@ -238,11 +245,15 @@ type CompareVehicle = {
 };
 
 type Charger = {
-  id: string; source: 'afdc' | 'ocm';
+  id: string; source: 'afdc' | 'ocm' | 'google';
   name: string; network: string | null;
   lat: number; lon: number; distanceMi: number;
   maxKw: number | null; connectors: string[];
-  amenities: string[]; price: string | null;
+  amenities: string[]; price: string | null;   // the feeds' price text, as published
+  availability?: { available: number; total: number; outOfService: number; updatedAt: string | null } | null;
+                                      // Google Places live counts (DC stalls when the site has any); null/absent = unknown
+  lastPaid?: { sessionId: number; at: string; cost: number; kwh: number | null; perKwh: number | null; sessions: number } | null;
+                                      // newest public charge_sessions row with a cost at this site (any driver)
   score: number; reasons: string[];   // why it ranked where it did, shown in the UI
 };
 

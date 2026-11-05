@@ -13,7 +13,16 @@ export type ScoreContext = {
   distanceMi: number;
   soc: number | null;
   settings: Pick<Settings, 'packKwh' | 'efficiencyMiPerKwh'> & { charging: ChargingPrefs };
+  /** Clock for the availability age; tests pass one. */
+  now?: number;
 };
+
+/** A live count older than this is shown with its age and not scored. */
+export const AVAILABILITY_STALE_MS = 30 * 60_000;
+
+const ago = (ms: number) => (ms < 90_000 ? 'just now' : ms < 3_600_000 ? `${Math.round(ms / 60_000)} min ago` : `${Math.round(ms / 3_600_000)} h ago`);
+const money = (n: number) => `$${n.toFixed(2)}`;
+const shortDate = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? iso.slice(0, 10) : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -79,15 +88,34 @@ export function scoreCharger(st: Station, ctx: ScoreContext): Charger {
   const have = prefs.wantAmenities.filter((a) => st.amenities.includes(a));
   if (have.length) { score += have.length * 4; reasons.push(`Has ${have.join(', ')}`); }
 
+  // Live stalls (Google Places). A stale count is reported, not scored.
+  const av = st.availability;
+  if (av && av.total > 0) {
+    const age = av.updatedAt ? (ctx.now ?? Date.now()) - Date.parse(av.updatedAt) : null;
+    const fresh = age === null || !Number.isFinite(age) || age <= AVAILABILITY_STALE_MS;
+    const when = age !== null && Number.isFinite(age) ? `, ${ago(Math.max(0, age))}` : '';
+    if (av.available === 0) {
+      if (fresh) score -= 15;
+      reasons.push(`All ${av.total} stalls busy${when}`);
+    } else {
+      if (fresh) score += 5;
+      reasons.push(`${av.available} of ${av.total} stalls free${when}`);
+    }
+    if (av.outOfService > 0) reasons.push(`${av.outOfService} out of service`);
+  }
+
   if (st.price) reasons.push(`Price: ${st.price}`);
+  // What the charge log says was actually paid here: the number to trust.
+  const lp = st.lastPaid;
+  if (lp) reasons.push(`You paid ${lp.perKwh !== null ? `${money(lp.perKwh)}/kWh` : money(lp.cost)} here (${shortDate(lp.at)}${lp.sessions > 1 ? `, ${lp.sessions} visits` : ''})`);
 
   const { level2Only: _l2, ...rest } = st;
   return { ...rest, distanceMi: Math.round(d * 10) / 10, score: Math.round(Math.max(0, Math.min(100, score))), reasons };
 }
 
 /** Score and sort, best first; ties go to the nearer one. */
-export function rankChargers(stations: Station[], at: { lat: number; lon: number }, soc: number | null, settings: ScoreContext['settings'], distance: (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => number): Charger[] {
+export function rankChargers(stations: Station[], at: { lat: number; lon: number }, soc: number | null, settings: ScoreContext['settings'], distance: (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => number, now?: number): Charger[] {
   return stations
-    .map((s) => scoreCharger(s, { distanceMi: distance(at, s), soc, settings }))
+    .map((s) => scoreCharger(s, { distanceMi: distance(at, s), soc, settings, now }))
     .sort((a, b) => b.score - a.score || a.distanceMi - b.distanceMi);
 }

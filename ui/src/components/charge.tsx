@@ -7,7 +7,8 @@ import { Card, Modal, V, whySoc } from './common.tsx';
 import { socLabel, type WP } from './drive.tsx';
 import { CarPlayWazeHint } from './carplay.tsx';
 
-const NEG = /below|past your|avoid|unknown|No .* plug|needs an adapter|not checked/i;
+const NEG = /below|past your|avoid|unknown|No .* plug|needs an adapter|not checked|busy|out of service/i;
+const POS = /^You paid|stalls free/;
 
 export function Chargers({ s }: WP) {
   const c = useChargers();
@@ -26,11 +27,11 @@ export function Chargers({ s }: WP) {
               <div class="score" title="Score 0-100 from your charging preferences">{ch.score}</div>
               <button class="btn primary" type="button" onClick={() => setWaze(ch)}>Send to Waze</button>
             </div>
-            <div class="reasons">{ch.reasons.map((r) => <span class={NEG.test(r) ? 'neg' : ''}>{r}</span>)}</div>
+            <div class="reasons">{ch.reasons.map((r) => <span class={NEG.test(r) ? 'neg' : POS.test(r) ? 'pos' : ''}>{r}</span>)}</div>
           </div>
         ))}
       </div>
-      <div class="attrib">Station data: NREL Alternative Fuels Data Center and Open Charge Map (openchargemap.org). {s?.soc === null ? 'Set the charge level to check reach.' : ''}</div>
+      <div class="attrib">Station data: NREL/NLR Alternative Fuels Data Center, Open Charge Map (openchargemap.org) and, when a key is set, Google Places for live stall counts. “You paid” comes from your own charge log. {s?.soc === null ? 'Set the charge level to check reach.' : ''}</div>
       {waze && <WazeModal ch={waze} onClose={() => setWaze(null)} />}
     </Card>
   );

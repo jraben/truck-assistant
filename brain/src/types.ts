@@ -88,7 +88,7 @@ export type Settings = {
   packKwh: number;
   efficiencyMiPerKwh: number;
   relays: Record<string, string>;
-  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string };
+  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string };
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; url: string | null; token?: string };
   homeRate: {
     flatPerKwh: number | null;
@@ -128,13 +128,20 @@ export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel';
 export type CompareVehicle = { id: number | null; label: string; mpgCity: number; mpgHighway: number; mpgCombined: number; fuel: FuelGrade };
 
 export type Charger = {
-  id: string; source: 'afdc' | 'ocm';
+  id: string; source: 'afdc' | 'ocm' | 'google';
   name: string; network: string | null;
   lat: number; lon: number; distanceMi: number;
   maxKw: number | null; connectors: string[];
   amenities: string[]; price: string | null;
+  /** Live stall counts from Google Places (fast chargers only when it splits them); null = not known. */
+  availability?: ChargerAvailability | null;
+  /** The newest logged session with a cost at this site (any driver: the price is the site's). */
+  lastPaid?: LastPaid | null;
   score: number; reasons: string[];
 };
+
+export type ChargerAvailability = { available: number; total: number; outOfService: number; updatedAt: string | null };
+export type LastPaid = { sessionId: number; at: string; cost: number; kwh: number | null; perKwh: number | null; sessions: number };
 
 export type Trip = {
   id: number; startedAt: string; endedAt: string | null;

@@ -137,7 +137,7 @@ Slate accessories Jeff already ordered are **not** included in these totals: Fiv
 
 **Station data:**
 
-- **NREL AFDC Alt Fuel Stations API** (`developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json`, free key) [V]. Filter `fuel_type=ELEC`, `ev_connector_type=J3400,TESLA,J1772COMBO`, then use `ev_network`, `ev_dc_fast_num`, `ev_pricing`, `access_days_time` and `date_last_confirmed`. The data is DOE-maintained and updated daily.
+- **NREL AFDC Alt Fuel Stations API** (`developer.nlr.gov/api/alt-fuel-stations/v1/nearest.json`, free key) [V]. Filter `fuel_type=ELEC`, `ev_connector_type=J3400,TESLA,J1772COMBO`, then use `ev_network`, `ev_dc_fast_num`, `ev_pricing`, `access_days_time` and `date_last_confirmed`. The data is DOE-maintained and updated daily.
 - **Open Charge Map API v3** (`api.openchargemap.io/v3/poi`, free key; attribution required on screen) [V]. Gives per-connector **kW**, `UsageCost` text and operator. It also fills gaps AFDC misses.
 - **Amenities:** the **OpenStreetMap Overpass API**, counting restrooms, food, coffee, groceries and shade within 300 m of a charger. It is free, and the Pi can cache Arizona/Southwest extracts offline.
 - **PlugShare:** no public API; data is licensed commercially [U]. The plan uses a **deep link** to open a station in the PlugShare app on the phone for check-ins and reviews, and does not scrape it.
@@ -472,7 +472,7 @@ Slate accessories Jeff already ordered are **not** included in these totals: Fiv
 - Waze-on-dongle reports: https://forums.macrumors.com/threads/carplay-adapter-to-convert-to-wireless-carplay.2193978/page-296
 
 **Data and APIs**
-- NREL AFDC Alt Fuel Stations API: https://developer.nrel.gov/docs/transportation/alt-fuel-stations-v1/ ; dataset: https://catalog.data.gov/dataset/alternative-fueling-stations
+- NREL AFDC Alt Fuel Stations API: https://developer.nlr.gov/docs/transportation/alt-fuel-stations-v1/ ; dataset: https://catalog.data.gov/dataset/alternative-fueling-stations
 - Open Charge Map terms (attribution): https://beta.openchargemap.org/about/terms
 - Spotify Web API quota changes: https://developer.spotify.com/blog/2026-07-23-web-api-quota-updates , https://techcrunch.com/?p=3090291
 - HA MQTT JSON device tracker: https://www.home-assistant.io/integrations/mqtt_json/

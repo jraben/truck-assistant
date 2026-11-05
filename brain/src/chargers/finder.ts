@@ -1,5 +1,11 @@
 // Charger finder: fetch (AFDC + OCM), cache in SQLite, score per request.
 // Offline-first: a stale cache beats an error.
+//
+// Google Places (live stall counts) is a separate, memory-only layer: it is
+// billed, so it is called at most once per GOOGLE_MIN_INTERVAL_MS for the
+// whole truck (the UI polls every 20 s and a moving truck changes grid cell
+// every minute), and a failure there only adds a note. The charge log's
+// last-paid price is joined on every request, never cached.
 import type { Db } from '../db.ts';
 import { haversineMi, metersBetween } from '../geo.ts';
 import type { Charger, ChargingPrefs, Settings } from '../types.ts';
@@ -7,10 +13,15 @@ import type { Charger, ChargingPrefs, Settings } from '../types.ts';
 /** Truck settings plus the active driver's charging prefs. */
 export type FinderSettings = Pick<Settings, 'keys' | 'packKwh' | 'efficiencyMiPerKwh'> & { charging: ChargingPrefs };
 import { rankChargers, type Station } from './score.ts';
-import { fetchAfdc, fetchOcm, mergeStations, type FetchFn } from './sources.ts';
+import { fetchAfdc, fetchGoogle, fetchOcm, mergeGoogle, mergeStations, type FetchFn } from './sources.ts';
+import { withLastPaid, type PaidSession } from './paid.ts';
 
 export const CACHE_TTL_MS = 30 * 60_000;
 export const STALE_OK_MS = 14 * 24 * 3600_000;
+/** At most one billed Google call per this long, truck-wide. */
+export const GOOGLE_MIN_INTERVAL_MS = 5 * 60_000;
+/** Google results are dropped after this long rather than shown as live. */
+export const GOOGLE_KEEP_MS = 30 * 60_000;
 /** Snap requests to a ~0.7 mi grid so a moving truck reuses one fetch. */
 const GRID = 0.01;
 
@@ -20,6 +31,10 @@ export class ChargerFinder {
   private mem = new Map<string, { at: number; stations: Station[] }>();
   private inflight = new Map<string, Promise<Station[]>>();
   private lastErr = new Map<string, string>();
+  private google: { at: number; stations: Station[] } | null = null;
+  private googleTriedAt = 0;
+  private googleErr: string | null = null;
+  private googleInflight: Promise<void> | null = null;
 
   private db: Db;
   private fetchFn: FetchFn;
@@ -29,13 +44,13 @@ export class ChargerFinder {
   private radius(s: FinderSettings) { return Math.max(15, Math.ceil(s.charging.maxDetourMi * 2.5)); }
 
   async find(lat: number, lon: number, soc: number | null, s: FinderSettings): Promise<FindResult> {
-    const haveKeys = !!(s.keys.afdc || s.keys.openChargeMap);
+    const haveKeys = !!(s.keys.afdc || s.keys.openChargeMap);   // the cached base list; Google is layered on below
     const radius = this.radius(s);
     const key = `${(Math.round(lat / GRID) * GRID).toFixed(2)},${(Math.round(lon / GRID) * GRID).toFixed(2)},${radius}`;
     let entry = this.mem.get(key) ?? this.fromDb(key);
     let message: string | null = null;
 
-    if (!haveKeys && !entry) {
+    if (!haveKeys && !entry && !s.keys.googlePlaces) {
       return { chargers: [], message: 'No charger API keys yet. Add a free NREL AFDC or Open Charge Map key on the settings page (/settings).' };
     }
     if (haveKeys && (!entry || Date.now() - entry.at > CACHE_TTL_MS)) {
@@ -49,11 +64,39 @@ export class ChargerFinder {
         message = entry ? `Showing saved results from ${new Date(entry.at).toLocaleString()}: ${(e as Error).message}` : `Couldn't reach the charger databases: ${(e as Error).message}`;
       }
     }
-    if (!entry) return { chargers: [], message };
-    if (!haveKeys) message = 'No API keys set; showing saved results only.';
+    const google = await this.googleLayer(lat, lon, radius, s);
+    if (!entry && !google.length) return { chargers: [], message };
+    if (!haveKeys && !s.keys.googlePlaces) message = 'No API keys set; showing saved results only.';
     const partial = this.lastErr.get(key);
     if (!message && partial) message = partial;
-    return { chargers: rankChargers(entry.stations, { lat, lon }, soc, s, haversineMi), message };
+    if (!message && this.googleErr) message = `Live stall counts unavailable: ${this.googleErr}`;
+    const stations = withLastPaid(mergeGoogle(entry?.stations ?? [], google), this.paidSessions());
+    return { chargers: rankChargers(stations, { lat, lon }, soc, s, haversineMi), message };
+  }
+
+  /** The Google layer, refreshed at most every GOOGLE_MIN_INTERVAL_MS; [] without a key. */
+  private async googleLayer(lat: number, lon: number, radius: number, s: FinderSettings): Promise<Station[]> {
+    const k = s.keys.googlePlaces;
+    if (!k) { this.google = null; this.googleErr = null; return []; }
+    if (Date.now() - this.googleTriedAt >= GOOGLE_MIN_INTERVAL_MS) {
+      this.googleTriedAt = Date.now();
+      this.googleInflight ??= fetchGoogle(k, lat, lon, radius, this.fetchFn)
+        .then((stations) => { this.google = { at: Date.now(), stations }; this.googleErr = null; })
+        .catch((e) => { this.googleErr = (e as Error)?.message ?? String(e); console.warn('[chargers] Google:', this.googleErr); })
+        .finally(() => { this.googleInflight = null; });
+    }
+    if (this.googleInflight) await this.googleInflight;
+    return this.google && Date.now() - this.google.at <= GOOGLE_KEEP_MS ? this.google.stations : [];
+  }
+
+  /** Public sessions with a cost, newest first, for the "you paid" line. */
+  private paidSessions(): PaidSession[] {
+    try {
+      const rows = this.db.prepare(`SELECT id, started_at, network, station_name, lat, lon, kwh, cost FROM charge_sessions
+        WHERE place = 'public' AND cost IS NOT NULL AND cost > 0 ORDER BY started_at DESC LIMIT 1000`).all() as
+        { id: number; started_at: string; network: string | null; station_name: string | null; lat: number | null; lon: number | null; kwh: number | null; cost: number }[];
+      return rows.map((r) => ({ id: r.id, startedAt: r.started_at, network: r.network, stationName: r.station_name, lat: r.lat, lon: r.lon, kwh: r.kwh, cost: r.cost }));
+    } catch { return []; }
   }
 
   /** Nearest station seen in any cached result, for labelling a detected charge. No network call. */

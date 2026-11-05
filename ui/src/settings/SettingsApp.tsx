@@ -17,8 +17,8 @@ const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 type Draft = Omit<Settings, 'keys' | 'drivers'>;
-type Secrets = { afdc: string; openChargeMap: string; placesFeed: string; haToken: string; homeWifi: string };
-const NO_SECRETS: Secrets = { afdc: '', openChargeMap: '', placesFeed: '', haToken: '', homeWifi: '' };
+type Secrets = { afdc: string; openChargeMap: string; placesFeed: string; googlePlaces: string; haToken: string; homeWifi: string };
+const NO_SECRETS: Secrets = { afdc: '', openChargeMap: '', placesFeed: '', googlePlaces: '', haToken: '', homeWifi: '' };
 
 const toDraft = (s: Settings): Draft => {
   const { keys: _k, drivers: _d, ...rest } = structuredClone(s);
@@ -71,6 +71,8 @@ function SecretField({ label, set, value, placeholder, onInput, onClear }: { lab
     </div>
   );
 }
+
+const KEY_LABELS = { afdc: 'NREL / NLR AFDC key', openChargeMap: 'Open Charge Map key', googlePlaces: 'Google Places key (live stalls, optional)' } as const;
 
 export function SettingsApp() {
   const settings = useStore(settingsStore);
@@ -150,7 +152,7 @@ export function SettingsApp() {
       // no password typed = keep the stored one (for the same network)
       body.homeWifi = draft.homeWifi?.ssid.trim() ? { ssid: draft.homeWifi.ssid.trim(), password: keys.homeWifi || settings.homeWifi?.password } : null;
       const k: Record<string, string> = {};
-      for (const n of ['afdc', 'openChargeMap', 'placesFeed'] as const) if (keys[n].trim()) k[n] = keys[n].trim();
+      for (const n of ['afdc', 'openChargeMap', 'placesFeed', 'googlePlaces'] as const) if (keys[n].trim()) k[n] = keys[n].trim();
       if (Object.keys(k).length) body.keys = k;
       const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify(body) });
       settingsStore.set(n); setDraft(toDraft(n)); setKeys(NO_SECRETS); setHaTest(null);
@@ -224,10 +226,10 @@ export function SettingsApp() {
         <GasSection gas={draft.gas} onChange={(g) => set('gas', g)} haReady={haReady} />
       </Section>
 
-      <Section title="Charger API keys" help="Free keys: developer.nrel.gov/signup (AFDC) and openchargemap.org (My Profile → API keys). Stored on the truck only, never shown again in full.">
+      <Section title="Charger API keys" help="Free keys: developer.nlr.gov/signup (AFDC; NREL is now the National Laboratory of the Rockies, and old NREL keys still work) and openchargemap.org (My Profile → API keys). Google Places is optional and billed: it adds live free-stall counts, no prices; enable Places API (New) in Google Cloud and paste the key. It is asked at most every 5 minutes. Stored on the truck only, never shown again in full.">
         <div class="fields form">
-          {(['afdc', 'openChargeMap'] as const).map((k) => (
-            <SecretField label={k === 'afdc' ? 'NREL AFDC key' : 'Open Charge Map key'} set={settings.keys[k]} value={keys[k]} onInput={(v) => setKeys({ ...keys, [k]: v })} onClear={() => void clear({ keys: { [k]: '' } })} />
+          {(['afdc', 'openChargeMap', 'googlePlaces'] as const).map((k) => (
+            <SecretField label={KEY_LABELS[k]} set={settings.keys[k]} value={keys[k]} onInput={(v) => setKeys({ ...keys, [k]: v })} onClear={() => void clear({ keys: { [k]: '' } })} />
           ))}
         </div>
       </Section>

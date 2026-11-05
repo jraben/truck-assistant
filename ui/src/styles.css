@@ -152,6 +152,7 @@ a { color: var(--accent); }
 .reasons { display: flex; flex-wrap: wrap; gap: 6px; }
 .reasons span { font-size: 13px; padding: 2px 8px; border-radius: calc(6px * var(--r)); background: var(--panel); border: 1px solid var(--line); color: var(--dim); }
 .reasons span.neg { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); }
+.reasons span.pos { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, var(--line)); }
 .attrib { font-size: 12px; color: var(--dim); }
 
 /* slider */
