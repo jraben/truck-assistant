@@ -61,6 +61,12 @@ ip link show wlan1 >/dev/null 2>&1 || echo "   note: no wlan1 yet. Plug in the U
 
 echo "== media (Track B): AM/FM tuner, Spotify Connect, music folder"
 DATA="$DATA" bash "$APP/deploy/pi/media/install-media.sh"
+echo "== cameras: ffmpeg, go2rtc (pinned), V4L2 access, and power-off after a remote wake"
+apt-get install -y -qq ffmpeg v4l-utils >/dev/null
+bash "$APP/deploy/pi/cams/install-go2rtc.sh"
+id -nG slate | grep -qw video || usermod -aG video slate
+install -m 0644 "$APP/deploy/pi/power/51-slate-power.rules" /etc/polkit-1/rules.d/51-slate-power.rules
+# Optional, by hand: LTE modem (deploy/pi/lte/setup-lte.sh) and Tailscale (deploy/pi/tailscale/setup-tailscale.sh).
 
 echo "== brain service"
 install -m 0644 "$APP/deploy/pi/slate-brain.service" /etc/systemd/system/slate-brain.service

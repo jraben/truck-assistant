@@ -1,0 +1,33 @@
+# Vibration while parked, from the MPU-6050 the tilt gauge already uses.
+# Publishes slate/truckbox/binary_sensor/vibration/state ON/OFF. The brain
+# treats ON (ignition off) as motion: a dashcam clip and the "motion while
+# parked" alert. Off while the ignition is on: driving shakes all the time.
+substitutions:
+  # Change of |acceleration| between 100 ms samples that counts, in m/s². 0.6 ≈ a door
+  # slam or someone climbing into the bed; raise it if wind or traffic trips it.
+  vibration_threshold: "0.6"
+
+sensor:
+  - platform: template
+    id: accel_jerk
+    internal: true
+    update_interval: 100ms
+    lambda: |-
+      static float last = NAN;
+      float x = id(imu_accel_x).state, y = id(imu_accel_y).state, z = id(imu_accel_z).state;
+      if (isnan(x) || isnan(y) || isnan(z)) return NAN;
+      float m = sqrtf(x * x + y * y + z * z);
+      float d = isnan(last) ? 0.0f : fabsf(m - last);
+      last = m;
+      return d;
+
+binary_sensor:
+  - platform: template
+    name: Vibration
+    id: vibration
+    device_class: vibration
+    lambda: |-
+      float j = id(accel_jerk).state;
+      return !id(ignition).state && !isnan(j) && j > ${vibration_threshold};
+    filters:
+      - delayed_off: 5s          # one event per bump, not one per sample

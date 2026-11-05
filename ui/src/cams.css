@@ -1,0 +1,59 @@
+/* Track C: Cams view, players, clips, the Truck page. Uses the theme tokens from styles.css. */
+.cams-wrap { height: 100%; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.cams-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cams-bar .sp { flex: 1; }
+.tag.rec { color: var(--bad); animation: rec-blink 2s steps(2) infinite; }
+@keyframes rec-blink { 50% { opacity: .45; } }
+.cams-grid { flex: 1; min-height: 0; display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); }
+.cams-grid.n1 { grid-template-columns: 1fr; }
+.cams-grid.n3, .cams-grid.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cams-grid.n5, .cams-grid.n6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cams-cell { min-height: 0; min-width: 0; cursor: pointer; }
+.cams-single { flex: 1; min-height: 0; }
+.camplayer { position: relative; width: 100%; height: 100%; min-height: 120px; border-radius: calc(12px * var(--r)); overflow: hidden; background: #000; border: 1px solid var(--line); }
+.camplayer.big { border-color: var(--accent); }
+.camvideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+.camvideo video { width: 100%; height: 100%; object-fit: contain; }
+.camoff { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); font-family: var(--mono); }
+.camname, .latency, .camerr { position: absolute; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; padding: 2px 8px; border-radius: calc(6px * var(--r)); background: color-mix(in srgb, #000 60%, transparent); color: #fff; }
+.camname { left: 8px; top: 8px; text-transform: uppercase; }
+.latency { right: 8px; top: 8px; }
+.latency.ok { color: var(--ok); } .latency.warn { color: var(--warn); } .latency.bad { color: var(--bad); } .latency.dim { color: #aaa; }
+.camerr { left: 8px; right: 8px; bottom: 8px; color: var(--warn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.guides-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.guides-svg path { stroke: var(--warn); stroke-width: .7; fill: none; vector-effect: non-scaling-stroke; stroke-width: 4px; opacity: .9; }
+.guides-svg line { stroke-width: 4px; vector-effect: non-scaling-stroke; }
+.clips { display: grid; gap: 6px; max-height: 46vh; overflow-y: auto; }
+.clip { display: flex; gap: 6px; align-items: center; }
+.clip.sel .clip-main { border-color: var(--accent); }
+.clip-main { flex: 1; text-align: left; display: grid; gap: 2px; padding: 8px 12px; border: 1px solid var(--line); border-radius: calc(10px * var(--r)); background: var(--panel-2); color: var(--fg); }
+.clip-main span { color: var(--dim); font-size: 13px; }
+.clip-player video { width: 100%; max-height: 50vh; background: #000; border-radius: calc(10px * var(--r)); }
+
+/* The Truck page (phone first; also inside an HA / WOPR iframe). */
+body.truckpage { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body, system-ui); }
+.truck { max-width: 720px; margin: 0 auto; padding: 12px 12px 40px; display: grid; gap: 12px; }
+.truck h1 { font-family: var(--display, var(--mono)); font-size: 20px; letter-spacing: .12em; margin: 0; }
+.truck .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.truck .head .sp { flex: 1; }
+.truck .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.truck .stat { background: var(--panel); border: 1px solid var(--line); border-radius: calc(12px * var(--r)); padding: 10px 12px; }
+.truck .stat b { display: block; font-size: 26px; font-family: var(--mono); }
+.truck .stat span { color: var(--dim); font-size: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+.truck .map { position: relative; height: 240px; border-radius: calc(12px * var(--r)); overflow: hidden; border: 1px solid var(--line); background: var(--panel-2); }
+.truck .map .osm-tiles { position: absolute; display: grid; grid-template-columns: repeat(3, 256px); gap: 0; }
+.truck .map .osm-tiles img { width: 256px; height: 256px; display: block; filter: saturate(.7) brightness(.85); }
+.truck .map .pin { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 35%, transparent); }
+.truck .map .credit { position: absolute; right: 4px; bottom: 2px; font-size: 10px; color: #333; background: #fffc; padding: 0 4px; border-radius: 3px; }
+.truck .map .noloc { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); }
+.truck .relays { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.truck .relays button { min-height: 56px; text-align: left; padding: 8px 12px; border-radius: calc(12px * var(--r)); border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); }
+.truck .relays button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.truck .relays small { display: block; font-family: var(--mono); font-size: 11px; opacity: .8; }
+.truck .alerts { display: grid; gap: 6px; }
+.truck .alert { padding: 8px 12px; border-left: 3px solid var(--warn); background: var(--panel); border-radius: 0 calc(10px * var(--r)) calc(10px * var(--r)) 0; }
+.truck .alert small { color: var(--dim); font-family: var(--mono); font-size: 11px; display: block; }
+.truck .camgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.truck .camgrid .camplayer { aspect-ratio: 16 / 9; height: auto; }
+@media (max-width: 480px) { .truck .camgrid { grid-template-columns: 1fr; } }
+.remote-save { padding: 4px 0 8px; }

@@ -98,6 +98,10 @@ packages:
   # env: !include packages/env_bme280.yaml
   # BLE TPMS: comment out to drop Bluetooth entirely (saves ~100 KB RAM).
   tpms: !include packages/tpms_ble.yaml
+  # Vibration while parked (MPU-6050): dashcam motion clips and the parked-motion alert.
+  vibration: !include packages/vibration.yaml
+  # UART link to the tier 1 LTE-M watch (firmware/watch). Comment out if there is no watch.
+  watch_link: !include packages/watch_link.yaml
 
 esphome:
   name: ${name}

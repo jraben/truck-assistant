@@ -18,6 +18,11 @@ Environment=NET_CLIENT_IFACE=wlan1
 # Spotify Connect (librespot, run by the brain): ALSA output; pick the card if the default is busy (aplay -L).
 # Environment=LIBRESPOT_BACKEND=alsa
 # Environment=LIBRESPOT_DEVICE=plughw:CARD=Headphones
+# Cameras: go2rtc from install.sh; the brain runs it and keeps the dashcam loop on the SSD.
+Environment=GO2RTC_BIN=/usr/local/bin/go2rtc
+Environment=DASHCAM_DIR=/var/lib/slate-cockpit/dashcam
+# USB cameras and capture sticks (/dev/video*).
+SupplementaryGroups=video
 # Environment=SIM=1   # simulated truck, for bench testing
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning /opt/slate-cockpit/brain/dist/index.js
 Restart=always

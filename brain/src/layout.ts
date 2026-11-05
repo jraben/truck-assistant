@@ -27,10 +27,8 @@ export const DEFAULT_LAYOUT: Layout = {
       { type: 'trips', col: 1, row: 1, w: 12, h: 2 },
     ] },
     { id: 'cams', label: 'Cams', widgets: [
-      { type: 'cam', col: 1, row: 1, w: 3, h: 2, props: { label: 'Rear', note: 'Opens by itself in reverse', guides: true } },
-      { type: 'cam', col: 4, row: 1, w: 3, h: 2, props: { label: 'Bed' } },
-      { type: 'cam', col: 7, row: 1, w: 3, h: 2, props: { label: 'Front' } },
-      { type: 'cam', col: 10, row: 1, w: 3, h: 2, props: { label: 'Hitch', note: 'For hooking up a trailer' } },
+      // Grid or one camera; the rear camera by itself (with guides) in reverse. Cameras are set in Settings > Cameras.
+      { type: 'cams', col: 1, row: 1, w: 12, h: 2 },
     ] },
   ],
 };

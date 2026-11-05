@@ -28,7 +28,7 @@ Built for Jeff's truck first, published for other Slate owners later.
   template). CarPlay: the CarPlay view drives a Carlinkit dongle over WebUSB
   (`ui/src/carplay/`, vendored node-carplay 4.1.0); on a desk,
   `?carplaySim=1` plays a test clip through the same path. Pi setup and
-  dongle notes: `deploy/pi/README.md`. Not yet: camera feeds.
+  dongle notes: `deploy/pi/README.md`.
 - **Media and WOPR (Track B, 2026-11-05):** a MEDIA view (CarPlay, Spotify
   Connect, internet radio with KJEF, AM/FM on an RTL-SDR, Plex, files, Apple
   Music via CarPlay), the WOPR voice button, next appointment to Waze, gate
@@ -44,6 +44,14 @@ Built for Jeff's truck first, published for other Slate owners later.
   the cockpit online through the driver's hotspot (NetworkManager). Design:
   `docs/drivers-and-stops.md`, `docs/connectivity.md`. Needs the HA URL and a
   long-lived token on `/settings`; without them everything else still works.
+- **Cameras and the truck while away (2026-11-05, Track C):** Cams view with
+  live WebRTC through go2rtc (grid or one camera, rear camera with parking
+  guides in reverse, latency per tile), dashcam loop on the SSD with Save clip
+  (60 s before + 30 s after) and parked motion clips, alerts to HA's companion
+  app or ntfy, theft ("moved without a driver"), the phone Truck page at
+  `/truck`, and the always-on LTE-M watch that wakes the Pi
+  (`firmware/watch`). On a desk `SIM=1` shows four moving test cameras (MJPEG
+  from ffmpeg when go2rtc isn't installed). Design: `docs/remote.md`.
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
 - **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a
