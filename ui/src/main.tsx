@@ -4,6 +4,9 @@ import './styles.css';
 import { App } from './components/App.tsx';
 import { connect, pollSettings } from './lib/brain.ts';
 import { carplay } from './carplay/controller.ts';
+import { PROJECT } from '../../brain/src/project.ts';
+
+document.title = PROJECT.name;
 
 connect();
 pollSettings();

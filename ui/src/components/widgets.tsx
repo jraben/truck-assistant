@@ -5,6 +5,8 @@ import { Chargers, SocSlider } from './charge.tsx';
 import { CostSessions, CostSummary } from './costs.tsx';
 import { Trips } from './trips.tsx';
 import { CarPlay, NowPlayingW } from './carplay.tsx';
+import { MaintWidget } from '../ops/Maintenance.tsx';
+import { MileageWidget } from '../ops/Mileage.tsx';
 
 function Cam({ s, props }: WP) {
   const label = String(props?.label ?? 'Camera');
@@ -29,5 +31,6 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   relays: Relays, fiveSwitch: FiveSwitch, tpms: Tpms,
   chargers: Chargers, socSlider: SocSlider, costSummary: CostSummary, costSessions: CostSessions,
   trips: Trips, cam: Cam,
+  maintenance: MaintWidget, mileage: MileageWidget,
 };
 export const widgetFor = (t: string) => WIDGETS[t] ?? Unknown;
