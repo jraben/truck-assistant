@@ -1,0 +1,451 @@
+<title>Slate Cockpit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: landscape cockpit. Fixed left rail of big view buttons, one main stage, a slim status strip on top. Dark-first for night driving; DAY flips to light. */
+:root {
+  --bg: #0d1114; --panel: #151b20; --panel-2: #1c242b; --line: #2a343c;
+  --fg: #e8eef2; --dim: #8a99a5; --accent: #4fc3d9; --accent-ink: #062027;
+  --ok: #5fd08a; --warn: #f2b33d; --bad: #ef5b5b;
+  --display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --rail: 112px; --hit: 72px;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #e9eef1; --panel: #ffffff; --panel-2: #f2f5f7; --line: #cfd8de;
+  --fg: #11181d; --dim: #56656f; --accent: #0b7f96; --accent-ink: #ffffff;
+  --ok: #1d8a4b; --warn: #a96b00; --bad: #c62f2f; color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #e9eef1; --panel: #ffffff; --panel-2: #f2f5f7; --line: #cfd8de;
+  --fg: #11181d; --dim: #56656f; --accent: #0b7f96; --accent-ink: #ffffff;
+  --ok: #1d8a4b; --warn: #a96b00; --bad: #c62f2f; color-scheme: light; }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; overflow: hidden; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+.app { display: grid; grid-template-columns: var(--rail) 1fr; grid-template-rows: 56px 1fr; height: 100%;
+  padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+
+/* status strip */
+.strip { grid-column: 1 / -1; display: flex; align-items: center; gap: 20px; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--panel); font-family: var(--mono); font-size: 14px; color: var(--dim); }
+.strip .brand { font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: .14em; color: var(--fg); }
+.strip .sp { flex: 1; }
+.strip .clock { font-family: var(--display); font-size: 24px; font-weight: 600; color: var(--fg); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+.daybtn { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; font-family: var(--mono); font-size: 13px; letter-spacing: .08em; color: var(--fg); }
+
+/* rail */
+.rail { display: flex; flex-direction: column; gap: 6px; padding: 10px 8px; border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; }
+.rail button { min-height: var(--hit); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .1em; color: var(--dim); }
+.rail button svg { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rail button[aria-current="page"] { background: var(--accent); color: var(--accent-ink); }
+.rail .voice { margin-top: auto; border: 2px solid var(--accent); color: var(--accent); }
+
+.stage { overflow: auto; padding: 16px; min-width: 0; }
+.view { display: grid; gap: 14px; height: 100%; }
+.view[hidden] { display: none !important; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.lbl { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+
+/* DRIVE */
+.drive { grid-template-columns: 1.25fr 1fr; grid-template-rows: auto 1fr; }
+.speedo { grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: space-between; }
+.speed { font-family: var(--display); font-weight: 800; font-size: clamp(120px, 20vw, 240px); line-height: .9; letter-spacing: -.02em; }
+.speed small { font-size: .18em; font-weight: 600; color: var(--dim); letter-spacing: .1em; margin-left: 8px; }
+.gears { display: flex; gap: 10px; }
+.gear { flex: 1; min-height: 64px; border-radius: 12px; border: 1px solid var(--line); display: grid; place-items: center;
+  font-family: var(--display); font-size: 32px; font-weight: 800; color: var(--dim); }
+.gear.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.powerbar { height: 14px; border-radius: 7px; background: var(--panel-2); position: relative; overflow: hidden; }
+.powerbar i { position: absolute; top: 0; bottom: 0; left: 30%; background: var(--accent); transition: width .4s, left .4s; }
+.powerbar .zero { position: absolute; left: 30%; top: -4px; bottom: -4px; width: 2px; background: var(--fg); }
+.batt { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; }
+.ring { width: 140px; height: 140px; }
+.ring circle { fill: none; stroke-width: 12; }
+.ring .track { stroke: var(--panel-2); } .ring .val { stroke: var(--ok); stroke-linecap: round; transition: stroke-dashoffset .6s; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.ring text { fill: var(--fg); font-family: var(--display); font-weight: 800; font-size: 34px; }
+.big2 { font-family: var(--display); font-weight: 800; font-size: 54px; line-height: 1; }
+.big2 small { font-size: 20px; color: var(--dim); font-weight: 600; margin-left: 4px; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.stat .v { font-family: var(--display); font-size: 34px; font-weight: 600; }
+.stat .v small { font-size: 16px; color: var(--dim); }
+.next { display: flex; gap: 14px; align-items: center; }
+.next .arrow { width: 72px; height: 72px; border-radius: 14px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+.next .arrow svg { width: 44px; height: 44px; stroke: currentColor; fill: none; stroke-width: 2.4; }
+
+/* CARPLAY */
+.cp { grid-template-columns: 1fr 300px; }
+.cpscreen { border-radius: 14px; border: 1px dashed var(--line); background:
+  repeating-linear-gradient(135deg, var(--panel) 0 14px, var(--panel-2) 14px 28px); display: grid; place-items: center; text-align: center; padding: 24px; min-height: 320px; }
+.cpscreen h2 { font-family: var(--display); font-size: 40px; margin: 0 0 8px; }
+.cpscreen p { color: var(--dim); max-width: 46ch; margin: 0 auto; line-height: 1.5; }
+.side { display: grid; gap: 14px; align-content: start; }
+
+/* CONTROL tiles */
+.tiles { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-content: start; }
+.tile { min-height: 132px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); padding: 16px; text-align: left; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.tile .name { font-family: var(--display); font-size: 24px; font-weight: 600; }
+.tile .state { font-family: var(--mono); font-size: 13px; color: var(--dim); letter-spacing: .08em; }
+.tile.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tile.on .state { color: var(--accent-ink); }
+.src { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; padding: 2px 8px; border-radius: 6px; border: 1px solid currentColor; align-self: flex-start; opacity: .8; }
+.sectionhead { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 12px; margin-top: 4px; }
+.sectionhead h3 { margin: 0; font-family: var(--display); font-size: 22px; letter-spacing: .06em; }
+.sectionhead p { margin: 0; color: var(--dim); font-size: 14px; }
+
+/* TRUCK */
+.truck { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-content: start; }
+.tires { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 40px; margin-top: 10px; }
+.tire { font-family: var(--display); font-size: 36px; font-weight: 600; }
+.tire small { font-size: 14px; color: var(--dim); }
+.rows { display: grid; gap: 8px; margin-top: 10px; font-size: 15px; }
+.rows div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.rows span:last-child { font-family: var(--mono); }
+
+/* CAMS */
+.cams { grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(200px, 1fr); }
+.cam { border-radius: 14px; background: #000; color: #9fb3bf; display: flex; flex-direction: column; justify-content: space-between; padding: 14px; position: relative; overflow: hidden; }
+.cam::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 70%, #1d2a33 0%, #000 70%); z-index: 0; }
+.cam > * { position: relative; z-index: 1; }
+.cam .guides { position: absolute; left: 25%; right: 25%; bottom: 10%; height: 45%; border-left: 3px solid #f2b33d; border-right: 3px solid #f2b33d; border-bottom: 3px solid #ef5b5b; transform: perspective(300px) rotateX(35deg); z-index: 1; }
+
+/* PLAN */
+.plan { grid-template-columns: 1fr; align-content: start; max-width: 1100px; }
+.plan h2 { font-family: var(--display); font-size: 34px; margin: 0; text-wrap: balance; }
+.plan p { line-height: 1.55; max-width: 72ch; margin: 6px 0 0; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.opt { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--panel); display: flex; flex-direction: column; gap: 8px; }
+.opt.pick { border: 2px solid var(--accent); }
+.opt h4 { margin: 0; font-family: var(--display); font-size: 22px; }
+.opt .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: var(--accent); }
+.opt ul { margin: 0; padding-left: 18px; line-height: 1.5; font-size: 14px; }
+.opt .cp-yes { color: var(--ok); font-weight: 600; } .opt .cp-no { color: var(--bad); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 640px; }
+th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.phase { display: grid; grid-template-columns: 120px 1fr; gap: 6px 16px; }
+.phase b { font-family: var(--display); font-size: 18px; color: var(--accent); }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg);
+  padding: 12px 20px; border-radius: 10px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+@media (max-width: 820px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: 1fr; grid-template-rows: 56px auto 1fr; height: auto; min-height: 100%; }
+  .rail { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .rail button { min-width: 80px; }
+  .rail .voice { margin-top: 0; margin-left: auto; }
+  .stage { padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+  .drive, .cp, .cams { grid-template-columns: 1fr; }
+  .speedo { grid-row: auto; }
+  .strip .hide-sm { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="strip">
+    <span class="brand">SLATE</span>
+    <span class="pill"><span class="dot ok" id="phoneDot"></span><span id="phoneTxt">iPhone · CarPlay</span></span>
+    <span class="pill hide-sm"><span class="dot warn"></span>Truck data: simulated</span>
+    <span class="sp"></span>
+    <span class="hide-sm num" id="outside">72°F outside</span>
+    <span class="clock num" id="clock">--:--</span>
+    <button class="daybtn" id="dayBtn" type="button">DAY</button>
+  </header>
+
+  <nav class="rail" aria-label="Views">
+    <button type="button" data-view="drive"><svg viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/></svg>DRIVE</button>
+    <button type="button" data-view="carplay"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M8 12h8M12 8v8"/></svg>CARPLAY</button>
+    <button type="button" data-view="controls"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="4"/></svg>CONTROL</button>
+    <button type="button" data-view="truck"><svg viewBox="0 0 24 24"><path d="M3 16V9h11v7M14 11h4l3 3v2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>TRUCK</button>
+    <button type="button" data-view="cams"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3"/></svg>CAMS</button>
+    <button type="button" data-view="plan"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>PLAN</button>
+    <button type="button" class="voice" id="voiceBtn"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>WOPR</button>
+  </nav>
+
+  <main class="stage">
+    <!-- DRIVE -->
+    <section class="view drive" id="v-drive">
+      <div class="card speedo">
+        <div class="lbl">Speed</div>
+        <div class="speed num"><span id="speed">0</span><small>MPH</small></div>
+        <div>
+          <div class="lbl" style="display:flex;justify-content:space-between"><span>Regen</span><span>Power <span id="kw" class="num">0</span> kW</span></div>
+          <div class="powerbar" aria-hidden="true"><i id="pbar"></i><span class="zero"></span></div>
+        </div>
+        <div class="gears" role="group" aria-label="Gear (display only)">
+          <div class="gear" data-g="P">P</div><div class="gear" data-g="R">R</div><div class="gear" data-g="N">N</div><div class="gear" data-g="D">D</div>
+        </div>
+      </div>
+      <div class="card batt">
+        <svg class="ring" viewBox="0 0 140 140" aria-label="Battery charge">
+          <circle class="track" cx="70" cy="70" r="58"/>
+          <circle class="val" id="ringVal" cx="70" cy="70" r="58" stroke-dasharray="364.4" stroke-dashoffset="100"/>
+          <text x="70" y="82" text-anchor="middle" id="socTxt">--%</text>
+        </svg>
+        <div>
+          <div class="lbl">Range</div>
+          <div class="big2 num"><span id="range">--</span><small>mi</small></div>
+          <div class="lbl" style="margin-top:10px">Efficiency</div>
+          <div class="num" style="font-family:var(--display);font-size:26px;font-weight:600"><span id="eff">3.6</span> <small style="color:var(--dim);font-size:15px">mi/kWh</small></div>
+        </div>
+      </div>
+      <div class="card" style="display:grid;gap:16px;align-content:start">
+        <div class="next">
+          <div class="arrow"><svg viewBox="0 0 24 24"><path d="M7 19V11a4 4 0 0 1 4-4h7"/><path d="M14 3l4 4-4 4"/></svg></div>
+          <div><div class="lbl">From CarPlay maps · in 0.4 mi</div><div style="font-family:var(--display);font-size:28px;font-weight:600">Right on Scottsdale Rd</div></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="lbl">Trip</div><div class="v num"><span id="trip">12.4</span><small> mi</small></div></div>
+          <div class="stat"><div class="lbl">Odometer</div><div class="v num">418<small> mi</small></div></div>
+          <div class="stat"><div class="lbl">Cabin</div><div class="v num">74<small>°F</small></div></div>
+          <div class="stat"><div class="lbl">12V</div><div class="v num">13.8<small> V</small></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CARPLAY -->
+    <section class="view cp" id="v-carplay" hidden>
+      <div class="cpscreen">
+        <div>
+          <h2>CarPlay goes here</h2>
+          <p>On the Pi build, the Carlinkit dongle streams your iPhone's CarPlay into this panel: Maps, Music, Messages, Siri. The strip on the right stays ours, so battery and speed never leave the screen.</p>
+        </div>
+      </div>
+      <div class="side">
+        <div class="card"><div class="lbl">Speed</div><div class="big2 num"><span id="speed2">0</span><small>mph</small></div></div>
+        <div class="card"><div class="lbl">Battery</div><div class="big2 num"><span id="soc2">--</span><small>%</small></div><div class="lbl" style="margin-top:6px"><span id="range2">--</span> mi range</div></div>
+        <div class="card"><div class="lbl">Bed lights</div><button type="button" class="tile" data-toggle="bed" style="min-height:72px;width:100%;margin-top:8px"><span class="name">Off</span></button></div>
+      </div>
+    </section>
+
+    <!-- CONTROLS -->
+    <section class="view tiles" id="v-controls" hidden>
+      <div class="sectionhead"><h3>UPFIT</h3><p>Our own relays. Works no matter what Slate exposes.</p></div>
+      <button type="button" class="tile" data-toggle="bed"><span class="src">RELAY 1</span><span><div class="name">Bed lights</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="bar"><span class="src">RELAY 2</span><span><div class="name">Light bar</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="rock"><span class="src">RELAY 3</span><span><div class="name">Rock lights</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="air"><span class="src">RELAY 4</span><span><div class="name">Air compressor</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="fridge"><span class="src">RELAY 5</span><span><div class="name">Bed fridge</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="inv"><span class="src">RELAY 6</span><span><div class="name">Inverter 120V</div><div class="state">OFF</div></span></button>
+      <div class="sectionhead"><h3>TRUCK</h3><p>Only if Slate's CAN bus or app allows it. Read-only until proven safe.</p></div>
+      <button type="button" class="tile" data-toggle="hvac"><span class="src">CAN · TBD</span><span><div class="name">Climate</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="charge"><span class="src">CAN · TBD</span><span><div class="name">Charge limit 80%</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="mode"><span class="src">CAN · TBD</span><span><div class="name">Drive mode Eco</div><div class="state">OFF</div></span></button>
+      <button type="button" class="tile" data-toggle="lock"><span class="src">CAN · TBD</span><span><div class="name">Locks</div><div class="state">OFF</div></span></button>
+    </section>
+
+    <!-- TRUCK -->
+    <section class="view truck" id="v-truck" hidden>
+      <div class="card">
+        <div class="lbl">Tire pressure · TPMS</div>
+        <div class="tires num">
+          <div class="tire">38<small> psi FL</small></div><div class="tire">38<small> psi FR</small></div>
+          <div class="tire">40<small> psi RL</small></div><div class="tire" style="color:var(--warn)">33<small> psi RR</small></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="lbl">Battery pack</div>
+        <div class="rows num">
+          <div><span>State of charge</span><span id="soc3">--%</span></div>
+          <div><span>Pack temp</span><span>81°F</span></div>
+          <div><span>Health (SoH)</span><span>99%</span></div>
+          <div><span>Last charge</span><span>Home L2 · 7.2 kW</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="lbl">Service</div>
+        <div class="rows">
+          <div><span>Alerts</span><span style="color:var(--warn)">RR tire low</span></div>
+          <div><span>Tire rotation</span><span>in 6,582 mi</span></div>
+          <div><span>Cabin filter</span><span>OK</span></div>
+          <div><span>Software</span><span>via Slate app</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="lbl">Where the data comes from</div>
+        <div class="rows">
+          <div><span>Speed, SoC, gear</span><span>CAN tap (TBD)</span></div>
+          <div><span>TPMS</span><span>BLE sensors</span></div>
+          <div><span>GPS, outside temp</span><span>Pi GPS + sensor</span></div>
+          <div><span>Upfit relays</span><span>ours</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CAMS -->
+    <section class="view cams" id="v-cams" hidden>
+      <div class="cam"><span class="lbl" style="color:#9fb3bf">REAR · USB cam</span><div class="guides"></div><span class="lbl" style="color:#9fb3bf">Opens by itself in reverse</span></div>
+      <div class="cam"><span class="lbl" style="color:#9fb3bf">BED · USB cam</span><span></span></div>
+      <div class="cam"><span class="lbl" style="color:#9fb3bf">FRONT · trail cam</span><span></span></div>
+      <div class="cam"><span class="lbl" style="color:#9fb3bf">HITCH · for trailers</span><span></span></div>
+    </section>
+
+    <!-- PLAN -->
+    <section class="view plan" id="v-plan" hidden>
+      <div>
+        <h2>Pick the screen, then the brain</h2>
+        <p>The Slate ships with no screen and no modem, only a mount and Slate's phone app. CarPlay needs a <b>receiver</b>: an iPad can't be one, so the choice of hardware decides whether CarPlay works.</p>
+      </div>
+      <div class="opts">
+        <div class="opt pick">
+          <span class="tag">RECOMMENDED</span>
+          <h4>A · Raspberry Pi 5 + Carlinkit + 10–13" touch</h4>
+          <ul>
+            <li class="cp-yes">Real wireless CarPlay</li>
+            <li>react-carplay (open source) shows CarPlay inside this dashboard</li>
+            <li>CAN HAT reads the truck; GPIO drives relays</li>
+            <li>Needs a car power board (safe shutdown on ignition off)</li>
+            <li>About $300–450 all-in</li>
+          </ul>
+        </div>
+        <div class="opt">
+          <span class="tag">EASIEST CARPLAY</span>
+          <h4>B · Android tablet / head unit + Carlinkit</h4>
+          <ul>
+            <li class="cp-yes">CarPlay via Autokit app</li>
+            <li>Dashboard runs as a web app beside it, flip between them</li>
+            <li>Less integrated, CarPlay is a separate app</li>
+            <li>About $250–400</li>
+          </ul>
+        </div>
+        <div class="opt">
+          <span class="tag">NICEST SCREEN</span>
+          <h4>C · iPad on Slate's mount</h4>
+          <ul>
+            <li class="cp-no">No CarPlay, ever</li>
+            <li>Dashboard as a full-screen web app; phone stays your nav/music</li>
+            <li>Needs a small ESP32/Pi box for truck data and relays</li>
+            <li>Heat: iPads shut down in a hot Arizona cab</li>
+          </ul>
+        </div>
+        <div class="opt">
+          <span class="tag">ADD-ON</span>
+          <h4>D · ESP32-P4 7–10" display</h4>
+          <ul>
+            <li class="cp-no">No CarPlay</li>
+            <li>Great as a second screen: gauges + relay buttons</li>
+            <li>Boots in a second, survives heat, cheap ($60–120)</li>
+            <li>Pairs with A, B or C</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="lbl" style="margin-bottom:8px">Build in phases</div>
+        <div class="phase">
+          <b>Phase 1</b><span>This UI as a web app. Simulated data. Runs on any screen, so you can try it on an iPad or tablet today.</span>
+          <b>Phase 2</b><span>Pi 5 + Carlinkit on the bench: CarPlay inside the CARPLAY view, and the six upfit relays working.</span>
+          <b>Phase 3</b><span>Truck arrives: sniff the CAN bus read-only, map speed / SoC / gear. Add TPMS, GPS, rear camera on reverse.</span>
+          <b>Phase 4</b><span>WOPR voice button, trip log back to the NAS when the truck reaches home Wi-Fi.</span>
+          <b>Phase 5</b><span>Clean it up to publish: config file for relays, setup script, an image others can flash.</span>
+        </div>
+      </div>
+      <div class="tablewrap card">
+        <table>
+          <thead><tr><th>Part</th><th>Option A pick</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Brain</td><td>Raspberry Pi 5 (8 GB)</td><td>Runs react-carplay and the dashboard together</td></tr>
+            <tr><td>CarPlay</td><td>Carlinkit CPC200-CCPA</td><td>The dongle react-carplay is tested with</td></tr>
+            <tr><td>Screen</td><td>10.1"–13.3" HDMI touch, 1000+ nits</td><td>Readable in sun; big targets</td></tr>
+            <tr><td>Power</td><td>Car power HAT</td><td>Clean shutdown when the truck turns off</td></tr>
+            <tr><td>Truck data</td><td>CAN HAT (MCP2515)</td><td>Listen only first</td></tr>
+            <tr><td>Relays</td><td>6-ch automotive relay board, fused</td><td>Lights, compressor, fridge, inverter</td></tr>
+            <tr><td>Audio</td><td>USB DAC to an amp + speakers</td><td>Slate has no stereo to plug into</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const views = ['drive', 'carplay', 'controls', 'truck', 'cams', 'plan'];
+
+  function show(v) {
+    if (!views.includes(v)) v = 'drive';
+    views.forEach(id => { $('#v-' + id).hidden = id !== v; });
+    $$('.rail [data-view]').forEach(b => { if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  }
+  $$('.rail [data-view]').forEach(b => b.addEventListener('click', () => { location.hash = b.dataset.view; show(b.dataset.view); }));
+  window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+  show(location.hash.slice(1));
+
+  // theme
+  const root = document.documentElement;
+  function setTheme(t) { root.setAttribute('data-theme', t); $('#dayBtn').textContent = t === 'light' ? 'NIGHT' : 'DAY'; try { localStorage.setItem('slate.theme', t); } catch (e) {} }
+  let saved = null; try { saved = localStorage.getItem('slate.theme'); } catch (e) {}
+  if (saved) setTheme(saved); else $('#dayBtn').textContent = matchMedia('(prefers-color-scheme: light)').matches ? 'NIGHT' : 'DAY';
+  $('#dayBtn').addEventListener('click', () => {
+    const cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    setTheme(cur === 'light' ? 'dark' : 'light');
+  });
+
+  // toast
+  let tt; function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 1800); }
+
+  // toggles (shared state, so the CarPlay side button mirrors the tile)
+  const state = {};
+  $$('[data-toggle]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.toggle; state[k] = !state[k];
+    $$('[data-toggle="' + k + '"]').forEach(x => {
+      x.classList.toggle('on', state[k]);
+      const s = x.querySelector('.state'); if (s) s.textContent = state[k] ? 'ON' : 'OFF';
+      const n = x.querySelector('.name'); if (n && !s) n.textContent = state[k] ? 'On' : 'Off';
+    });
+    const nm = (b.querySelector('.name') && b.querySelector('.state')) ? b.querySelector('.name').textContent : 'Bed lights';
+    toast(nm + (state[k] ? ' on' : ' off') + ' (simulated)');
+  }));
+
+  $('#voiceBtn').addEventListener('click', () => toast('WOPR listening… (Phase 4)'));
+
+  // clock
+  function tick() { const d = new Date(); $('#clock').textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  tick(); setInterval(tick, 1000);
+
+  // simulated drive
+  let t = 0, soc = 78, trip = 12.4, gear = 'D';
+  const C = 2 * Math.PI * 58;
+  function sim() {
+    t += 1;
+    const speed = Math.max(0, Math.round(38 + 22 * Math.sin(t / 9) + 6 * Math.sin(t / 2.3)));
+    const kw = Math.round((22 * Math.cos(t / 9) + 6 * Math.cos(t / 2.3)) * 1.6 + speed * 0.25);
+    soc = Math.max(5, soc - 0.01); trip += speed / 3600;
+    gear = speed === 0 ? 'P' : 'D';
+    const range = Math.round(soc / 100 * 240);
+    $('#speed').textContent = speed; $('#speed2').textContent = speed;
+    $('#kw').textContent = kw;
+    const p = $('#pbar');
+    if (kw >= 0) { p.style.left = '30%'; p.style.width = Math.min(70, kw / 150 * 70) + '%'; p.style.background = 'var(--accent)'; }
+    else { const w = Math.min(30, -kw / 60 * 30); p.style.left = (30 - w) + '%'; p.style.width = w + '%'; p.style.background = 'var(--ok)'; }
+    const s = Math.round(soc);
+    $('#socTxt').textContent = s + '%'; $('#soc2').textContent = s; $('#soc3').textContent = s + '%';
+    $('#range').textContent = range; $('#range2').textContent = range;
+    const rv = $('#ringVal'); rv.style.strokeDashoffset = C * (1 - soc / 100);
+    rv.style.stroke = soc < 15 ? 'var(--bad)' : soc < 30 ? 'var(--warn)' : 'var(--ok)';
+    $('#trip').textContent = trip.toFixed(1);
+    $$('.gear').forEach(g => g.classList.toggle('on', g.dataset.g === gear));
+  }
+  sim(); setInterval(sim, 1000);
+
+  // keep the screen on where allowed
+  try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (e) {}
+})();
+</script>

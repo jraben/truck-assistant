@@ -1,0 +1,182 @@
+<title>Slate Cockpit Options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@600;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; verdict first, then the three paths as cards, then the want-by-want grid, then shared work. */
+:root {
+  --bg: #0d1114; --panel: #151b20; --panel-2: #1c242b; --line: #2a343c;
+  --fg: #e8eef2; --dim: #8a99a5; --accent: #4fc3d9;
+  --ok: #5fd08a; --warn: #f2b33d; --bad: #ef5b5b;
+  --display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #eef2f4; --panel: #ffffff; --panel-2: #f3f6f8; --line: #d3dbe0;
+  --fg: #11181d; --dim: #56656f; --accent: #0b7f96; --ok: #1d8a4b; --warn: #9a6200; --bad: #c62f2f; color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #eef2f4; --panel: #ffffff; --panel-2: #f3f6f8; --line: #d3dbe0;
+  --fg: #11181d; --dim: #56656f; --accent: #0b7f96; --ok: #1d8a4b; --warn: #9a6200; --bad: #c62f2f; color-scheme: light; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+* { box-sizing: border-box; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.05; }
+h2 { font-size: 28px; }
+h3 { font-size: 22px; }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.verdict { border: 2px solid var(--accent); border-radius: 14px; padding: 20px; background: var(--panel); display: grid; gap: 10px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.card.pick { border: 2px solid var(--accent); }
+.price { font-family: var(--display); font-weight: 800; font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+.price small { font-size: 16px; color: var(--dim); font-weight: 600; }
+.card ul { margin: 0; padding-left: 18px; font-size: 15px; }
+.chip { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .1em; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--accent); color: var(--accent); align-self: flex-start; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); background: var(--panel-2); }
+tbody th { font-weight: 600; white-space: nowrap; }
+.y, .m, .n { font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: .06em; display: block; margin-bottom: 2px; }
+.y { color: var(--ok); } .m { color: var(--warn); } .n { color: var(--bad); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.note { font-size: 14px; color: var(--dim); }
+ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:10px">
+    <span class="eyebrow">Slate Cockpit · hardware decision · Nov 2026</span>
+    <h1>Three ways to put a screen in the Slate</h1>
+    <p>Three plans were written separately, against the same ten wants and the same Slate accessories, then put side by side here. Prices are parts only, before your Slate accessories.</p>
+  </header>
+
+  <section class="verdict">
+    <span class="eyebrow">Recommendation</span>
+    <h2>Android head unit (TEYES CC3 360) + Carlinkit</h2>
+    <p>It covers every want, nine of them natively: CarPlay with Waze, a real browser, four cameras with 360° stitching, a built-in amp, and ignition and reverse wires. It has no battery to swell in a Phoenix cab. It costs about the same as the Pi 5 build and needs the least custom hardware, which also makes it the easiest for other Slate owners to copy.</p>
+    <p>The tradeoff is the look. CarPlay runs in its own app beside our dashboard, not inside it. If having CarPlay framed by our own gauges matters more than fewer weekends of wiring, pick the Pi 5. Pi + ESP32 is the cheapest by about $350, but Waze and the browser leave the screen.</p>
+  </section>
+
+  <section class="cards" aria-label="The three paths">
+    <article class="card pick">
+      <span class="chip">RECOMMENDED</span>
+      <h3>Android head unit + Carlinkit</h3>
+      <div class="price">$780–960 <small>base</small></div>
+      <div class="note">$1,050–1,330 with 360° kit + hitch cam</div>
+      <ul>
+        <li>TEYES CC3 2K 10.36", no battery</li>
+        <li>CarPlay via Carlinkit + Autokit; Android Waze as backup</li>
+        <li>Dashboard runs full screen in Fully Kiosk</li>
+        <li>ESP32 box over Bluetooth for truck data and relays</li>
+        <li>Native 4-camera 360° input and amplifier</li>
+      </ul>
+    </article>
+    <article class="card">
+      <span class="chip">MOST INTEGRATED</span>
+      <h3>Raspberry Pi 5 + Carlinkit</h3>
+      <div class="price">~$700 <small>base</small></div>
+      <div class="note">$1,050–1,200 with budget 360° kit</div>
+      <ul>
+        <li>10.1" touch panel in a printed tablet shell</li>
+        <li>CarPlay drawn inside our own UI (react-carplay)</li>
+        <li>Car power HAT, read-only system, SSD</li>
+        <li>360° kit's own box stitches the cameras; a USB capture stick brings it in</li>
+        <li>Most to build, most to keep running</li>
+      </ul>
+    </article>
+    <article class="card">
+      <span class="chip">CHEAPEST</span>
+      <h3>Pi 4 brain + ESP32-P4 screen</h3>
+      <div class="price">~$415 <small>base</small></div>
+      <div class="note">$460 with rear cam, $680 with 360°</div>
+      <ul>
+        <li>Guition 10.1" ESP32-P4 panel ($44), boots in 1–2 s</li>
+        <li>Pi 4 hidden under the dash over USB</li>
+        <li>Waze and CarPlay stay on the phone in its own mount</li>
+        <li>Video on the panel is slow: CarPlay, browser and 360° are experimental</li>
+      </ul>
+    </article>
+  </section>
+
+  <section style="display:grid;gap:12px">
+    <h2>Want by want</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Want</th><th>Android head unit</th><th>Pi 5</th><th>Pi + ESP32</th></tr></thead>
+        <tbody>
+          <tr><th>1 · Charging, ranked by your prefs</th>
+            <td><span class="y">YES</span>AFDC + Open Charge Map + Google Places live availability; SoC pushed to ABRP</td>
+            <td><span class="y">YES</span>AFDC + Open Charge Map + OSM amenities, shade scoring</td>
+            <td><span class="y">YES</span>AFDC + Open Charge Map, link to Waze on the phone</td></tr>
+          <tr><th>2 · Waze</th>
+            <td><span class="y">YES</span>In CarPlay, Android Waze as backup</td>
+            <td><span class="y">YES</span>In CarPlay; forum reports of Waze crash loops on the dongle</td>
+            <td><span class="n">PHONE</span>Waze stays on the phone in a printed mount</td></tr>
+          <tr><th>3 · Media dashboard</th>
+            <td><span class="y">YES</span>Any Android app's now-playing, built-in amp</td>
+            <td><span class="y">YES</span>CarPlay, Spotify Connect, Plex, Audiobookshelf</td>
+            <td><span class="m">PARTLY</span>Pi as a Bluetooth speaker + now-playing</td></tr>
+          <tr><th>4 · Clean, customizable</th>
+            <td><span class="m">PARTLY</span>Our dashboard is fully custom; CarPlay is a separate app</td>
+            <td><span class="y">BEST</span>CarPlay framed inside our own layout</td>
+            <td><span class="y">YES</span>Layouts pushed live from the web</td></tr>
+          <tr><th>5 · Cheap + reliable</th>
+            <td><span class="y">YES</span>No battery, ignition sleep, made for cars</td>
+            <td><span class="m">OK</span>Consumer parts; heat and dongle risk</td>
+            <td><span class="y">CHEAPEST</span>Fast boot; panel rated only to 60°C</td></tr>
+          <tr><th>6 · Cameras, 360°</th>
+            <td><span class="y">NATIVE</span>4-camera input on the unit, reverse wire</td>
+            <td><span class="y">YES</span>Kit's own box → USB capture</td>
+            <td><span class="m">SLOW</span>Rear cam OK once the Pi has booted; 360° experimental</td></tr>
+          <tr><th>7 · Web browser</th>
+            <td><span class="y">YES</span>Chrome, locked above 5 mph</td>
+            <td><span class="y">YES</span>Built-in tab, locked while moving</td>
+            <td><span class="n">NO</span>Use the phone</td></tr>
+          <tr><th>8 · Web portal, accounts</th>
+            <td><span class="y">YES</span>"Slate Hub" on the NAS, or on the truck</td>
+            <td><span class="y">YES</span>Runs on the truck at slate.local, NAS copy optional</td>
+            <td><span class="y">YES</span>Runs on the Pi, NAS optional</td></tr>
+          <tr><th>9 · Home Assistant</th>
+            <td><span class="y">YES</span>HA Companion app + MQTT</td>
+            <td><span class="y">YES</span>MQTT, queued offline</td>
+            <td><span class="y">YES</span>MQTT discovery, ESPHome-native screen</td></tr>
+          <tr><th>10 · Route + trip tracking</th>
+            <td><span class="y">YES</span>Unit GPS → Traccar on the NAS</td>
+            <td><span class="y">YES</span>u-blox GPS → SQLite → NAS</td>
+            <td><span class="y">YES</span>$15 GPS → SQLite → NAS</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Two corrections to the first prototype, from the ESP32 plan's research: the Pi 5 has no hardware H.264 decoder (the Pi 4 does), and the ESP32-P4 encodes H.264 in hardware but decodes it only in software.</p>
+  </section>
+
+  <section class="grid2">
+    <div class="card">
+      <h3>Unknowns all three share</h3>
+      <ol>
+        <li><b>Truck data.</b> Slate has published no OBD or CAN access, so the truck's charge level and energy per mile start out typed in or estimated.</li>
+        <li><b>Speakers.</b> Slate has no factory audio, and how its integrated speakers take sound (wired or Bluetooth) is unpublished. That's a ±$150 swing, settled at delivery.</li>
+        <li><b>Tablet Mount size.</b> Don't buy a screen bigger than 10" until the clamp is measured.</li>
+        <li><b>Five Switch.</b> A 5-gang plate for the Accessory Console. We can read it and add relays in parallel; controlling the factory circuits waits for the wiring.</li>
+        <li><b>Phoenix heat.</b> Screens black out and parts warp. Print in ASA, shade the screen, and log one summer before publishing.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>What to build now, whichever wins</h3>
+      <ol>
+        <li><b>The dashboard web app.</b> It runs on all three screens.</li>
+        <li><b>The ESP32 truck box:</b> relays, Five Switch sense, tilt, cabin temp and TPMS over BLE, MQTT to HA.</li>
+        <li><b>Slate Hub portal:</b> settings, accounts, trip history on the NAS.</li>
+        <li><b>The charging finder</b> with your preferences (AFDC + Open Charge Map).</li>
+        <li><b>Printed parts</b> that don't depend on the screen: camera brackets, hitch-cam mount, cable clips.</li>
+      </ol>
+      <p class="note">The screen choice only decides the last mile, so it can wait until the truck and its mount arrive.</p>
+    </div>
+  </section>
+</div>
