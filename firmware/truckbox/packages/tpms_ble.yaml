@@ -1,0 +1,121 @@
+# BLE TPMS: generic external valve-cap sensors (ZEEPIN / TP630 / "TPMS1_xxxxxx" type).
+#
+# UNVERIFIED ON REAL HARDWARE. The layout below is the one the Theengs decoder
+# (model "TPMS", src/devices/TPMS_json.h) and several hobby projects use for
+# these sensors. It has not been checked against a sensor in this repo. Read
+# README.md "TPMS" before trusting a number, and set tpms_enabled: "false" in
+# truckbox.yaml to keep the scanner logging without publishing.
+#
+# Advertisement: manufacturer-specific data, company id bytes 00 01 on the air
+# (little-endian -> 0x0100). ESPHome strips the company id, so x[] is:
+#   x[0]      sensor number, 0x80 + position (0x80 = sensor 1 ...)
+#   x[1..5]   last five bytes of the MAC (e.g. EA CA 10 83 B1)
+#   x[6..9]   pressure, uint32 little-endian, Pa   (gauge, per the decoders)
+#   x[10..13] temperature, int32 little-endian, 0.01 C
+#   x[14]     battery, %
+#   x[15]     alarm flags, bit 0 = no pressure / leak
+#
+# Sensors broadcast roughly every few seconds while the wheel turns and much
+# less often when parked; some go quiet entirely after a while stationary.
+# A tire unseen for tpms_stale_minutes is published as unknown (NaN), never
+# held at its last value.
+
+esphome:
+  includes:
+    - tpms_decode.h
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: false          # passive: these sensors never answer scan requests
+    interval: 320ms
+    window: 60ms
+    continuous: true
+  on_ble_manufacturer_data_advertise:
+    # Discovery aid: logs every sensor of this type in range with its MAC, so
+    # the four MACs can be copied into truckbox.yaml. Spin one wheel at a time,
+    # or let air out of one: the one that changes is that tire.
+    - manufacturer_id: "0100"
+      then:
+        - lambda: |-
+            TpmsFrame f = tpms_parse(x);
+            if (!f.sensor_no) return;
+            ESP_LOGI("tpms", "seen sensor #%d: %.1f psi %.1f C batt %d%% alarm %d%s",
+                     f.sensor_no, f.psi, f.temp_c, f.battery, f.alarm, f.ok ? "" : " (implausible)");
+    - mac_address: ${tpms_mac_fl}
+      manufacturer_id: "0100"
+      then:
+        - lambda: |-
+            if (!${tpms_enabled}) return;
+            TpmsFrame f = tpms_parse(x);
+            if (!f.ok) { ESP_LOGW("tpms", "FL: implausible frame ignored"); return; }
+            id(tpms_fl_psi).publish_state(f.psi);
+            id(tpms_fl_temp).publish_state(f.temp_f);
+            id(tpms_fl_batt).publish_state(f.battery);
+            id(tpms_last_seen)[0] = millis();
+    - mac_address: ${tpms_mac_fr}
+      manufacturer_id: "0100"
+      then:
+        - lambda: |-
+            if (!${tpms_enabled}) return;
+            TpmsFrame f = tpms_parse(x);
+            if (!f.ok) { ESP_LOGW("tpms", "FR: implausible frame ignored"); return; }
+            id(tpms_fr_psi).publish_state(f.psi);
+            id(tpms_fr_temp).publish_state(f.temp_f);
+            id(tpms_fr_batt).publish_state(f.battery);
+            id(tpms_last_seen)[1] = millis();
+    - mac_address: ${tpms_mac_rl}
+      manufacturer_id: "0100"
+      then:
+        - lambda: |-
+            if (!${tpms_enabled}) return;
+            TpmsFrame f = tpms_parse(x);
+            if (!f.ok) { ESP_LOGW("tpms", "RL: implausible frame ignored"); return; }
+            id(tpms_rl_psi).publish_state(f.psi);
+            id(tpms_rl_temp).publish_state(f.temp_f);
+            id(tpms_rl_batt).publish_state(f.battery);
+            id(tpms_last_seen)[2] = millis();
+    - mac_address: ${tpms_mac_rr}
+      manufacturer_id: "0100"
+      then:
+        - lambda: |-
+            if (!${tpms_enabled}) return;
+            TpmsFrame f = tpms_parse(x);
+            if (!f.ok) { ESP_LOGW("tpms", "RR: implausible frame ignored"); return; }
+            id(tpms_rr_psi).publish_state(f.psi);
+            id(tpms_rr_temp).publish_state(f.temp_f);
+            id(tpms_rr_batt).publish_state(f.battery);
+            id(tpms_last_seen)[3] = millis();
+
+globals:
+  - id: tpms_last_seen
+    type: uint32_t[4]
+
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          uint32_t stale = ${tpms_stale_minutes} * 60000UL;
+          sensor::Sensor *p[4] = {id(tpms_fl_psi), id(tpms_fr_psi), id(tpms_rl_psi), id(tpms_rr_psi)};
+          sensor::Sensor *t[4] = {id(tpms_fl_temp), id(tpms_fr_temp), id(tpms_rl_temp), id(tpms_rr_temp)};
+          for (int i = 0; i < 4; i++) {
+            if (id(tpms_last_seen)[i] == 0) continue;   // never seen: already unknown
+            if (millis() - id(tpms_last_seen)[i] > stale) {
+              p[i]->publish_state(NAN);
+              t[i]->publish_state(NAN);
+              id(tpms_last_seen)[i] = 0;
+            }
+          }
+
+sensor:
+  - { platform: template, name: TPMS FL PSI,  id: tpms_fl_psi,  unit_of_measurement: psi, device_class: pressure, state_class: measurement, accuracy_decimals: 1 }
+  - { platform: template, name: TPMS FR PSI,  id: tpms_fr_psi,  unit_of_measurement: psi, device_class: pressure, state_class: measurement, accuracy_decimals: 1 }
+  - { platform: template, name: TPMS RL PSI,  id: tpms_rl_psi,  unit_of_measurement: psi, device_class: pressure, state_class: measurement, accuracy_decimals: 1 }
+  - { platform: template, name: TPMS RR PSI,  id: tpms_rr_psi,  unit_of_measurement: psi, device_class: pressure, state_class: measurement, accuracy_decimals: 1 }
+  - { platform: template, name: TPMS FL Temp, id: tpms_fl_temp, unit_of_measurement: "°F", device_class: temperature, state_class: measurement, accuracy_decimals: 0 }
+  - { platform: template, name: TPMS FR Temp, id: tpms_fr_temp, unit_of_measurement: "°F", device_class: temperature, state_class: measurement, accuracy_decimals: 0 }
+  - { platform: template, name: TPMS RL Temp, id: tpms_rl_temp, unit_of_measurement: "°F", device_class: temperature, state_class: measurement, accuracy_decimals: 0 }
+  - { platform: template, name: TPMS RR Temp, id: tpms_rr_temp, unit_of_measurement: "°F", device_class: temperature, state_class: measurement, accuracy_decimals: 0 }
+  - { platform: template, name: TPMS FL Battery, id: tpms_fl_batt, unit_of_measurement: "%", device_class: battery, entity_category: diagnostic, accuracy_decimals: 0 }
+  - { platform: template, name: TPMS FR Battery, id: tpms_fr_batt, unit_of_measurement: "%", device_class: battery, entity_category: diagnostic, accuracy_decimals: 0 }
+  - { platform: template, name: TPMS RL Battery, id: tpms_rl_batt, unit_of_measurement: "%", device_class: battery, entity_category: diagnostic, accuracy_decimals: 0 }
+  - { platform: template, name: TPMS RR Battery, id: tpms_rr_batt, unit_of_measurement: "%", device_class: battery, entity_category: diagnostic, accuracy_decimals: 0 }

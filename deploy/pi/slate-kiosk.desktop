@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Slate Cockpit kiosk
+Comment=Chromium kiosk on the 1920x720 dash screen
+Exec=/opt/slate-cockpit/deploy/pi/kiosk.sh
+X-GNOME-Autostart-enabled=true

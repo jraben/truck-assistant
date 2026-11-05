@@ -1,0 +1,20 @@
+#!/bin/sh
+# Chromium kiosk on the 12.3" 1920x720 bar. Started by the desktop autostart
+# entry (slate-kiosk.desktop). Waits for the brain, then opens the cockpit.
+URL="${SLATE_URL:-http://localhost:8080/}"
+
+# Blank-screen and power-saving off: this is a dashboard.
+xset s off 2>/dev/null; xset -dpms 2>/dev/null; xset s noblank 2>/dev/null
+
+i=0
+until curl -fsS -o /dev/null http://localhost:8080/api/health || [ $i -ge 60 ]; do i=$((i+1)); sleep 1; done
+
+BROWSER=$(command -v chromium || command -v chromium-browser)
+exec "$BROWSER" \
+  --kiosk --app="$URL" \
+  --window-size=1920,720 --window-position=0,0 \
+  --noerrdialogs --disable-infobars --disable-session-crashed-bubble \
+  --disable-features=Translate,TranslateUI --disable-pinch --overscroll-history-navigation=0 \
+  --check-for-update-interval=31536000 --no-first-run \
+  --autoplay-policy=no-user-gesture-required \
+  --user-data-dir="$HOME/.config/slate-kiosk"

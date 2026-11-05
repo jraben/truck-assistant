@@ -1,0 +1,17 @@
+# Cabin climate: Sensirion SHT31 (SHT3x-D) on I2C, address 0x44 (0x45 if ADDR is high).
+# ESPHome reads Celsius; the contract publishes Fahrenheit.
+sensor:
+  - platform: sht3xd
+    address: 0x44
+    update_interval: 10s
+    temperature:
+      name: Cabin Temp
+      id: cabin_temp
+      unit_of_measurement: "°F"
+      accuracy_decimals: 1
+      filters:
+        - lambda: return x * 9.0f / 5.0f + 32.0f;
+    humidity:
+      name: Cabin Humidity
+      id: cabin_humidity
+      accuracy_decimals: 0

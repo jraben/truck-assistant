@@ -1,0 +1,28 @@
+# /etc/systemd/system/slate-brain.service  (install.sh puts it there)
+[Unit]
+Description=Slate Cockpit brain (HTTP/WS :8080, MQTT, GPS, trips, chargers)
+After=network-online.target mosquitto.service gpsd.service
+Wants=network-online.target mosquitto.service
+
+[Service]
+Type=simple
+User=slate
+Group=slate
+WorkingDirectory=/opt/slate-cockpit
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=DATA_DIR=/var/lib/slate-cockpit
+Environment=MQTT_URL=mqtt://localhost:1883
+# Environment=SIM=1   # simulated truck, for bench testing
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning /opt/slate-cockpit/brain/dist/index.js
+Restart=always
+RestartSec=2
+# Hardening: the brain only needs its data dir.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/slate-cockpit
+
+[Install]
+WantedBy=multi-user.target

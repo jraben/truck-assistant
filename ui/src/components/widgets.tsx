@@ -1,0 +1,32 @@
+import type { ComponentType } from 'preact';
+import { Aux12v, Cabin, CarPlay, LiveStrip, NextCharger, Soc, Speed, Tilt, TripW, type WP } from './drive.tsx';
+import { FiveSwitch, Relays, Tpms } from './control.tsx';
+import { Chargers, SocSlider } from './charge.tsx';
+import { CostSessions, CostSummary } from './costs.tsx';
+import { Trips } from './trips.tsx';
+
+function Cam({ s, props }: WP) {
+  const label = String(props?.label ?? 'Camera');
+  const live = !!props?.guides && s?.reverse === true;
+  return (
+    <div class={`cam ${live ? 'live' : ''}`}>
+      <span class="lbl">{label} · no feed yet</span>
+      {!!props?.guides && <div class="guides" />}
+      <span class="lbl">{String(props?.note ?? '')}</span>
+    </div>
+  );
+}
+
+function Unknown({ props }: WP) {
+  return <div class="card"><span class="lbl">Unknown widget</span><span class="dimtxt">{String(props?.type ?? '')}</span></div>;
+}
+
+/** Widget types usable in Settings.layout. */
+export const WIDGETS: Record<string, ComponentType<WP>> = {
+  speed: Speed, soc: Soc, nextCharger: NextCharger, trip: TripW, cabin: Cabin, aux12v: Aux12v, tilt: Tilt,
+  carplay: CarPlay, liveStrip: LiveStrip,
+  relays: Relays, fiveSwitch: FiveSwitch, tpms: Tpms,
+  chargers: Chargers, socSlider: SocSlider, costSummary: CostSummary, costSessions: CostSessions,
+  trips: Trips, cam: Cam,
+};
+export const widgetFor = (t: string) => WIDGETS[t] ?? Unknown;

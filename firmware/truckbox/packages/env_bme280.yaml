@@ -1,0 +1,21 @@
+# Cabin climate: Bosch BME280 on I2C, address 0x76 (0x77 on some breakouts).
+# Make sure it is a BME280 (humidity), not a BMP280 (no humidity).
+# A BME280 self-heats about 1 C; mount it away from the ESP and the buck.
+sensor:
+  - platform: bme280_i2c
+    address: 0x76
+    update_interval: 10s
+    temperature:
+      name: Cabin Temp
+      id: cabin_temp
+      unit_of_measurement: "°F"
+      accuracy_decimals: 1
+      filters:
+        - lambda: return x * 9.0f / 5.0f + 32.0f;
+    humidity:
+      name: Cabin Humidity
+      id: cabin_humidity
+      accuracy_decimals: 0
+    pressure:
+      name: Cabin Pressure
+      id: cabin_pressure

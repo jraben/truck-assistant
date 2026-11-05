@@ -12,14 +12,19 @@ and its print settings.
 - **Under-dash or in-bed enclosures:** ASA, or PETG out of the sun, with vents.
 - **Exterior (camera brackets, hitch cam):** ASA, UV-stable.
 
-## Likely parts (to confirm against the chosen plan)
+## Parts
+
+OpenSCAD sources are parametric; each folder's README lists what to measure first. Render a part with
+`openscad -D 'part="<name>"' -o <name>.stl <file>.scad` (a 2025+ build with `--backend Manifold` is much faster).
+
+### Likely parts (to confirm against the chosen plan)
 
 | Part | Purpose | Blocked on |
 |---|---|---|
-| **Dash insert + sun hood for the 12.3" bar (main screen)** | Hold a 301.2 × 123.35 × 12.4 mm panel in a 352 × 133 mm opening; driver board and cable exit behind | Depth behind the panel, panel drawing |
+| **Dash insert + sun hood for the 12.3" bar (main screen)**: [`dash-bar-insert/`](dash-bar-insert/) | Hold a 301.2 × 123.35 × 12.4 mm panel in a 352 × 133 mm opening; driver board and cable exit behind | Modelled; panel checked against Waveshare's drawing. Needs the opening, depth and retention measured on the truck |
 | ESP32-P4 panel shell (optional second screen) | Small gauge/switch screen | Where it goes |
-| Brain enclosure | Pi / controller box under the dash, vented | Final board choice |
-| Camera brackets ×4 | 360° cams on mirrors, tailgate, front | Camera choice |
-| Hitch camera mount | Clips to the 2" receiver | Receiver delivery |
+| Brain enclosure: [`brain-enclosure/`](brain-enclosure/) | Pi / controller box under the dash, vented | Modelled for a Pi 4/5 + CarPiHAT + USB SSD; dash rail unmeasured |
+| Camera brackets ×4: [`cam-bracket/`](cam-bracket/) | 360° cams on mirrors, tailgate, front | Modelled (universal, VHB or M4, locking tilt); camera choice |
+| Hitch camera mount: [`hitch-cam-mount/`](hitch-cam-mount/) | Clamps on the 2" receiver | Modelled; receiver delivery to measure |
 | Switch / relay panel cover | Upfit relays near the Five Switch | Five Switch wiring |
 | Cable clips and grommets | Tidy runs behind the dash | Truck delivery |

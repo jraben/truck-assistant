@@ -1,0 +1,601 @@
+# Slate Cockpit: ESP32 "truck box"
+#
+# Relays, 12V sense inputs, cabin climate, 12V battery voltage, tilt and BLE
+# TPMS, published over MQTT to the Pi's Mosquitto broker. Read README.md in this
+# folder before wiring anything; docs/contract.md (repo root) is the interface.
+#
+# MQTT topics come from ESPHome's own layout: <topic_prefix>/<component>/<object_id>/state,
+# where object_id is the entity NAME in snake_case. So the names below are part
+# of the contract: "Relay 1" -> relay_1, "Five Switch 3" -> five_switch_3,
+# "Aux Battery V" -> aux_battery_v. Rename an entity and its topic moves.
+# Display names ("Bed lights", "Light bar") live in the brain's settings, not here.
+#
+# SAFETY MODEL (all on the ESP, so it holds with the Pi off):
+#   * Every relay boots OFF and is never restored from flash.
+#   * Low-voltage lockout: 12V below the cutoff for 30 s drops every relay and
+#     refuses ON commands until it has been back above the restore level for 60 s.
+#   * Parked shutoff: ignition off for N minutes drops every relay (N = 0 disables).
+#   * Compressor interlock: max run time, a cooldown, and optionally ignition-on only.
+#   * Losing Wi-Fi or the broker never reboots the board (a reboot = relays off).
+
+substitutions:
+  name: slate-truckbox
+  friendly_name: Slate Truck Box
+
+  # ---- BOARD: generic "ESP32 Relay Board x8" (ESP32-WROOM-32E, 7-30 V in) ----
+  # Another board is a change to this block only. See README "Board".
+  board: esp32dev
+  # Relays. Board relays K6 (GPIO14, pulses at boot) and K7 (GPIO12, a
+  # strapping pin) are deliberately unused; relay_6 is board relay K8 (GPIO13).
+  pin_relay_1: GPIO32   # board K1
+  pin_relay_2: GPIO33   # board K2
+  pin_relay_3: GPIO25   # board K3
+  pin_relay_4: GPIO26   # board K4  (default: air compressor)
+  pin_relay_5: GPIO27   # board K5
+  pin_relay_6: GPIO13   # board K8
+  relay_inverted: "false"   # true for boards whose relays energise on LOW
+  pin_status_led: GPIO23
+
+  # Opto inputs (PC817 modules: output transistor pulls LOW when 12V is present,
+  # so every input is inverted). Pins with internal pull-ups for the five switches;
+  # GPIO34/35 are input-only with NO internal pull-up: the opto module must have
+  # its own pull-up to 3V3 (most do) or add 10k to 3V3. See README wiring table.
+  pin_five_switch_1: GPIO4
+  pin_five_switch_2: GPIO16
+  pin_five_switch_3: GPIO17
+  pin_five_switch_4: GPIO18
+  pin_five_switch_5: GPIO19
+  five_switch_pin_mode: INPUT_PULLUP
+  pin_ignition: GPIO34
+  pin_reverse: GPIO35
+  ign_rev_pin_mode: INPUT
+  opto_inverted: "true"
+  input_debounce: 50ms
+
+  # I2C bus: SHT31/BME280 and MPU6050.
+  pin_sda: GPIO21
+  pin_scl: GPIO22
+
+  # 12V battery divider into an ADC1 pin (ADC2 is unusable while Wi-Fi is on).
+  # 47k top / 10k bottom: (47+10)/10 = 5.7. 16 V in -> 2.81 V at the pin.
+  pin_vbat: GPIO36
+  vbat_divider_ratio: "5.7"
+
+  # Tilt: which IMU axis points FORWARD, LEFT and UP once mounted, and its sign.
+  imu_address: "0x68"
+  imu_fwd: imu_accel_x
+  imu_fwd_sign: "1.0"
+  imu_left: imu_accel_y
+  imu_left_sign: "1.0"
+  imu_up: imu_accel_z
+  imu_up_sign: "1.0"
+
+  # Safety defaults (each is also a Number entity, editable live, kept in flash).
+  low_voltage_cutoff: "11.8"      # V
+  low_voltage_restore: "12.4"     # V
+  parked_shutoff_minutes: "30"    # 0 = off
+  # Relays the parked shutoff leaves alone, as a bit mask: bit 0 = relay_1 ...
+  # bit 4 = relay_5. 16 = keep relay_5 (bed fridge) on; low-voltage cutoff
+  # still applies to it. 0 = parked shutoff drops everything.
+  parked_keep_mask: "0"
+  compressor_relay: relay_4
+  compressor_max_minutes: "10"    # 0 = no limit
+  compressor_cooldown_minutes: "5"
+  compressor_needs_ignition: "true"
+
+  # BLE TPMS (packages/tpms_ble.yaml). Decoding is UNVERIFIED on real hardware;
+  # see README "TPMS". "false" keeps the scanner logging but publishes nothing.
+  tpms_enabled: "true"
+  tpms_mac_fl: "AA:BB:CC:00:00:01"
+  tpms_mac_fr: "AA:BB:CC:00:00:02"
+  tpms_mac_rl: "AA:BB:CC:00:00:03"
+  tpms_mac_rr: "AA:BB:CC:00:00:04"
+  tpms_stale_minutes: "15"
+
+packages:
+  # Cabin climate: pick ONE.
+  env: !include packages/env_sht31.yaml
+  # env: !include packages/env_bme280.yaml
+  # BLE TPMS: comment out to drop Bluetooth entirely (saves ~100 KB RAM).
+  tpms: !include packages/tpms_ble.yaml
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          id(parked_ref_ms) = millis();
+          id(parked_done) = id(ignition).state;
+
+esp32:
+  board: ${board}
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+# Native Home Assistant API. Left OFF: the truck box speaks MQTT to the Pi, and
+# the Pi bridges slate/# to the home broker. Enabling api: as well is allowed
+# but makes HA see the device twice (once per integration).
+# api:
+#   encryption:
+#     key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid          # the Pi's access point
+  password: !secret wifi_password
+  # Never reboot for lack of Wi-Fi: a reboot turns every relay off, and the Pi
+  # (and its AP) is off whenever the truck is parked.
+  reboot_timeout: 0s
+  power_save_mode: none
+  ap:
+    ssid: "Slate Truckbox Setup"
+    password: !secret fallback_ap_password
+
+captive_portal:
+
+mqtt:
+  broker: !secret mqtt_broker      # the Pi's address on its own AP, e.g. 10.42.0.1
+  port: 1883
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  topic_prefix: slate/truckbox     # birth/will: slate/truckbox/status online/offline
+  discovery: true
+  discovery_retain: true
+  reboot_timeout: 0s               # same reason as wifi above
+
+status_led:
+  pin: ${pin_status_led}
+
+i2c:
+  sda: ${pin_sda}
+  scl: ${pin_scl}
+  scan: true
+  frequency: 100kHz
+
+# ---------------------------------------------------------------------------
+# State
+# ---------------------------------------------------------------------------
+globals:
+  - id: lv_lockout
+    type: bool
+    initial_value: "false"
+  - id: lv_below_since
+    type: uint32_t
+    initial_value: "0"
+  - id: lv_above_since
+    type: uint32_t
+    initial_value: "0"
+  - id: parked_ref_ms          # when the parked-shutoff clock last started
+    type: uint32_t
+    initial_value: "0"
+  - id: parked_done            # true while ignition is on or after the shutoff fired
+    type: bool
+    initial_value: "true"
+  - id: comp_started_ms
+    type: uint32_t
+    initial_value: "0"
+  - id: comp_cooldown_until_ms
+    type: uint32_t
+    initial_value: "0"
+  - id: pitch_offset
+    type: float
+    restore_value: true
+    initial_value: "0.0"
+  - id: roll_offset
+    type: float
+    restore_value: true
+    initial_value: "0.0"
+
+script:
+  # Drops every relay (mask = relays to keep on, see parked_keep_mask).
+  - id: relays_off
+    parameters:
+      keep_mask: int
+    then:
+      - lambda: |-
+          switch_::Switch *outs[6] = {id(relay_1_out), id(relay_2_out), id(relay_3_out),
+                                      id(relay_4_out), id(relay_5_out), id(relay_6_out)};
+          for (int i = 0; i < 6; i++) {
+            if (keep_mask & (1 << i)) continue;
+            if (outs[i]->state) {
+              ESP_LOGW("truckbox", "relay_%d forced OFF", i + 1);
+              outs[i]->turn_off();
+            }
+          }
+
+  # Common ON gate for every relay: switches the output on only if allowed.
+  - id: relay_request_on
+    parameters:
+      idx: int
+    then:
+      - lambda: |-
+          switch_::Switch *outs[6] = {id(relay_1_out), id(relay_2_out), id(relay_3_out),
+                                      id(relay_4_out), id(relay_5_out), id(relay_6_out)};
+          if (idx < 1 || idx > 6) return;
+          if (id(lv_lockout)) {
+            ESP_LOGW("truckbox", "relay_%d ON refused: low-voltage lockout", idx);
+            return;
+          }
+          if (outs[idx - 1] == id(${compressor_relay}_out)) {
+            if (${compressor_needs_ignition} && !id(ignition).state) {
+              ESP_LOGW("truckbox", "compressor ON refused: ignition off");
+              return;
+            }
+            if ((int32_t)(id(comp_cooldown_until_ms) - millis()) > 0) {
+              ESP_LOGW("truckbox", "compressor ON refused: cooling down");
+              return;
+            }
+            id(comp_started_ms) = millis();
+          }
+          // A relay switched on while parked restarts the parked-shutoff clock.
+          if (!id(ignition).state) {
+            id(parked_ref_ms) = millis();
+            id(parked_done) = false;
+          }
+          outs[idx - 1]->turn_on();
+
+# ---------------------------------------------------------------------------
+# Relays: internal GPIO outputs, wrapped by template switches that apply the
+# safety gates. Both layers are ALWAYS_OFF at boot.
+# ---------------------------------------------------------------------------
+switch:
+  - { platform: gpio, id: relay_1_out, internal: true, restore_mode: ALWAYS_OFF, pin: { number: "${pin_relay_1}", inverted: "${relay_inverted}" } }
+  - { platform: gpio, id: relay_2_out, internal: true, restore_mode: ALWAYS_OFF, pin: { number: "${pin_relay_2}", inverted: "${relay_inverted}" } }
+  - { platform: gpio, id: relay_3_out, internal: true, restore_mode: ALWAYS_OFF, pin: { number: "${pin_relay_3}", inverted: "${relay_inverted}" } }
+  - { platform: gpio, id: relay_4_out, internal: true, restore_mode: ALWAYS_OFF, pin: { number: "${pin_relay_4}", inverted: "${relay_inverted}" } }
+  - { platform: gpio, id: relay_5_out, internal: true, restore_mode: ALWAYS_OFF, pin: { number: "${pin_relay_5}", inverted: "${relay_inverted}" } }
+  - { platform: gpio, id: relay_6_out, internal: true, restore_mode: ALWAYS_OFF, pin: { number: "${pin_relay_6}", inverted: "${relay_inverted}" } }
+
+  - platform: template
+    name: Relay 1
+    id: relay_1
+    restore_mode: ALWAYS_OFF
+    lambda: return id(relay_1_out).state;
+    turn_on_action: [ { script.execute: { id: relay_request_on, idx: 1 } } ]
+    turn_off_action: [ { switch.turn_off: relay_1_out } ]
+  - platform: template
+    name: Relay 2
+    id: relay_2
+    restore_mode: ALWAYS_OFF
+    lambda: return id(relay_2_out).state;
+    turn_on_action: [ { script.execute: { id: relay_request_on, idx: 2 } } ]
+    turn_off_action: [ { switch.turn_off: relay_2_out } ]
+  - platform: template
+    name: Relay 3
+    id: relay_3
+    restore_mode: ALWAYS_OFF
+    lambda: return id(relay_3_out).state;
+    turn_on_action: [ { script.execute: { id: relay_request_on, idx: 3 } } ]
+    turn_off_action: [ { switch.turn_off: relay_3_out } ]
+  - platform: template
+    name: Relay 4
+    id: relay_4
+    restore_mode: ALWAYS_OFF
+    lambda: return id(relay_4_out).state;
+    turn_on_action: [ { script.execute: { id: relay_request_on, idx: 4 } } ]
+    turn_off_action: [ { switch.turn_off: relay_4_out } ]
+  - platform: template
+    name: Relay 5
+    id: relay_5
+    restore_mode: ALWAYS_OFF
+    lambda: return id(relay_5_out).state;
+    turn_on_action: [ { script.execute: { id: relay_request_on, idx: 5 } } ]
+    turn_off_action: [ { switch.turn_off: relay_5_out } ]
+  - platform: template
+    name: Relay 6
+    id: relay_6
+    restore_mode: ALWAYS_OFF
+    lambda: return id(relay_6_out).state;
+    turn_on_action: [ { script.execute: { id: relay_request_on, idx: 6 } } ]
+    turn_off_action: [ { switch.turn_off: relay_6_out } ]
+
+# ---------------------------------------------------------------------------
+# 12V sense inputs (PC817 opto modules, active-low)
+# ---------------------------------------------------------------------------
+binary_sensor:
+  - platform: gpio
+    name: Five Switch 1
+    id: five_switch_1
+    pin: { number: "${pin_five_switch_1}", mode: "${five_switch_pin_mode}", inverted: "${opto_inverted}" }
+    filters: [ { delayed_on_off: "${input_debounce}" } ]
+  - platform: gpio
+    name: Five Switch 2
+    id: five_switch_2
+    pin: { number: "${pin_five_switch_2}", mode: "${five_switch_pin_mode}", inverted: "${opto_inverted}" }
+    filters: [ { delayed_on_off: "${input_debounce}" } ]
+  - platform: gpio
+    name: Five Switch 3
+    id: five_switch_3
+    pin: { number: "${pin_five_switch_3}", mode: "${five_switch_pin_mode}", inverted: "${opto_inverted}" }
+    filters: [ { delayed_on_off: "${input_debounce}" } ]
+  - platform: gpio
+    name: Five Switch 4
+    id: five_switch_4
+    pin: { number: "${pin_five_switch_4}", mode: "${five_switch_pin_mode}", inverted: "${opto_inverted}" }
+    filters: [ { delayed_on_off: "${input_debounce}" } ]
+  - platform: gpio
+    name: Five Switch 5
+    id: five_switch_5
+    pin: { number: "${pin_five_switch_5}", mode: "${five_switch_pin_mode}", inverted: "${opto_inverted}" }
+    filters: [ { delayed_on_off: "${input_debounce}" } ]
+
+  - platform: gpio
+    name: Ignition
+    id: ignition
+    pin: { number: "${pin_ignition}", mode: "${ign_rev_pin_mode}", inverted: "${opto_inverted}" }
+    filters:
+      - delayed_on: ${input_debounce}
+      - delayed_off: 2s            # ride through cranking/DC-DC dips
+    on_press:
+      - lambda: id(parked_done) = true;
+    on_release:
+      - lambda: |-
+          id(parked_ref_ms) = millis();
+          id(parked_done) = false;
+      - if:
+          condition:
+            lambda: return ${compressor_needs_ignition};
+          then:
+            - switch.turn_off: ${compressor_relay}_out
+
+  - platform: gpio
+    name: Reverse
+    id: reverse
+    pin: { number: "${pin_reverse}", mode: "${ign_rev_pin_mode}", inverted: "${opto_inverted}" }
+    filters:
+      - delayed_on: ${input_debounce}
+      - delayed_off: 300ms         # LED lamps / bulb-check pulses
+
+  - platform: template
+    name: Low Voltage Lockout
+    id: low_voltage_lockout
+    lambda: return id(lv_lockout);
+
+# ---------------------------------------------------------------------------
+# Sensors (the cabin climate sensor is in packages/env_*.yaml)
+# ---------------------------------------------------------------------------
+sensor:
+  - platform: adc
+    name: Aux Battery V
+    id: aux_battery_v
+    pin: ${pin_vbat}
+    attenuation: 12db
+    update_interval: 500ms
+    unit_of_measurement: V
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    filters:
+      - multiply: ${vbat_divider_ratio}
+      - lambda: return x * id(vbat_trim).state;
+      - sliding_window_moving_average:
+          window_size: 8
+          send_every: 4             # publishes every 2 s
+
+  # MPU6050 accelerometer (raw axes are internal; pitch/roll are published).
+  - platform: mpu6050
+    address: ${imu_address}
+    update_interval: 100ms
+    accel_x: { id: imu_accel_x, internal: true }
+    accel_y: { id: imu_accel_y, internal: true }
+    accel_z: { id: imu_accel_z, internal: true }
+
+  - platform: template
+    id: pitch_raw
+    internal: true
+    update_interval: 100ms
+    lambda: |-
+      float f = ${imu_fwd_sign} * id(${imu_fwd}).state;
+      float l = ${imu_left_sign} * id(${imu_left}).state;
+      float u = ${imu_up_sign} * id(${imu_up}).state;
+      if (isnan(f) || isnan(l) || isnan(u)) return NAN;
+      // Nose up = positive pitch.
+      return atan2f(f, sqrtf(l * l + u * u)) * 57.29578f;
+    filters:
+      - exponential_moving_average: { alpha: 0.1, send_every: 1 }
+
+  - platform: template
+    id: roll_raw
+    internal: true
+    update_interval: 100ms
+    lambda: |-
+      float l = ${imu_left_sign} * id(${imu_left}).state;
+      float u = ${imu_up_sign} * id(${imu_up}).state;
+      if (isnan(l) || isnan(u)) return NAN;
+      // Right side down = positive roll.
+      return atan2f(l, u) * 57.29578f;
+    filters:
+      - exponential_moving_average: { alpha: 0.1, send_every: 1 }
+
+  - platform: template
+    name: Pitch
+    id: pitch
+    unit_of_measurement: "°"
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 500ms
+    lambda: return id(pitch_raw).state - id(pitch_offset);
+  - platform: template
+    name: Roll
+    id: roll
+    unit_of_measurement: "°"
+    state_class: measurement
+    accuracy_decimals: 1
+    update_interval: 500ms
+    lambda: return id(roll_raw).state - id(roll_offset);
+
+  - platform: wifi_signal
+    name: Wi-Fi Signal
+    update_interval: 60s
+  - platform: uptime
+    name: Uptime
+    update_interval: 60s
+
+button:
+  # Park on level ground, press once: current pitch/roll become zero.
+  - platform: template
+    name: Zero Tilt
+    on_press:
+      - lambda: |-
+          if (isnan(id(pitch_raw).state) || isnan(id(roll_raw).state)) {
+            ESP_LOGW("truckbox", "Zero Tilt ignored: no IMU reading");
+            return;
+          }
+          id(pitch_offset) = id(pitch_raw).state;
+          id(roll_offset) = id(roll_raw).state;
+          ESP_LOGI("truckbox", "tilt zeroed at pitch %.2f roll %.2f", id(pitch_offset), id(roll_offset));
+  - platform: template
+    name: Clear Tilt Zero
+    on_press:
+      - lambda: |-
+          id(pitch_offset) = 0;
+          id(roll_offset) = 0;
+  - platform: restart
+    name: Restart
+
+number:
+  - platform: template
+    name: Battery V Trim
+    id: vbat_trim
+    optimistic: true
+    restore_value: true
+    initial_value: 1.0
+    min_value: 0.80
+    max_value: 1.20
+    step: 0.001
+    mode: box
+    entity_category: config
+  - platform: template
+    name: Low Voltage Cutoff
+    id: lv_cutoff
+    optimistic: true
+    restore_value: true
+    initial_value: ${low_voltage_cutoff}
+    min_value: 10.5
+    max_value: 12.6
+    step: 0.1
+    unit_of_measurement: V
+    mode: box
+    entity_category: config
+  - platform: template
+    name: Low Voltage Restore
+    id: lv_restore
+    optimistic: true
+    restore_value: true
+    initial_value: ${low_voltage_restore}
+    min_value: 11.0
+    max_value: 13.5
+    step: 0.1
+    unit_of_measurement: V
+    mode: box
+    entity_category: config
+  - platform: template
+    name: Parked Shutoff Minutes
+    id: parked_minutes
+    optimistic: true
+    restore_value: true
+    initial_value: ${parked_shutoff_minutes}
+    min_value: 0
+    max_value: 720
+    step: 1
+    unit_of_measurement: min
+    mode: box
+    entity_category: config
+  - platform: template
+    name: Compressor Max Minutes
+    id: comp_max_minutes
+    optimistic: true
+    restore_value: true
+    initial_value: ${compressor_max_minutes}
+    min_value: 0
+    max_value: 60
+    step: 1
+    unit_of_measurement: min
+    mode: box
+    entity_category: config
+  - platform: template
+    name: Compressor Cooldown Minutes
+    id: comp_cooldown_minutes
+    optimistic: true
+    restore_value: true
+    initial_value: ${compressor_cooldown_minutes}
+    min_value: 0
+    max_value: 60
+    step: 1
+    unit_of_measurement: min
+    mode: box
+    entity_category: config
+
+# ---------------------------------------------------------------------------
+# Safety loops
+# ---------------------------------------------------------------------------
+interval:
+  # Low-voltage lockout.
+  - interval: 1s
+    then:
+      - lambda: |-
+          float v = id(aux_battery_v).state;
+          if (isnan(v)) return;   // no reading: unknown, never a cutoff
+          uint32_t now = millis();
+          if (!id(lv_lockout)) {
+            if (v < id(lv_cutoff).state) {
+              if (id(lv_below_since) == 0) id(lv_below_since) = now;
+              if (now - id(lv_below_since) >= 30000) {
+                ESP_LOGW("truckbox", "LOW VOLTAGE %.2f V: all relays off", v);
+                id(lv_lockout) = true;
+                id(lv_above_since) = 0;
+                id(relays_off).execute(0);
+              }
+            } else {
+              id(lv_below_since) = 0;
+            }
+          } else {
+            if (v > id(lv_restore).state) {
+              if (id(lv_above_since) == 0) id(lv_above_since) = now;
+              if (now - id(lv_above_since) >= 60000) {
+                ESP_LOGI("truckbox", "voltage recovered %.2f V: lockout cleared", v);
+                id(lv_lockout) = false;
+                id(lv_below_since) = 0;
+              }
+            } else {
+              id(lv_above_since) = 0;
+            }
+          }
+
+  # Parked shutoff and compressor run limit.
+  - interval: 5s
+    then:
+      - lambda: |-
+          uint32_t now = millis();
+          float mins = id(parked_minutes).state;
+          if (!id(ignition).state && !id(parked_done) && mins > 0 &&
+              now - id(parked_ref_ms) >= (uint32_t)(mins * 60000.0f)) {
+            ESP_LOGW("truckbox", "ignition off %.0f min: relays off", mins);
+            id(parked_done) = true;
+            id(relays_off).execute(${parked_keep_mask});
+          }
+          float cmax = id(comp_max_minutes).state;
+          if (id(${compressor_relay}_out).state && cmax > 0 &&
+              now - id(comp_started_ms) >= (uint32_t)(cmax * 60000.0f)) {
+            ESP_LOGW("truckbox", "compressor hit %.0f min limit: off", cmax);
+            id(${compressor_relay}_out).turn_off();
+          }
+
+  # Cooldown starts whenever the compressor stops, however it stopped.
+  - interval: 500ms
+    then:
+      - lambda: |-
+          static bool was_on = false;
+          bool on = id(${compressor_relay}_out).state;
+          if (was_on && !on) {
+            id(comp_cooldown_until_ms) = millis() + (uint32_t)(id(comp_cooldown_minutes).state * 60000.0f);
+          }
+          was_on = on;

@@ -1,0 +1,21 @@
+{
+  "name": "slate-cockpit",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DIY in-dash system for the Slate truck: brain service + cockpit UI",
+  "type": "module",
+  "workspaces": [
+    "brain",
+    "ui"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w ui && npm run build -w brain",
+    "test": "npm test -w brain",
+    "typecheck": "npm run typecheck -w brain && npm run typecheck -w ui",
+    "start": "npm start -w brain"
+  }
+}

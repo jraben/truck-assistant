@@ -7,6 +7,25 @@ Built for Jeff's truck first, published for other Slate owners later.
 
 ## Status
 
+- **Software core (2026-11-05):** `brain/` (Node 24 service on :8080) and
+  `ui/` (Preact cockpit + `/settings` portal), built against
+  `docs/contract.md`. Runs on a desk with a simulated truck:
+
+  ```sh
+  npm install
+  npm run dev      # brain with SIM=1 on :8080 + Vite on http://localhost:5173
+  npm test         # brain unit tests (vitest)
+  npm run build    # UI to ui/dist, brain to brain/dist
+  npm start        # the built brain; serves the cockpit at / and settings at /settings
+  ```
+
+  Env (plumbing only; API keys go on the settings page): `PORT` (8080),
+  `DATA_DIR` (./data: settings.json + cockpit.db), `SIM=1`, `SIM_SPEEDUP`,
+  `MQTT_URL` (mqtt://localhost:1883), `MQTT_DISABLED=1`, `GPSD_HOST`/`GPSD_PORT`.
+  No MQTT broker or gpsd needed on a desk: the brain reports them in
+  `/api/health` and keeps working. Pi install: `sudo ./deploy/pi/install.sh`
+  (systemd unit, Chromium kiosk at 1920x720, Mosquitto with a home-bridge
+  template). Not yet: CarPlay embed, camera feeds, WOPR voice, streaming accounts.
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
 - **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a
