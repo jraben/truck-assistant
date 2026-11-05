@@ -18,6 +18,7 @@ import { VehicleError, type MenuLevel } from './gas/vehicles.ts';
 import { NOT_CONFIGURED } from './ha/client.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
+import { mountOps } from './ops/routes.ts';
 
 const optStr = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const srcOf = (v: unknown) => (v === 'phone' || v === 'truck' ? v : null);
@@ -36,6 +37,8 @@ export const CHARGER_MESSAGE_HEADER = 'x-slate-message';
 
 export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 256 * 1024 });
+  // Track D first: its login gate (an onRequest hook) has to cover every route below.
+  await mountOps(app, brain);
   await app.register(fastifyWebsocket, { options: { maxPayload: 64 * 1024 } });
 
   // ---- WebSocket ------------------------------------------------------------

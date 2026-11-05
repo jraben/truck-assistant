@@ -1,0 +1,23 @@
+# /etc/systemd/system/slate-updater.service  (updater/setup.sh puts it there)
+# Runs update.sh as the slate user. Its only root right is the sudoers rule in
+# slate-updater.sudoers: "systemctl restart slate-brain".
+[Unit]
+Description=Slate Cockpit updater (install / roll back a release)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=slate
+Group=slate
+Environment=DATA_DIR=/var/lib/slate-cockpit
+Environment=RELEASES_DIR=/opt/slate-cockpit-releases
+Environment=PORT=8080
+Environment=HOME=/var/lib/slate-cockpit
+# Environment=UPDATE_METHOD=git   # git clone the tag instead of downloading a tarball
+ExecStart=/usr/local/lib/slate-cockpit/update.sh
+TimeoutStartSec=45min
+Nice=10
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/slate-cockpit-releases /var/lib/slate-cockpit

@@ -1,0 +1,52 @@
+# Release tarball of brain + ui, built on a tag push (v1.2.3). The Pi's updater
+# (deploy/pi/updater/update.sh) prefers this prebuilt asset: it only has to run
+# `npm ci --omit=dev`, not a full build. The flashable image is built by hand
+# (deploy/image/README.md) or with the manual image.yml workflow.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Package
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          node -e 'require("fs").writeFileSync("release.json", JSON.stringify({tag: process.env.TAG, sha: process.env.SHA, channel: "stable", builtAt: new Date().toISOString()}, null, 2))'
+          tar czf "slate-cockpit-${TAG}.tar.gz" --transform 's,^,slate-cockpit/,' \
+            package.json package-lock.json release.json LICENSE README.md \
+            brain/package.json brain/dist ui/package.json ui/dist deploy docs
+          sha256sum "slate-cockpit-${TAG}.tar.gz" > "slate-cockpit-${TAG}.tar.gz.sha256"
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "slate-cockpit-${TAG}.tar.gz" "slate-cockpit-${TAG}.tar.gz.sha256" --clobber
+          else
+            gh release create "$TAG" "slate-cockpit-${TAG}.tar.gz" "slate-cockpit-${TAG}.tar.gz.sha256" --title "$TAG" --generate-notes
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slate-cockpit-${{ github.ref_name }}
+          path: slate-cockpit-*.tar.gz*

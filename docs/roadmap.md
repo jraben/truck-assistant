@@ -42,18 +42,21 @@ remove later" (Jeff, 2026-11-05). Design docs are linked; a ✓ means built.
 - Alerts to the phone; Truck page (map, status, relays, wake & view cams)
 - Theft: moved-without-driver alert; AirTag as a cheap backup
 
-## Track D: Logs, ops, publishing
-- Business mileage log: trips tagged business/personal (auto from client
-  stops), IRS-style export (date, purpose, from/to, miles, odometer)
-- Maintenance log and reminders; TPMS history
-- Software updates from GitHub with one-step rollback; nightly backup to the NAS
-- Security: settings/AP password, limited HA user + Tailscale ACL guidance,
-  secrets stay on the truck
-- First-boot setup wizard; flashable Pi image
-- License (MIT), "not affiliated with Slate Auto" note, **public name TBD**
-- Hardware parts list (BOM) with links: USB mic, light sensor, GPS, USB Wi-Fi,
-  RTL-SDR, capture stick, LTE modems, amp if needed
-- ESP32-P4 second screen firmware
+## Track D: Logs, ops, publishing (built 2026-11-05; contract: "Track D" in [contract](contract.md))
+- ✓ Business mileage log: trips tagged business/personal/commute/other (auto from
+  client stops, tagged places, per-driver default; bulk tagging), IRS-style export
+  (CSV + printable), estimated odometer from an anchor, IRS rate per year
+- ✓ Maintenance log (receipt photos) and reminders (intervals from the owner's
+  manual, not guessed); TPMS history; due card on Drive; HA sensor + notify
+- ✓ Software updates from GitHub with one-step rollback and automatic rollback
+  on a failed health check; nightly backup to the NAS (SMB mount, rsync/SSH, HTTP)
+- ✓ Security: settings/truck password, AP password at first boot,
+  [security](security.md) (limited HA user, Tailscale ACL, stolen-truck checklist)
+- ✓ First-boot setup wizard; flashable Pi image (pi-gen, `deploy/image/`, not yet built)
+- ✓ License (MIT), "not affiliated with Slate Auto" note, CONTRIBUTING; **public name TBD**
+  (one constant: `brain/src/project.ts`)
+- ✓ Hardware parts list: [bom](bom.md)
+- ✓ ESP32-P4 second screen firmware (`firmware/p4-screen/`, compiles; no board yet)
 
 ## Waiting on the truck (Q2 2027 delivery window)
 - CAN/OBD data (SoC, real gear, energy), Five Switch wiring, speaker input,

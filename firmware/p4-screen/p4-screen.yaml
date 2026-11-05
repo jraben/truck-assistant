@@ -1,0 +1,625 @@
+# Slate Cockpit: ESP32-P4 10.1" second screen
+#
+# A glanceable dash screen that needs nothing but the MQTT broker on the Pi:
+# speed, charge and range, the six upfit relays (tap to toggle), and alerts.
+# Read README.md in this folder first; docs/contract.md (repo root) is the
+# interface.
+#
+#   reads   ${truck_id}/brain/state                    the brain's State JSON (retained)
+#           ${truck_id}/brain/status                   online / offline
+#           ${truck_id}/truckbox/switch/relay_N/state  ON / OFF, straight from the truck box
+#   writes  ${truck_id}/truckbox/switch/relay_N/command  ON / OFF on a tap
+#
+# RULES:
+#   * A null (or missing) field is drawn as an em dash, never as 0.
+#   * A relay button shows what the truck box REPORTS, never what was asked for.
+#     A tap marks the button "..." until the state moves; if it hasn't moved in
+#     5 s (low-voltage lockout, compressor cooldown, truck box gone) an alert
+#     says so. The truck box owns relay safety; this screen only asks.
+#   * Taps are refused while the truck box is offline: a command nobody hears
+#     is not retained, so it would silently do nothing.
+
+substitutions:
+  name: slate-p4-screen
+  friendly_name: Slate P4 Screen
+  truck_id: slate               # docs/contract.md truck id; every topic starts with it
+
+  # ---- BOARD: Guition JC8012P4A1 (ESP32-P4 + ESP32-C6, 10.1" 800x1280 JD9365, GT911) ----
+  # Pins below are the ones the community configs for this board use; they are
+  # NOT yet confirmed on a unit in hand. See README "Board".
+  panel_model: JC8012P4A1       # JC8012P4A1-V2 for units with the second panel revision
+  p4_engineering_sample: "false"  # "true" if the boot log says chip revision below v3.0
+  pin_backlight: GPIO23
+  pin_touch_sda: GPIO7
+  pin_touch_scl: GPIO8
+  # ESP32-C6 radio, over SDIO (esp_hosted)
+  pin_c6_clk: GPIO18
+  pin_c6_cmd: GPIO19
+  pin_c6_d0: GPIO14
+  pin_c6_d1: GPIO15
+  pin_c6_d2: GPIO16
+  pin_c6_d3: GPIO17
+  pin_c6_reset: GPIO54
+
+  # LVGL rotation: the panel is 800x1280 portrait; 90 draws the UI landscape
+  # (1280x800), the way it sits in the Tablet Mount. 270 if it's upside down.
+  rotation: "90"
+
+  # Thermal: the board is rated 0-60 C and a Phoenix dash is not.
+  hot_dim_c: "55"               # dim the backlight to 20 % above this
+  hot_off_c: "65"               # backlight off above this
+  hot_clear_c: "50"             # back to full below this
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  includes:
+    - cockpit.h
+  on_boot:
+    priority: -100
+    then:
+      - script.execute: refresh_ui
+
+esp32:
+  variant: esp32p4
+  engineering_sample: ${p4_engineering_sample}
+  flash_size: 16MB
+  cpu_frequency: 360MHz        # 400MHz is flagged experimental by ESPHome
+  framework:
+    type: esp-idf
+
+psram:
+  speed: 200MHz
+
+logger:
+  level: INFO
+
+# MIPI-DSI PHY supply. The P4's on-chip LDO channel 3 feeds the DSI PHY at 2.5 V.
+esp_ldo:
+  - channel: 3
+    voltage: 2.5V
+
+# The P4 has no radio. The on-board ESP32-C6 is its Wi-Fi, over SDIO.
+esp32_hosted:
+  variant: ESP32C6
+  active_high: true
+  reset_pin: ${pin_c6_reset}
+  clk_pin: ${pin_c6_clk}
+  cmd_pin: ${pin_c6_cmd}
+  d0_pin: ${pin_c6_d0}
+  d1_pin: ${pin_c6_d1}
+  d2_pin: ${pin_c6_d2}
+  d3_pin: ${pin_c6_d3}
+
+wifi:
+  ssid: !secret wifi_ssid          # the Pi's access point, "slate-truck"
+  password: !secret wifi_password
+  # The Pi (and its AP) is off whenever the truck is parked; a reboot loop
+  # helps nobody. The screen just shows "no link" until the AP is back.
+  reboot_timeout: 0s
+  power_save_mode: none
+  ap:
+    ssid: "Slate P4 Screen Setup"
+    password: !secret fallback_ap_password
+
+captive_portal:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+mqtt:
+  id: mqtt_client
+  broker: !secret mqtt_broker      # the Pi on its own AP, 10.42.0.1
+  port: 1883
+  username: !secret mqtt_username
+  password: !secret mqtt_password
+  topic_prefix: ${truck_id}/p4screen   # birth/will: ${truck_id}/p4screen/status
+  # The screen is a reader, not something HA needs to see (the backlight and
+  # board temperature are the only entities, and both are local concerns).
+  discovery: false
+  reboot_timeout: 0s
+  on_connect:
+    - script.execute: refresh_ui
+  on_disconnect:
+    - script.execute: refresh_ui
+  on_json_message:
+    - topic: ${truck_id}/brain/state
+      qos: 0
+      then:
+        - lambda: |-
+            cockpit::parse_state(x, millis());
+        - script.execute: refresh_ui
+  on_message:
+    - topic: ${truck_id}/brain/status
+      then:
+        - lambda: |-
+            cockpit::st().brain_online = (x != "offline");
+        - script.execute: refresh_ui
+    - topic: ${truck_id}/truckbox/switch/relay_1/state
+      then:
+        - lambda: cockpit::on_direct_relay(0, x, millis());
+        - script.execute: refresh_ui
+    - topic: ${truck_id}/truckbox/switch/relay_2/state
+      then:
+        - lambda: cockpit::on_direct_relay(1, x, millis());
+        - script.execute: refresh_ui
+    - topic: ${truck_id}/truckbox/switch/relay_3/state
+      then:
+        - lambda: cockpit::on_direct_relay(2, x, millis());
+        - script.execute: refresh_ui
+    - topic: ${truck_id}/truckbox/switch/relay_4/state
+      then:
+        - lambda: cockpit::on_direct_relay(3, x, millis());
+        - script.execute: refresh_ui
+    - topic: ${truck_id}/truckbox/switch/relay_5/state
+      then:
+        - lambda: cockpit::on_direct_relay(4, x, millis());
+        - script.execute: refresh_ui
+    - topic: ${truck_id}/truckbox/switch/relay_6/state
+      then:
+        - lambda: cockpit::on_direct_relay(5, x, millis());
+        - script.execute: refresh_ui
+
+# ---------------------------------------------------------------------------
+# Display, touch, backlight
+# ---------------------------------------------------------------------------
+display:
+  - platform: mipi_dsi
+    id: dsi_display
+    model: ${panel_model}
+
+i2c:
+  - id: bus_touch
+    sda: ${pin_touch_sda}
+    scl: ${pin_touch_scl}
+    frequency: 400kHz
+
+touchscreen:
+  - platform: gt911
+    id: touch
+    i2c_id: bus_touch
+    display: dsi_display
+
+output:
+  - platform: ledc
+    id: backlight_pwm
+    pin: ${pin_backlight}
+    frequency: 20kHz
+
+light:
+  - platform: monochromatic
+    id: backlight
+    name: Backlight
+    output: backlight_pwm
+    restore_mode: ALWAYS_ON      # full brightness at boot: legible in sun first
+    default_transition_length: 0s
+
+sensor:
+  - platform: internal_temperature
+    id: board_temp
+    name: Board Temperature
+    update_interval: 30s
+    on_value:
+      then:
+        - lambda: |-
+            if (std::isnan(x)) return;
+            if (x > ${hot_off_c}) {
+              auto c = id(backlight).turn_off(); c.perform();
+            } else if (x > ${hot_dim_c}) {
+              auto c = id(backlight).turn_on(); c.set_brightness(0.2f); c.perform();
+            } else if (x < ${hot_clear_c}) {
+              auto c = id(backlight).turn_on(); c.set_brightness(1.0f); c.perform();
+            }
+
+interval:
+  # Expire relay taps that changed nothing, and redraw the link line.
+  - interval: 1s
+    then:
+      - lambda: cockpit::tick(millis());
+      - script.execute: refresh_ui
+
+# ---------------------------------------------------------------------------
+# Scripts
+# ---------------------------------------------------------------------------
+script:
+  - id: toggle_relay
+    mode: parallel
+    parameters:
+      idx: int
+    then:
+      - lambda: |-
+          auto &s = cockpit::st();
+          uint32_t now = millis();
+          if (!id(mqtt_client).is_connected()) return;
+          if (!s.have_state || !s.truckbox) return;
+          if (now - s.last_tap_ms[idx] < cockpit::TAP_DEBOUNCE_MS) return;
+          if (s.pending_ms[idx] != 0) return;   // one request in flight per relay
+          s.last_tap_ms[idx] = now;
+          // Unknown state: ask for ON (the safe guess is that it's off).
+          bool want_on = s.relay_on[idx] != 1;
+          std::string topic = std::string("${truck_id}/truckbox/switch/relay_") +
+                              std::to_string(idx + 1) + "/command";
+          id(mqtt_client).publish(topic, want_on ? std::string("ON") : std::string("OFF"));
+          ESP_LOGI("p4screen", "tap relay_%d -> %s", idx + 1, want_on ? "ON" : "OFF");
+          s.pending_ms[idx] = now;
+          s.pending_from[idx] = s.relay_on[idx];
+          s.pending_want[idx] = want_on ? 1 : 0;
+          s.refused_ms[idx] = 0;
+      - script.execute: refresh_ui
+
+  - id: refresh_ui
+    mode: single
+    then:
+      - lambda: |-
+          #define OBJ(w) ((lv_obj_t *) (w))
+          auto &s = cockpit::st();
+          uint32_t now = millis();
+          const bool link_up = id(mqtt_client).is_connected();
+          const bool stale = !link_up || !s.brain_online || !s.have_state;
+
+          const lv_color_t TEXT = lv_color_hex(0xE8F4FF);
+          const lv_color_t DIM = lv_color_hex(0x5A7088);
+          const lv_color_t CYAN = lv_color_hex(0x00D4FF);
+          const lv_color_t AMBER = lv_color_hex(0xFFB000);
+          const lv_color_t RED = lv_color_hex(0xFF3B3B);
+          const lv_color_t GREEN = lv_color_hex(0x2BD97C);
+          const lv_color_t PANEL = lv_color_hex(0x0B1522);
+          const lv_color_t BG = lv_color_hex(0x05080D);
+
+          // ---- speed / SoC / range --------------------------------------
+          lv_label_set_text(OBJ(id(lbl_speed)), cockpit::fmt(s.speed, "%.0f").c_str());
+          lv_obj_set_style_text_color(OBJ(id(lbl_speed)), stale ? DIM : TEXT, LV_PART_MAIN);
+
+          lv_label_set_text(OBJ(id(lbl_soc)), cockpit::fmt(s.soc, "%.0f").c_str());
+          lv_label_set_text(OBJ(id(lbl_range)), cockpit::fmt(s.range, "%.0f").c_str());
+          lv_color_t soc_c = stale ? DIM
+                           : std::isnan(s.soc) ? DIM
+                           : s.soc < 10 ? RED
+                           : s.soc < 20 ? AMBER : CYAN;
+          lv_obj_set_style_text_color(OBJ(id(lbl_soc)), soc_c, LV_PART_MAIN);
+          lv_obj_set_style_text_color(OBJ(id(lbl_range)), stale ? DIM : TEXT, LV_PART_MAIN);
+          lv_bar_set_value(OBJ(id(bar_soc)),
+                           std::isnan(s.soc) ? 0 : (int32_t) lroundf(fminf(fmaxf(s.soc, 0), 100)),
+                           LV_ANIM_OFF);
+          lv_obj_set_style_bg_color(OBJ(id(bar_soc)), soc_c, LV_PART_INDICATOR);
+          if (std::isnan(s.soc)) lv_obj_add_flag(OBJ(id(bar_soc)), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_clear_flag(OBJ(id(bar_soc)), LV_OBJ_FLAG_HIDDEN);
+
+          // ---- relays ---------------------------------------------------
+          lv_obj_t *btns[6] = {OBJ(id(relay_btn_1)), OBJ(id(relay_btn_2)), OBJ(id(relay_btn_3)),
+                               OBJ(id(relay_btn_4)), OBJ(id(relay_btn_5)), OBJ(id(relay_btn_6))};
+          lv_obj_t *names[6] = {OBJ(id(relay_name_1)), OBJ(id(relay_name_2)), OBJ(id(relay_name_3)),
+                                OBJ(id(relay_name_4)), OBJ(id(relay_name_5)), OBJ(id(relay_name_6))};
+          lv_obj_t *states[6] = {OBJ(id(relay_state_1)), OBJ(id(relay_state_2)), OBJ(id(relay_state_3)),
+                                 OBJ(id(relay_state_4)), OBJ(id(relay_state_5)), OBJ(id(relay_state_6))};
+          const bool box_ok = link_up && s.have_state && s.truckbox;
+          for (int i = 0; i < 6; i++) {
+            const int8_t on = s.relay_on[i];
+            const bool pending = s.pending_ms[i] != 0;
+            lv_label_set_text(names[i], s.relay_name[i].c_str());
+            const char *txt = pending ? (s.pending_want[i] == 1 ? "ON..." : "OFF...")
+                            : on == 1 ? "ON" : on == 0 ? "OFF" : cockpit::DASH;
+            lv_label_set_text(states[i], txt);
+            lv_color_t bg = PANEL, border = DIM, fg = TEXT, sfg = DIM;
+            if (!box_ok) {
+              fg = DIM;
+            } else if (on == 1) {
+              bg = CYAN; border = CYAN; fg = BG; sfg = BG;
+            } else if (on == 0) {
+              border = CYAN; sfg = TEXT;
+            }
+            if (pending) { border = AMBER; sfg = (on == 1 && box_ok) ? BG : AMBER; }
+            if (s.refused_ms[i] != 0) border = AMBER;
+            lv_obj_set_style_bg_color(btns[i], bg, LV_PART_MAIN);
+            lv_obj_set_style_border_color(btns[i], border, LV_PART_MAIN);
+            lv_obj_set_style_text_color(names[i], fg, LV_PART_MAIN);
+            lv_obj_set_style_text_color(states[i], sfg, LV_PART_MAIN);
+          }
+
+          // ---- alerts ---------------------------------------------------
+          bool red = false;
+          std::string a = cockpit::alerts(link_up, red);
+          if (a.empty()) {
+            lv_label_set_text(OBJ(id(lbl_alerts)), "ALL CLEAR");
+            lv_obj_set_style_text_color(OBJ(id(lbl_alerts)), GREEN, LV_PART_MAIN);
+            lv_obj_set_style_border_color(OBJ(id(panel_alerts)), lv_color_hex(0x1E3A55), LV_PART_MAIN);
+          } else {
+            lv_label_set_text(OBJ(id(lbl_alerts)), a.c_str());
+            lv_obj_set_style_text_color(OBJ(id(lbl_alerts)), red ? RED : AMBER, LV_PART_MAIN);
+            lv_obj_set_style_border_color(OBJ(id(panel_alerts)), red ? RED : AMBER, LV_PART_MAIN);
+          }
+
+          // ---- link line (top right) ------------------------------------
+          // The brain publishes on change (at most 1/s), so silence is not by
+          // itself a fault: this is shown as an age, not raised as an alert.
+          char link[64];
+          if (!link_up) {
+            snprintf(link, sizeof(link), "NO LINK");
+          } else if (!s.have_state) {
+            snprintf(link, sizeof(link), "LINK OK  \xC2\xB7  NO STATE YET");
+          } else {
+            uint32_t age = (now - s.last_state_ms) / 1000;
+            if (age < 60) snprintf(link, sizeof(link), "LINK OK  \xC2\xB7  %us ago", (unsigned) age);
+            else snprintf(link, sizeof(link), "LINK OK  \xC2\xB7  %um ago", (unsigned) (age / 60));
+          }
+          lv_label_set_text(OBJ(id(lbl_link)), link);
+          lv_obj_set_style_text_color(OBJ(id(lbl_link)), link_up ? CYAN : RED, LV_PART_MAIN);
+          #undef OBJ
+
+# ---------------------------------------------------------------------------
+# Fonts. Roboto from Google Fonts (fetched at compile time). The big sizes
+# carry only the glyphs they draw, which keeps flash small. Every font that can
+# show a missing value includes U+2014 (the em dash).
+# ---------------------------------------------------------------------------
+font:
+  - id: font_speed
+    file:
+      type: gfonts
+      family: Roboto Condensed
+      weight: 700
+    size: 280
+    bpp: 4
+    glyphs: "0123456789—"
+  - id: font_big
+    file:
+      type: gfonts
+      family: Roboto Condensed
+      weight: 700
+    size: 120
+    bpp: 4
+    glyphs: "0123456789—"
+  - id: font_ui
+    file:
+      type: gfonts
+      family: Roboto Condensed
+      weight: 700
+    size: 36
+    bpp: 4
+    glyphsets: [GF_Latin_Kernel]
+    glyphs: "—·°"
+  - id: font_alert
+    file:
+      type: gfonts
+      family: Roboto Condensed
+      weight: 700
+    size: 44
+    bpp: 4
+    glyphsets: [GF_Latin_Kernel]
+    glyphs: "—·°"
+  - id: font_unit
+    file:
+      type: gfonts
+      family: Roboto Condensed
+      weight: 400
+    size: 30
+    bpp: 4
+    glyphsets: [GF_Latin_Kernel]
+    glyphs: "—·°"
+
+# ---------------------------------------------------------------------------
+# UI: 1280 x 800 landscape (after rotation). Dark, electric blue / cyan.
+#
+#  +-------------------------------------------------------------------+
+#  | SLATE COCKPIT                                    LINK OK . 1s ago |
+#  +------------------------------+------------------------------------+
+#  |            88                |  [Bed lights ]   [Light bar   ]    |
+#  |            MPH               |  [Rock lights]   [Air compr.  ]    |
+#  |  72 %  [=====]   | 180 mi    |  [Bed fridge ]   [Inverter    ]    |
+#  +------------------------------+------------------------------------+
+#  | ALERTS                                                            |
+#  +-------------------------------------------------------------------+
+# ---------------------------------------------------------------------------
+lvgl:
+  displays:
+    - dsi_display
+  touchscreens:
+    - touchscreen_id: touch
+  rotation: ${rotation}
+  buffer_size: 100%
+  default_font: font_ui
+  bg_color: 0x05080D
+  style_definitions:
+    - id: panel_style
+      bg_color: 0x0B1522
+      bg_opa: COVER
+      border_color: 0x1E3A55
+      border_width: 2
+      radius: 16
+      pad_all: 0
+    - id: relay_style
+      bg_color: 0x0B1522
+      bg_opa: COVER
+      border_color: 0x5A7088
+      border_width: 3
+      radius: 18
+      shadow_width: 0
+      pad_all: 0
+  pages:
+    - id: main_page
+      bg_color: 0x05080D
+      scrollable: false
+      widgets:
+        # ---- top bar ----
+        - label:
+            x: 24
+            y: 14
+            text: "SLATE COCKPIT"
+            text_font: font_ui
+            text_color: 0x00D4FF
+        - label:
+            id: lbl_link
+            align: TOP_RIGHT
+            x: -24
+            y: 18
+            text: "NO LINK"
+            text_font: font_unit
+            text_color: 0xFF3B3B
+
+        # ---- left: speed, SoC, range ----
+        - obj:
+            id: panel_drive
+            styles: panel_style
+            scrollable: false
+            x: 16
+            y: 72
+            width: 604
+            height: 488
+            widgets:
+              - label:
+                  id: lbl_speed
+                  align: TOP_MID
+                  y: 0
+                  text: "—"
+                  text_font: font_speed
+                  text_color: 0x5A7088
+              - label:
+                  align: TOP_MID
+                  y: 280
+                  text: "MPH"
+                  text_font: font_unit
+                  text_color: 0x5A7088
+              # SoC
+              - label:
+                  id: lbl_soc
+                  x: 24
+                  y: 330
+                  text: "—"
+                  text_font: font_big
+                  text_color: 0x5A7088
+              - label:
+                  x: 200
+                  y: 362
+                  text: "%"
+                  text_font: font_ui
+                  text_color: 0x5A7088
+              - bar:
+                  id: bar_soc
+                  x: 200
+                  y: 412
+                  width: 110
+                  height: 22
+                  min_value: 0
+                  max_value: 100
+                  value: 0
+                  bg_color: 0x1E3A55
+                  radius: 6
+                  indicator:
+                    bg_color: 0x00D4FF
+                    radius: 6
+              # range
+              - label:
+                  id: lbl_range
+                  x: 330
+                  y: 330
+                  text: "—"
+                  text_font: font_big
+                  text_color: 0x5A7088
+              - label:
+                  x: 530
+                  y: 404
+                  text: "mi"
+                  text_font: font_ui
+                  text_color: 0x5A7088
+
+        # ---- right: relays (2 x 3) ----
+        - obj:
+            styles: panel_style
+            scrollable: false
+            x: 636
+            y: 72
+            width: 628
+            height: 488
+            widgets:
+              - button:
+                  id: relay_btn_1
+                  styles: relay_style
+                  x: 14
+                  y: 14
+                  width: 292
+                  height: 144
+                  on_click:
+                    - script.execute: {id: toggle_relay, idx: 0}
+                  widgets:
+                    - label: {id: relay_name_1, align: TOP_LEFT, x: 18, y: 14, text: "Bed lights", text_font: font_ui, long_mode: DOT, width: 256}
+                    - label: {id: relay_state_1, align: BOTTOM_LEFT, x: 18, y: -12, text: "—", text_font: font_alert}
+              - button:
+                  id: relay_btn_2
+                  styles: relay_style
+                  x: 320
+                  y: 14
+                  width: 292
+                  height: 144
+                  on_click:
+                    - script.execute: {id: toggle_relay, idx: 1}
+                  widgets:
+                    - label: {id: relay_name_2, align: TOP_LEFT, x: 18, y: 14, text: "Light bar", text_font: font_ui, long_mode: DOT, width: 256}
+                    - label: {id: relay_state_2, align: BOTTOM_LEFT, x: 18, y: -12, text: "—", text_font: font_alert}
+              - button:
+                  id: relay_btn_3
+                  styles: relay_style
+                  x: 14
+                  y: 170
+                  width: 292
+                  height: 144
+                  on_click:
+                    - script.execute: {id: toggle_relay, idx: 2}
+                  widgets:
+                    - label: {id: relay_name_3, align: TOP_LEFT, x: 18, y: 14, text: "Rock lights", text_font: font_ui, long_mode: DOT, width: 256}
+                    - label: {id: relay_state_3, align: BOTTOM_LEFT, x: 18, y: -12, text: "—", text_font: font_alert}
+              - button:
+                  id: relay_btn_4
+                  styles: relay_style
+                  x: 320
+                  y: 170
+                  width: 292
+                  height: 144
+                  on_click:
+                    - script.execute: {id: toggle_relay, idx: 3}
+                  widgets:
+                    - label: {id: relay_name_4, align: TOP_LEFT, x: 18, y: 14, text: "Air compressor", text_font: font_ui, long_mode: DOT, width: 256}
+                    - label: {id: relay_state_4, align: BOTTOM_LEFT, x: 18, y: -12, text: "—", text_font: font_alert}
+              - button:
+                  id: relay_btn_5
+                  styles: relay_style
+                  x: 14
+                  y: 326
+                  width: 292
+                  height: 144
+                  on_click:
+                    - script.execute: {id: toggle_relay, idx: 4}
+                  widgets:
+                    - label: {id: relay_name_5, align: TOP_LEFT, x: 18, y: 14, text: "Bed fridge", text_font: font_ui, long_mode: DOT, width: 256}
+                    - label: {id: relay_state_5, align: BOTTOM_LEFT, x: 18, y: -12, text: "—", text_font: font_alert}
+              - button:
+                  id: relay_btn_6
+                  styles: relay_style
+                  x: 320
+                  y: 326
+                  width: 292
+                  height: 144
+                  on_click:
+                    - script.execute: {id: toggle_relay, idx: 5}
+                  widgets:
+                    - label: {id: relay_name_6, align: TOP_LEFT, x: 18, y: 14, text: "Inverter", text_font: font_ui, long_mode: DOT, width: 256}
+                    - label: {id: relay_state_6, align: BOTTOM_LEFT, x: 18, y: -12, text: "—", text_font: font_alert}
+
+        # ---- bottom: alerts ----
+        - obj:
+            id: panel_alerts
+            styles: panel_style
+            scrollable: false
+            x: 16
+            y: 576
+            width: 1248
+            height: 208
+            widgets:
+              - label:
+                  id: lbl_alerts
+                  x: 28
+                  y: 18
+                  width: 1192
+                  long_mode: CLIP
+                  text: "WAITING FOR THE BRAIN"
+                  text_font: font_alert
+                  text_color: 0xFFB000

@@ -5,6 +5,10 @@ and no modem. The goal is CarPlay (Waze, music), charging and trip info,
 Home Assistant, cameras and aux-switch control on one large, clean screen.
 Built for Jeff's truck first, published for other Slate owners later.
 
+> **Not affiliated with Slate Auto.** This is an independent DIY project; it
+> is not made, endorsed or supported by Slate Auto. MIT licensed (`LICENSE`).
+> The public name is undecided: it is one constant in `brain/src/project.ts`.
+
 ## Status
 
 - **Software core (2026-11-05):** `brain/` (Node 24 service on :8080) and
@@ -52,6 +56,15 @@ Built for Jeff's truck first, published for other Slate owners later.
   `/truck`, and the always-on LTE-M watch that wakes the Pi
   (`firmware/watch`). On a desk `SIM=1` shows four moving test cameras (MJPEG
   from ffmpeg when go2rtc isn't installed). Design: `docs/remote.md`.
+
+- **Logs, ops, publishing (Track D, 2026-11-05):** business mileage log
+  with auto-tagging and IRS export (CSV + printable), maintenance log and
+  reminders with receipt photos, TPMS history, software updates from GitHub
+  with automatic rollback, nightly backups to the NAS, a password for
+  `/settings` and `/truck`, a first-boot setup wizard, a pi-gen image, a
+  release workflow, the hardware list (`docs/bom.md`) and the ESP32-P4 second
+  screen (`firmware/p4-screen/`). Security and the stolen-truck checklist:
+  `docs/security.md`. Contributing: `CONTRIBUTING.md`.
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
 - **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a

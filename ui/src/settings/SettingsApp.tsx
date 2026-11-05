@@ -10,6 +10,8 @@ import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
 import { TrackBSections } from './TrackBSections.tsx';
 import { RemoteSection } from './RemoteSection.tsx';
+import { OpsSections } from '../ops/OpsSettings.tsx';
+import { PROJECT } from '../../../brain/src/project.ts';
 
 const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -91,7 +93,7 @@ export function SettingsApp() {
   return (
     <div class="portal-wrap portal">
       <div class="portal-head">
-        <h1>SLATE · SETTINGS</h1>
+        <h1>{PROJECT.shortName} · SETTINGS</h1>
         <span class="pill"><span class={`dot ${health ? 'ok' : 'bad'}`} />{health ? `brain v${health.version}` : 'brain unreachable'}</span>
         {health && <span class="pill"><span class={`dot ${health.mqtt === 'connected' ? 'ok' : 'warn'}`} />MQTT {health.mqtt}</span>}
         {health && <span class="pill"><span class={`dot ${health.gps === 'fix' || health.gps === 'sim' ? 'ok' : 'warn'}`} />GPS {health.gps}</span>}
@@ -216,6 +218,8 @@ export function SettingsApp() {
 
       <div id="media" />
       <TrackBSections settings={settings} />
+
+      <OpsSections />
 
       <div class="savebar">
         <button class="btn big primary" type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save truck settings'}</button>

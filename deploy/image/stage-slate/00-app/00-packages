@@ -1,0 +1,6 @@
+mosquitto mosquitto-clients
+gpsd gpsd-clients
+curl ca-certificates rsync git
+network-manager bluez
+chromium
+cifs-utils openssh-client

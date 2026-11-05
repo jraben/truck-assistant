@@ -74,6 +74,8 @@ export function sendQuiet(msg: Record<string, unknown>): boolean {
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = init?.body ? { 'content-type': 'application/json' } : {};
   const res = await fetch(path, { ...init, headers: { ...headers, ...((init?.headers as Record<string, string>) ?? {}) } });
+  // Logged out (or the session expired) on a phone: back to the login page.
+  if (res.status === 401 && location.pathname !== '/' && location.pathname !== '/login') location.href = `/login?next=${encodeURIComponent(location.pathname + location.hash)}`;
   if (!res.ok) {
     let msg = `${res.status}`;
     try { const b = await res.json(); if (b?.error) msg = b.error; } catch { /* not JSON */ }

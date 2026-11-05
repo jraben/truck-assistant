@@ -1,0 +1,3 @@
+# /etc/sudoers.d/slate-updater  (updater/setup.sh puts it there, mode 0440)
+# The updater's only root right: restart the brain after switching versions.
+slate ALL=(root) NOPASSWD: /usr/bin/systemctl restart slate-brain, /usr/bin/systemctl restart slate-brain.service

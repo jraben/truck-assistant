@@ -6,3 +6,7 @@
 *.h264 binary
 *.stl binary
 *.png binary
+*.path text eol=lf
+*.sudoers text eol=lf
+*.yml text eol=lf
+deploy/image/** text eol=lf

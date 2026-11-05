@@ -8,6 +8,8 @@ import { DriveScreen } from '../drive/DriveScreen.tsx';
 import { CarPlay } from './carplay.tsx';
 import { TRACKB_WIDGETS } from '../media/trackb.tsx';
 import { CamsView, CamTile } from './cams.tsx';
+import { MaintWidget } from '../ops/Maintenance.tsx';
+import { MileageWidget } from '../ops/Mileage.tsx';
 
 function Unknown({ props }: WP) {
   return <div class="card"><span class="lbl">Unknown widget</span><span class="dimtxt">{String(props?.type ?? '')}</span></div>;
@@ -22,5 +24,6 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   trips: Trips, cam: CamTile, cams: CamsView,
   drive: DriveScreen,
   ...TRACKB_WIDGETS, // media, nowPlaying (any source), nextAppointment
+  maintenance: MaintWidget, mileage: MileageWidget,
 };
 export const widgetFor = (t: string) => WIDGETS[t] ?? Unknown;

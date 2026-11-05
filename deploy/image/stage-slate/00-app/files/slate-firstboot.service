@@ -1,0 +1,15 @@
+# First boot of the flashed image: make the truck's Wi-Fi with a random password,
+# which the setup wizard shows on the dash and asks to change.
+[Unit]
+Description=Slate Cockpit first boot
+After=NetworkManager.service
+Wants=NetworkManager.service
+ConditionPathExists=!/var/lib/slate-cockpit/.firstboot-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/slate-firstboot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

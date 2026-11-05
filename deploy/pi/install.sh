@@ -67,6 +67,8 @@ bash "$APP/deploy/pi/cams/install-go2rtc.sh"
 id -nG slate | grep -qw video || usermod -aG video slate
 install -m 0644 "$APP/deploy/pi/power/51-slate-power.rules" /etc/polkit-1/rules.d/51-slate-power.rules
 # Optional, by hand: LTE modem (deploy/pi/lte/setup-lte.sh) and Tailscale (deploy/pi/tailscale/setup-tailscale.sh).
+echo "== updater (releases dir, path unit, sudoers rule for restarting the brain only)"
+bash "$APP/deploy/pi/updater/setup.sh" --from-install
 
 echo "== brain service"
 install -m 0644 "$APP/deploy/pi/slate-brain.service" /etc/systemd/system/slate-brain.service

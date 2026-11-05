@@ -11,6 +11,10 @@ import { NetPanel, NetPill } from './network.tsx';
 import { WeatherOverlay, WeatherStrip } from '../drive/WeatherStrip.tsx';
 import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
 import { WoprButton } from '../wopr/WoprUi.tsx';
+import { PROJECT } from '../../../brain/src/project.ts';
+import { LogsPanel } from '../ops/OpsSettings.tsx';
+import { DueCard } from '../ops/Maintenance.tsx';
+import { SetupOverlay } from '../ops/Wizard.tsx';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -23,6 +27,7 @@ const ICONS: Record<string, string> = {
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const PALETTE = 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zM7.5 12a1 1 0 1 0 0-.01M10 8a1 1 0 1 0 0-.01M14 8a1 1 0 1 0 0-.01';
+const LOGS = 'M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7';
 const Ico = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
 
 /** Back from cams this long after reverse ends (the plan's 3 s). */
@@ -51,6 +56,7 @@ export function App() {
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);
   const [netOpen, setNetOpen] = useState(false);
+  const [logs, setLogs] = useState<null | 'mileage' | 'maintenance'>(null);
   const now = useClock();
 
   const go = (id: string) => { setView(id); history.replaceState(null, '', `#${id}`); };
@@ -87,7 +93,7 @@ export function App() {
   return (
     <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
       <header class="strip">
-        <span class="brand">SLATE</span>
+        <span class="brand">{PROJECT.shortName}</span>
         <span class="pill" title={link.connected ? 'Connected to the brain' : 'Reconnecting to the brain…'}><span class={`dot ${link.connected ? 'ok' : 'bad'}`} />{link.connected ? 'Brain' : 'Reconnecting'}</span>
         <span class="pill hide-sm" title={s?.truckbox ? 'Truck box online' : 'Truck box offline: relays and sensors unavailable'}><span class={`dot ${s?.truckbox ? 'ok' : 'warn'}`} />Truck box {s?.truckbox ? 'online' : 'offline'}</span>
         <span class="pill hide-sm" title={s?.gps?.fix ? 'GPS fix' : 'No GPS fix'}><span class={`dot ${s?.gps?.fix ? 'ok' : 'warn'}`} />GPS</span>
@@ -107,6 +113,7 @@ export function App() {
         <WoprButton />
         <button type="button" aria-expanded={driverOpen} title={s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver'} onClick={() => { setDriverOpen(!driverOpen); setPicker(false); }}><DriverBadge d={s?.driver ?? null} size={30} />{s?.driver?.name ?? 'Driver'}</button>
         <button type="button" aria-expanded={picker} onClick={() => { setPicker(!picker); setDriverOpen(false); }}><Ico d={PALETTE} />Theme</button>
+        <button type="button" onClick={() => setLogs('mileage')}><Ico d={LOGS} />Logs</button>
         <a href="/settings" class={s?.drive?.lockout.locked ? 'locked' : undefined} aria-disabled={s?.drive?.lockout.locked || undefined} title={s?.drive?.lockout.locked ? 'Settings open when the truck stops' : undefined}><Ico d={GEAR} />Settings</a>
       </nav>
 
@@ -130,6 +137,9 @@ export function App() {
       <ChargePrompt />
       <WeatherOverlay s={s} />
       <TrackBOverlays />
+      {cur.id === 'drive' && !logs && <DueCard onOpen={() => setLogs('maintenance')} />}
+      {logs && <LogsPanel initial={logs} onClose={() => setLogs(null)} />}
+      <SetupOverlay />
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
     </div>
   );
