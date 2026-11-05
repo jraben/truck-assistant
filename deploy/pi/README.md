@@ -123,3 +123,34 @@ nmcli -f NAME,TYPE,DEVICE,AUTOCONNECT-PRIORITY connection show   # slate-ap on w
 nmcli device wifi list ifname wlan1                               # what the client radio can see
 journalctl -u slate-brain | grep '\[net\]'                        # switches the brain made
 ```
+
+## Media (Track B): AM/FM, Spotify Connect, music files
+
+`install.sh` runs `deploy/pi/media/install-media.sh`: rtl-sdr + ffmpeg, the
+librespot binary (from raspotify's apt repo; raspotify's own service is
+disabled because the brain runs librespot itself), the `audio`/`plugdev`
+groups for the `slate` user, and `/var/lib/slate-cockpit/music`.
+
+**AM/FM hardware (optional, about $30-40):** an RTL-SDR Blog V4 dongle with
+its dipole antenna kit, on a USB port (a short USB extension keeps it away
+from the Pi's noise). An antenna outside the cab (a magnetic whip on the roof
+or bed rail) beats a dipole behind the glass. FM works out of the box; AM uses
+the V4's built-in upconverter, wants a long wire, and is experimental. Check
+it with `rtl_test -t` ("Found 1 device"). "usb_claim_interface error" means
+the DVB driver still has it: reboot after install (it is blacklisted in
+/etc/modprobe.d). One tuner = one station at a time; Seek runs a 2-second band
+scan (`rtl_power`) first.
+
+**Spotify Connect:** the truck shows up in Spotify as the speaker name set on
+/settings → Spotify (default "Slate Truck"). librespot plays through ALSA as
+the `slate` user; if it can't open the default device (the desktop's PipeWire
+holds it), set `LIBRESPOT_DEVICE` in `slate-brain.service` to a card from
+`aplay -L` (e.g. `plughw:CARD=Headphones`, or the USB DAC / amp feeding the
+truck's speakers). Playback control needs Spotify Premium.
+
+**Music files:** copy into `/var/lib/slate-cockpit/music` as
+`Artist/Album/NN - Title.ext` (mp3, m4a, flac, ogg, opus, wav); the Media
+view's Files tab browses it, offline.
+
+**WOPR voice:** uses the same USB mic as CarPlay (the Chromium policy already
+allows the mic on `http://localhost:8080`).

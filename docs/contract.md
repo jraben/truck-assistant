@@ -532,3 +532,158 @@ it gets `.calm` (no transitions or animations).
 - CPU temperature from `/sys/class/thermal/thermal_zone0/temp`, else `vcgencmd
   measure_temp`; simulated on a desk. Held at or above `heat.shutdownC` for 30 s,
   the brain runs `systemctl poweroff` (Linux, not SIM; `HEAT_SHUTDOWN=0` disables).
+## Track B: Media and WOPR
+
+Built 2026-11-05 (branch `track/b-media`). Code: `brain/src/trackb.ts`
+(registers it all, one call from server.ts), `brain/src/media/`,
+`brain/src/wopr/`, `brain/src/receipts/`; UI in `ui/src/media/`,
+`ui/src/wopr/`, `ui/src/receipts/`, `ui/src/settings/TrackBSections.tsx`.
+Shared shapes: `brain/src/media/types.ts` (types only, imported by the UI).
+
+### Now playing (changes to the above)
+
+- `NowPlaying.source` is `'carplay' | 'spotify' | 'radio' | 'fm' | 'plex' | 'local'`.
+- WS `{"type":"media", title, artist, album, source?}`: `source` defaults to
+  `carplay` (old clients unchanged). Each cockpit socket keeps one report per
+  source; the brain's Spotify poller reports `spotify` while the truck's
+  Connect device plays. `State.nowPlaying` = the most recently *started*
+  report (a new song from the same source keeps its place); when it stops, the
+  next one shows. A closing socket drops its reports. HA's Now playing sensor
+  already carries `source` as an attribute.
+- The cockpit's own player (radio, AM/FM, Plex, files) sends `title: null`
+  with its source when it pauses or stops.
+- `ChargeSession.source` gains `'receipt'`.
+- Layout widget types: `media` (the source tabs), `nextAppointment` (a card
+  any view can place; **Track A: put it in the Drive view's right column**)
+  and `nowPlaying` (now any source; tap opens Media). A driver layout without
+  a `media` view gets one after `carplay` in the UI (`withMediaView()`;
+  nothing is saved).
+
+### Settings: `DATA_DIR/media.json` (its own file, mode 0600)
+
+`GET /api/media/settings` → masked; `PUT` = partial merge (400 on bad values).
+Secrets behave like `keys`: shown as `••••abcd`, a masked value = unchanged,
+`""`/null = remove.
+
+```ts
+type MediaSettings = {
+  wopr: { url: string | null; username: string; password?: string };   // WOPR's APP_PASSWORD (Basic auth)
+  spotify: { clientId: string | null; deviceName: string; connect: boolean; bitrate: 96 | 160 | 320;
+             tokens: Record<string, SpotifyToken> };   // per driver; never returned: GET has spotify.connected[driverId] = {user}
+  plex: { url: string | null; token?: string };
+  radio: { kjefUrl: string; favourites: Record<string, RadioStation[]> };  // kjefUrl default https://radio.jeffraben.com/stream.mp3
+  fm: { presets: { mhz: number; name: string }[]; ppm: number; gain: number | null };  // AM in MHz: 620 kHz = 0.62
+  local: { folder: string | null };   // null = DATA_DIR/music
+  receipts: { autoImport: boolean };
+};
+```
+
+### Media routes
+
+- `GET /api/media/status` → `MediaStatus` (saveData, link, spotify, radio.now,
+  fm tuner, plex configured, local root, wopr status).
+- Radio (Radio Browser; servers from DNS SRV `_api._tcp.radio-browser.info`,
+  fallback de1/de2/fi1; `User-Agent: slate-cockpit/<version>`):
+  `GET /api/media/radio/presets`; `GET /api/media/radio/search?q=&tag=&country=`
+  (503 offline); `GET|POST /api/media/radio/favourites` (`{station}`, the
+  active driver's, not Guest); `DELETE /api/media/radio/favourites/:id`;
+  `GET /api/media/radio/stream/:id` (the brain relays the stream with the ICY
+  metadata taken out; only presets, favourites and search results relay);
+  `GET /api/media/radio/now` → `{stationId, name, title, artist, since} | null`.
+- AM/FM: `GET /api/media/fm/status` → `{tuner: {state: 'present'|'none'|'no-software'|'sim'|'busy', message}, tuned, presets}`;
+  `GET /api/media/fm/stream?mhz=` → audio/mpeg (`rtl_fm | ffmpeg`; 503 with
+  the reason when there is no tuner, e.g. SIM); `POST /api/media/fm/stop`;
+  `POST /api/media/fm/seek {from, dir: 1|-1}` → `{mhz | null}` (rtl_power sweep).
+- Plex (the token stays in the brain): `GET /api/media/plex/sections`,
+  `…/artists?section=`, `…/recent?section=`, `…/playlists`,
+  `…/children?key=&type=`, `…/search?q=` → `PlexItem[]`;
+  `GET /api/media/plex/track/:key` (audio, Range passed through);
+  `GET /api/media/plex/thumb?path=/library/…`.
+- Files: `GET /api/media/local?path=` → `LocalListing`;
+  `GET /api/media/local/file?path=` (Range). Paths can't leave the folder.
+- Spotify: `GET /api/spotify/status`; `POST /api/spotify/auth/start {driverId, redirectUri}`
+  → `{url}` (PKCE, no secret; redirect must be https or
+  `http://127.0.0.1:<port>/api/spotify/callback`); `GET /api/spotify/callback`
+  (https setups, e.g. Tailscale serve); `POST /api/spotify/auth/finish {url}`
+  (the 127.0.0.1 address pasted from the phone); `DELETE /api/spotify/auth/:driverId`;
+  `GET /api/spotify/playlists|devices`;
+  `POST /api/spotify/play|pause|next|previous|transfer|playlist` (`playlist`
+  takes `{uri}`; transfer/playlist target the device named `deviceName`).
+  Each owner registers a free app at developer.spotify.com; development mode
+  serves at most **5 Spotify accounts**, added in the app's User Management.
+  Control needs Premium. Tokens refresh 60 s early, one refresh shared by
+  concurrent callers; `invalid_grant` forgets them.
+- Data on a hotspot: when `State.network.saveData`, the UI asks before any
+  stream that uses data (radio, Plex, Spotify to the truck), once per connection.
+
+### WOPR routes (brain → WOPR with Basic auth; the password never reaches the UI)
+
+All answer 503 `{error, kind: 'not-configured'|'offline'}` when WOPR isn't set
+up or `State.network.link === 'offline'`; WOPR's 401/redirect = `kind: 'auth'`,
+its HTML maintenance page / 502 / 503 = `kind: 'restarting'`.
+
+- `GET /api/wopr/status`; `POST /api/wopr/test` (WOPR's ungated `GET /api/status`,
+  then a one-minute `GET /api/calendar` to prove the login).
+- `POST /api/wopr/stt`, body = the recording (`Content-Type: audio/webm|mp4|ogg`,
+  ≤ 8 MB) → WOPR `POST /api/stt` (multipart `file`) → `{text}`.
+- `POST /api/wopr/chat {text, history?: {role, content}[]}` → NDJSON lines
+  `{t:'text', v}` | `{t:'searching'}` | `{t:'done'}` | `{t:'error', message, kind?}`.
+  The brain sends WOPR `POST /api/WOPR {messages, model:'claude', voice:true,
+  save:true, skipMemory:false, think:false, deep:false}`, messages =
+  [primer, "Understood.", last 12 of history, question], as WOPR's phone page
+  does. Primer: `Current time: …`, the truck instructions (spoken, short, can't
+  change anything), a `[TRUCK — live]` block (driver, driving / parked at,
+  location, battery and range, next calendar stop, now playing, link) and
+  WOPR's own `GET /api/mobile/context` (cached 3 min) with `[id:…]` tags
+  removed. `[[WOPR_SEARCH]]` / `[[WOPR_KEEPALIVE]]` are stripped by the brain
+  (also when split across chunks); action JSON is stripped by the UI with
+  WOPR's `splitActions` rule and never applied (a "Not done from the truck"
+  note says so).
+- `POST /api/wopr/tts {text}` → WOPR `POST /api/tts {text, provider:'cartesia'}`
+  → audio. The UI speaks sentence by sentence while the reply streams (WOPR's
+  `extractSentences` rule) and shows a subtitle.
+- `GET /api/wopr/next` → `{configured, online, next: Appointment | null, fetchedAt, message}`;
+  `POST /api/wopr/next/refresh`. From WOPR
+  `GET /api/calendar?timeMin=now-15m&timeMax=now+36h` every 5 min: the first
+  timed, not-ended event that started at most 15 min ago.
+  `Appointment = {id, title, start, end, location, wazeUrl}`; online-meeting
+  locations don't count; `wazeUrl = https://waze.com/ul?q=<location>&navigate=yes`.
+- Gate codes: when `State.place.stopId` changes to a new stop, the brain sends
+  WOPR `POST /api/where {lat, lon}` (plain-text answer) and keeps an answer
+  with codes **in memory only** (never on disk, never in State, never on
+  MQTT/HA, never logged) until the truck leaves, it is dismissed, or 30 min
+  pass. `GET /api/wopr/gate` → `{kind:'codes', place, codes: [{label, value}], how, text, stopId, at} | null`;
+  `POST /api/wopr/gate/check` (asked by hand: any answer comes back);
+  `POST /api/wopr/gate/dismiss`.
+
+### Charging receipts
+
+- `POST /api/charges/import-receipt {text | html, subject?, from?, receivedAt?, messageId?}`
+  → 201 `{draft, duplicate: false}`, 200 `{draft, duplicate: true}` (same
+  messageId or same body), 422 (no total and no kWh). Parsers for Electrify
+  America, ChargePoint, EVgo, Tesla Supercharger: network, station, address,
+  start/end (US time-zone abbreviations), kWh, total incl. fees; missing = null.
+- `GET /api/charges/drafts?state=draft|confirmed|dismissed|all` → `ReceiptDraft[]`;
+  `POST /api/charges/drafts/:id/confirm {cost?, kwh?, network?, stationName?, startedAt?, endedAt?}`
+  → `{draft, session}`: fills a detected public session within 3 h that has no
+  cost (costSource 'receipt'), else creates a `source: 'receipt'` session;
+  `POST /api/charges/drafts/:id/dismiss`.
+- Mail: WOPR has **no route that searches mail and returns bodies** (checked
+  2026-11-05: `/api/mail` is the unread count, `/api/mail/archive` moves mail,
+  `/api/kb/import/mail` files mail into WOPR's archive with model calls). The
+  brain already asks every 6 h (when `receipts.autoImport`) for the route
+  below, and on 404 says so on /settings and retries daily;
+  `GET|POST /api/charges/receipts/mail` shows / runs it. **Needed in WOPR**
+  (read-only; gated like the app and held out of the LAN bypass, since it
+  returns mail):
+
+  ```
+  GET /api/mail/search?q=<Graph $search text>&since=<ISO>&body=1&top=25
+  → { messages: [{ id, internetMessageId, from, subject, receivedDateTime,
+                   body, bodyType: 'html' | 'text' }] }
+  ```
+
+  i.e. `searchMessages(q, top)` from WOPR's `lib/outlook.ts`, kept to
+  `receivedDateTime >= since`, plus each full body
+  (`GET /messages/{id}?$select=body`, HTML not stripped). The brain sends
+  q = `Electrify America OR ChargePoint OR EVgo OR Supercharging receipt`.

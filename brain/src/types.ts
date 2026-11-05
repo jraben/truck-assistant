@@ -59,8 +59,9 @@ export type WifiNet = { ssid: string; password?: string };
 
 export type DriverRef = { id: string; name: string; initials: string; color: string };
 
-/** What CarPlay is playing, reported by the cockpit UI. Text only; album art stays in the UI. */
-export type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: 'carplay' };
+/** What is playing, reported by the cockpit UI (CarPlay, or the Media view's player) or the brain (Spotify). Text only; album art stays in the UI. */
+export type NowPlayingSource = 'carplay' | 'spotify' | 'radio' | 'fm' | 'plex' | 'local';
+export type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: NowPlayingSource };
 
 export type TouPeriod = { name: string; days: number[]; start: string; end: string; perKwh: number };
 
@@ -198,7 +199,7 @@ export type ChargeSession = {
   startSoc: number | null; endSoc: number | null;
   maxKw: number | null;
   note: string | null;
-  source: 'manual' | 'detected' | 'home-charger';
+  source: 'manual' | 'detected' | 'home-charger' | 'receipt';  // receipt: confirmed from a charging receipt email (Track B)
   driverId: string | null;
 };
 

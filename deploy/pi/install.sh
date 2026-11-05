@@ -59,6 +59,9 @@ if ! nmcli -t -f NAME connection show 2>/dev/null | grep -qx slate-ap; then
 fi
 ip link show wlan1 >/dev/null 2>&1 || echo "   note: no wlan1 yet. Plug in the USB Wi-Fi adapter (deploy/pi/README.md, Network) for hotspot / home Wi-Fi."
 
+echo "== media (Track B): AM/FM tuner, Spotify Connect, music folder"
+DATA="$DATA" bash "$APP/deploy/pi/media/install-media.sh"
+
 echo "== brain service"
 install -m 0644 "$APP/deploy/pi/slate-brain.service" /etc/systemd/system/slate-brain.service
 systemctl daemon-reload

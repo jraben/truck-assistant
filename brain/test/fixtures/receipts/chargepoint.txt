@@ -1,0 +1,21 @@
+From: ChargePoint <noreply@chargepoint.com>
+Subject: Your ChargePoint Session Receipt
+
+Hi Jeff,
+
+Thanks for charging with ChargePoint. Here are the details of your session.
+
+Station: SCOTTSDALE QUARTER / STATION 2
+Address: 15279 N Scottsdale Rd, Scottsdale, AZ 85254
+Date: Nov 3, 2026
+Start Time: 9:05 AM
+End Time: 11:12 AM
+Charging Time: 2h 7m
+Energy: 14.882 kWh
+Rate: $0.30 per kWh
+Session Fee: $0.00
+Total Amount: $4.47
+
+This amount was deducted from your ChargePoint balance. Remaining balance: $20.53
+
+ChargePoint, Inc. 240 East Hacienda Ave, Campbell, CA 95008

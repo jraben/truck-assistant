@@ -8,6 +8,7 @@ import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
+import { TrackBSections } from './TrackBSections.tsx';
 
 const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -210,9 +211,8 @@ export function SettingsApp() {
         </div>
       </Section>
 
-      <Section title="Streaming services" help="Later phase. Spotify (librespot), Plex and Audiobookshelf link here; Apple Music, YouTube Music and Pandora stay CarPlay-only.">
-        <div class="dimtxt">Nothing to set yet.</div>
-      </Section>
+      <div id="media" />
+      <TrackBSections settings={settings} />
 
       <div class="savebar">
         <button class="btn big primary" type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save truck settings'}</button>

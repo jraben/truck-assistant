@@ -83,7 +83,7 @@ export class Brain extends EventEmitter {
   private socSaveAt = 0;
   private discoveryOn = false;
 
-  private db: Db;
+  readonly db: Db;
   readonly settings: SettingsStore;
 
   constructor(db: Db, settings: SettingsStore) {

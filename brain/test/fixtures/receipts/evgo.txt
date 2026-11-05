@@ -1,0 +1,18 @@
+EVgo Charging Receipt
+
+Thanks for charging with EVgo!
+
+Location: Fry's Food Store - 4707 E Shea Blvd, Phoenix AZ 85028
+Charger: 1053-02 (CCS)
+Date: 10/28/2026
+Start: 6:41 PM
+End: 7:15 PM
+Charging Duration: 00:34:12
+kWh Delivered 35.20
+Charging Fee $16.90
+Session Fee $0.99
+Taxes $0.00
+Total Charged $17.89
+
+Plan: EVgo Plus. Member since 2025.
+Account: jeff@example.com

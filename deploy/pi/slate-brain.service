@@ -15,6 +15,9 @@ Environment=DATA_DIR=/var/lib/slate-cockpit
 Environment=MQTT_URL=mqtt://localhost:1883
 # The USB Wi-Fi adapter that joins the driver's hotspot / home Wi-Fi; wlan0 stays the slate-truck access point.
 Environment=NET_CLIENT_IFACE=wlan1
+# Spotify Connect (librespot, run by the brain): ALSA output; pick the card if the default is busy (aplay -L).
+# Environment=LIBRESPOT_BACKEND=alsa
+# Environment=LIBRESPOT_DEVICE=plughw:CARD=Headphones
 # Environment=SIM=1   # simulated truck, for bench testing
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning /opt/slate-cockpit/brain/dist/index.js
 Restart=always
