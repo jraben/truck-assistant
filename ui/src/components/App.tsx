@@ -11,6 +11,7 @@ import { NetPanel, NetPill } from './network.tsx';
 import { WeatherOverlay, WeatherStrip } from '../drive/WeatherStrip.tsx';
 import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
 import { GaragePrompt, HOME_ICON, withHomeView } from '../home/Home.tsx';
+import { ModeOverlays, PARKED_ICON, withParkedView } from '../parked/Parked.tsx';
 import { WoprButton } from '../wopr/WoprUi.tsx';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { LogsPanel } from '../ops/OpsSettings.tsx';
@@ -26,6 +27,7 @@ const ICONS: Record<string, string> = {
   cams: 'M5 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 11l5-3v8l-5-3',
   media: MEDIA_ICON,
   home: HOME_ICON,
+  parked: PARKED_ICON,
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const PALETTE = 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zM7.5 12a1 1 0 1 0 0-.01M10 8a1 1 0 1 0 0-.01M14 8a1 1 0 1 0 0-.01';
@@ -54,7 +56,7 @@ export function App() {
   const toastMsg = useStore(toastStore);
   const driver = activeDriver(settings, s);
   const base = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
-  const layout = useMemo(() => withHomeView(withMediaView(base)), [base]);
+  const layout = useMemo(() => withParkedView(withHomeView(withMediaView(base))), [base]);
   const [view, setView] = useState(() => viewFromHash(layout));
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);
@@ -134,6 +136,7 @@ export function App() {
 
       {cur.id === 'drive' && <DriverPrompt />}
       <GaragePrompt />
+      <ModeOverlays />
       {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {moreOpen && (

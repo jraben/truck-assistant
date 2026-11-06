@@ -9,6 +9,7 @@ import { DriveScreen } from '../drive/DriveScreen.tsx';
 import { CarPlay } from './carplay.tsx';
 import { TRACKB_WIDGETS } from '../media/trackb.tsx';
 import { HOME_WIDGETS } from '../home/Home.tsx';
+import { PARKED_WIDGETS } from '../parked/Parked.tsx';
 import { CamsView, CamTile } from './cams.tsx';
 import { MaintWidget } from '../ops/Maintenance.tsx';
 import { MileageWidget } from '../ops/Mileage.tsx';
@@ -27,6 +28,7 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   drive: DriveScreen,
   ...TRACKB_WIDGETS, // media, nowPlaying (any source), nextAppointment
   ...HOME_WIDGETS,   // garage, haPanel
+  ...PARKED_WIDGETS, // parked: watch, games, karaoke, camp, pet, tow, lights
   maintenance: MaintWidget, mileage: MileageWidget,
 };
 export const widgetFor = (t: string) => WIDGETS[t] ?? Unknown;

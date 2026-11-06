@@ -282,7 +282,8 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   registerDriveRoutes(app, brain.drive);
   await registerVehiclePhoto(app, brain.settings, config.dataDir);
   // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----
-  await registerTrackB(app, brain, nowPlaying);
+  // Kept on the app for the Parked routes (Plex video shares Track B's Plex connection).
+  (app as unknown as { trackb: Awaited<ReturnType<typeof registerTrackB>> }).trackb = await registerTrackB(app, brain, nowPlaying);
 
   // ---- UI --------------------------------------------------------------------
   const uiBuilt = existsSync(path.join(config.uiDir, 'index.html'));

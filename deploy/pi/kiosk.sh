@@ -15,6 +15,10 @@ xset s off 2>/dev/null; xset -dpms 2>/dev/null; xset s noblank 2>/dev/null
 i=0
 until curl -fsS -o /dev/null http://localhost:8080/api/health || [ $i -ge 60 ]; do i=$((i+1)); sleep 1; done
 
+# Parked apps (Netflix, YouTube TV, games) open in their own window: the launcher
+# runs in this session because the brain service has no screen.
+"$(dirname "$0")/parked-launcher.sh" &
+
 BROWSER=$(command -v chromium || command -v chromium-browser)
 exec "$BROWSER" \
   --kiosk --app="$URL" \

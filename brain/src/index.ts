@@ -7,6 +7,7 @@ import { SettingsStore } from './settings.ts';
 import { RemoteService } from './remote/service.ts';
 import { registerRemote } from './remote/routes.ts';
 import { applyPendingRestore } from './ops/backup.ts';
+import { registerParked } from './parkedRoutes.ts';
 
 async function main() {
   console.log(`[brain] v${config.version}, data in ${config.dataDir}${config.sim ? ', SIM=1' : ''}`);
@@ -17,6 +18,7 @@ async function main() {
   const app = await buildServer(brain);
   const remote = new RemoteService(brain, db, config.dataDir, config.sim);   // Track C: cameras, dashcam, alerts, remote
   await registerRemote(app, remote);
+  registerParked(app, brain, db, remote, (app as unknown as { trackb: { plex: import('./media/plex.ts').PlexService } }).trackb.plex);   // video/games/karaoke, camp/pet, trailers, light show
   brain.start();
   await app.listen({ port: config.port, host: config.host });
   await remote.start();

@@ -207,6 +207,9 @@ export class RemoteService {
 
   // ---- alerts ----------------------------------------------------------------
 
+  /** An alert raised elsewhere (camp/pet mode), through the same delivery, log and SIM rule. */
+  notify(f: Fired) { void this.deliver(f); }
+
   private async deliver(f: Fired) {
     // SIM: the simulated truck's alerts go in the log but not to the phone (SIM_ALERTS=1 sends them).
     // The settings page's Test alert still sends: that is a person asking for one.
