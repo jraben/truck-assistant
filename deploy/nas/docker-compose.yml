@@ -24,6 +24,9 @@ services:
       # Set SIM=0 to run with only real connections (HA, WOPR, phone history).
       SIM: ${SLATE_SIM:-1}
       TZ: America/Phoenix
+      # The NAS has a real wired network: don't simulate the truck's Wi-Fi/hotspot
+      # (that would read OFFLINE and stop WOPR, weather and radar).
+      NET_WIRED: "1"
       # The home broker, once you want HA discovery from this copy:
       MQTT_DISABLED: ${SLATE_MQTT_DISABLED:-1}
       MQTT_URL: ${SLATE_MQTT_URL:-mqtt://192.168.1.20:1883}

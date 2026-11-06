@@ -275,6 +275,13 @@ export class NetManager {
 
   /** One pass: profiles in step with settings, scan, pick, switch, count bytes. Never throws. */
   tick(): Promise<void> {
+    // On a server (the homelab copy) the network is the host's own wired link:
+    // nothing to pick or switch, and it is online whatever the simulated truck is doing.
+    if (process.env.NET_WIRED === '1') {
+      this.status = { ...this.status, link: 'home', label: 'SERVER NETWORK', ssid: null, signal: null, manual: false, saveData: false, error: null };
+      this.onChange();
+      return Promise.resolve();
+    }
     if (this.busy) return this.busy;
     this.busy = this.pass().catch((e) => { this.status.error = (e as Error).message; }).finally(() => { this.busy = null; this.onChange(); });
     return this.busy;
