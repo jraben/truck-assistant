@@ -131,7 +131,10 @@ export function SettingsApp() {
   }, []);
   useEffect(() => { if (draft && location.hash && !TABS.some((x) => x.id === location.hash.slice(1))) { const t = tabFromHash(); setTab(t); requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start' })); } }, [!!draft]);
 
-  useEffect(() => { if (settings && !draft) setDraft(toDraft(settings)); }, [settings]);
+  // `base` is what this page loaded; Save sends only the fields changed since, so a page left open
+  // can't put back values someone (or something) changed in the meantime.
+  const [base, setBase] = useState<Draft | null>(null);
+  useEffect(() => { if (settings && !draft) { setDraft(toDraft(settings)); setBase(toDraft(settings)); } }, [settings]);
   useEffect(() => { if (settings) paintTheme(pickTheme(activeDriver(settings, state)?.theme, state?.gps?.fix ? state.gps : null)); }, [settings, state?.gps?.fix, state?.driver?.id]);
   useEffect(() => { const f = () => api<Health>('/api/health').then(setHealth).catch(() => setHealth(null)); void f(); const id = setInterval(f, 10_000); return () => clearInterval(id); }, []);
 
@@ -146,18 +149,21 @@ export function SettingsApp() {
   const save = async () => {
     setBusy(true); setMsg(null);
     try {
-      const body: Record<string, unknown> = { ...draft, homeAssistant: { ...draft.homeAssistant } };
-      // The truck look and drive settings have their own Save (DriveSection); a stale draft copy must not undo it.
-      delete body.truck; delete body.drive;
-      delete body.payoffGoal; // the goal section saves itself
-      if (keys.haToken.trim()) (body.homeAssistant as Record<string, unknown>).token = keys.haToken.trim();
+      const body: Record<string, unknown> = {};
+      const was = (base ?? {}) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(draft)) {
+        // The truck look, drive settings and goal have their own Save; never re-send them from here.
+        if (k === 'truck' || k === 'drive' || k === 'payoffGoal') continue;
+        if (JSON.stringify(v) !== JSON.stringify(was[k])) body[k] = v;
+      }
+      if (keys.haToken.trim()) body.homeAssistant = { ...draft.homeAssistant, token: keys.haToken.trim() };
       // no password typed = keep the stored one (for the same network)
-      body.homeWifi = draft.homeWifi?.ssid.trim() ? { ssid: draft.homeWifi.ssid.trim(), password: keys.homeWifi || settings.homeWifi?.password } : null;
+      if ('homeWifi' in body || keys.homeWifi) body.homeWifi = draft.homeWifi?.ssid.trim() ? { ssid: draft.homeWifi.ssid.trim(), password: keys.homeWifi || settings.homeWifi?.password } : null;
       const k: Record<string, string> = {};
       for (const n of ['afdc', 'openChargeMap', 'placesFeed', 'googlePlaces'] as const) if (keys[n].trim()) k[n] = keys[n].trim();
       if (Object.keys(k).length) body.keys = k;
       const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify(body) });
-      settingsStore.set(n); setDraft(toDraft(n)); setKeys(NO_SECRETS); setHaTest(null);
+      settingsStore.set(n); setDraft(toDraft(n)); setBase(toDraft(n)); setKeys(NO_SECRETS); setHaTest(null);
       setMsg({ ok: true, text: 'Saved. The cockpit picks it up within a few seconds.' });
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
     finally { setBusy(false); }
@@ -335,7 +341,7 @@ export function SettingsApp() {
 
       {DRAFT_TABS.includes(tab) && <div class="savebar">
         <button class="btn big primary" type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save truck settings'}</button>
-        <button class="btn big" type="button" onClick={() => { setDraft(toDraft(settings)); setKeys(NO_SECRETS); setMsg(null); }}>Undo changes</button>
+        <button class="btn big" type="button" onClick={() => { setDraft(toDraft(settings)); setBase(toDraft(settings)); setKeys(NO_SECRETS); setMsg(null); }}>Undo changes</button>
         {msg && <span class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</span>}
       </div>}
     </div>
