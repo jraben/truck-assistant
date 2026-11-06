@@ -26,5 +26,6 @@ OpenSCAD sources are parametric; each folder's README lists what to measure firs
 | Brain enclosure: [`brain-enclosure/`](brain-enclosure/) | Pi / controller box under the dash, vented | Modelled for a Pi 4/5 + CarPiHAT + USB SSD; dash rail unmeasured |
 | Camera brackets ×4: [`cam-bracket/`](cam-bracket/) | 360° cams on mirrors, tailgate, front | Modelled (universal, VHB or M4, locking tilt); camera choice |
 | Hitch camera mount: [`hitch-cam-mount/`](hitch-cam-mount/) | Clamps on the 2" receiver | Modelled; receiver delivery to measure |
+| Service kit: [`service-kit/`](service-kit/) | Slide-out brain rail, Carlinkit/hub dock, Deutsch connector service bracket, loom clips | Modelled; dash rail and plug sizes to measure |
 | Switch / relay panel cover | Upfit relays near the Five Switch | Five Switch wiring |
 | Cable clips and grommets | Tidy runs behind the dash | Truck delivery |
