@@ -424,7 +424,14 @@ order above, and switches with `nmcli connection up`. Data use is read from
 - **Keys go in the settings page**, stored in the brain's data dir, never in
   the repo or `.env`.
 - **Simulation:** `SIM=1` makes the brain invent GPS, speed and truck-box
-  data so everything runs on a desk.
+  data so everything runs on a desk. By itself it drives a loop around
+  Phoenix; the test panel (More › Test panel, `ui/src/sim/`) takes the wheel
+  through `GET/POST /api/sim` (`SimControl`: mode auto|manual, gear
+  park|reverse|drive, ignition, targetMph, loop, cabinF, auxV, lowTire,
+  switches), `POST /api/sim/jump {leg}`, `/api/sim/tow {seconds}`,
+  `/api/sim/bump` and `/api/sim/cameras` (back to the five desk cameras).
+  The panel still only produces truck-box topics and GPS fixes, so the real
+  code path runs. Every `/api/sim*` route is 404 unless `SIM=1`.
 
 ## Track A: Drive
 

@@ -195,9 +195,9 @@ describe('viewers and auto-sleep', () => {
 });
 
 describe('remote settings', () => {
-  it('desk defaults: four test cameras, front and rear recorded, a token', () => {
+  it('desk defaults: five test cameras, front and rear recorded, a token', () => {
     const s = defaultRemote(true);
-    expect(s.cams.cameras.map((c) => [c.id, c.source, c.record])).toEqual([['rear', 'test', true], ['front', 'test', true], ['bed', 'test', false], ['surround', 'test', false]]);
+    expect(s.cams.cameras.map((c) => [c.id, c.source, c.record])).toEqual([['rear', 'test', true], ['front', 'test', true], ['hitch', 'test', false], ['bed', 'test', false], ['surround', 'test', false]]);
     expect(s.remote.token).toMatch(/^[A-Za-z0-9_-]{24}$/);
   });
 

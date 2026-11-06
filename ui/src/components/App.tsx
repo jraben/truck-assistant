@@ -17,6 +17,7 @@ import { PROJECT } from '../../../brain/src/project.ts';
 import { LogsPanel } from '../ops/OpsSettings.tsx';
 import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
+import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -32,6 +33,7 @@ const ICONS: Record<string, string> = {
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const PALETTE = 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zM7.5 12a1 1 0 1 0 0-.01M10 8a1 1 0 1 0 0-.01M14 8a1 1 0 1 0 0-.01';
 const MORE = 'M5 12h.01M12 12h.01M19 12h.01M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0';
+const SIM_ICON = 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7 15h10';
 const LOGS ='M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7';
 const Ico = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
 
@@ -63,6 +65,9 @@ export function App() {
   const [netOpen, setNetOpen] = useState(false);
   const [logs, setLogs] = useState<null | 'mileage' | 'maintenance'>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const simAvailable = useSimAvailable();
+  const [simOpen, setSimOpenRaw] = useState(() => { try { return localStorage.getItem('slate.simPanel') === '1'; } catch { return false; } });
+  const setSimOpen = (on: boolean) => { setSimOpenRaw(on); try { if (on) localStorage.setItem('slate.simPanel', '1'); else localStorage.removeItem('slate.simPanel'); } catch { /* private window */ } };
   const now = useClock();
 
   const go = (id: string) => { setView(id); history.replaceState(null, '', `#${id}`); };
@@ -144,6 +149,7 @@ export function App() {
         <div class="card picker more-menu" role="menu" aria-label="More">
           <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setPicker(true); }}><Ico d={PALETTE} />Theme</button>
           <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setLogs('mileage'); }}><Ico d={LOGS} />Mileage &amp; maintenance</button>
+          {simAvailable && <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setSimOpen(true); }}><Ico d={SIM_ICON} />Test panel (SIM)</button>}
           <a href="/settings" role="menuitem"><Ico d={GEAR} />Settings</a>
           <button type="button" class="tag" onClick={() => setMoreOpen(false)}>Close</button>
         </div>
@@ -156,6 +162,7 @@ export function App() {
       {cur.id === 'drive' && !logs && <DueCard onOpen={() => setLogs('maintenance')} />}
       {logs && <LogsPanel initial={logs} onClose={() => setLogs(null)} />}
       <SetupOverlay />
+      {simAvailable && <TestPanel open={simOpen} onClose={() => setSimOpen(false)} go={go} />}
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
     </div>
   );

@@ -31,7 +31,8 @@ Built for Jeff's truck first, published for other Slate owners later.
   (systemd unit, Chromium kiosk at 1920x720, Mosquitto with a home-bridge
   template). CarPlay: the CarPlay view drives a Carlinkit dongle over WebUSB
   (`ui/src/carplay/`, vendored node-carplay 4.1.0); on a desk,
-  `?carplaySim=1` plays a test clip through the same path. Pi setup and
+  `?carplaySim=1` (or the test panel's CarPlay switch) plays a test clip
+  through the same path. Pi setup and
   dongle notes: `deploy/pi/README.md`.
 - **Truck payoff goal (2026-11-05):** "pay off the truck with gas savings",
   tracked for good in a day-by-day SQLite ledger (closed months frozen;
@@ -67,7 +68,7 @@ Built for Jeff's truck first, published for other Slate owners later.
   (60 s before + 30 s after) and parked motion clips, alerts to HA's companion
   app or ntfy, theft ("moved without a driver"), the phone Truck page at
   `/truck`, and the always-on LTE-M watch that wakes the Pi
-  (`firmware/watch`). On a desk `SIM=1` shows four moving test cameras (MJPEG
+  (`firmware/watch`). On a desk `SIM=1` shows five moving test cameras (MJPEG
   from ffmpeg when go2rtc isn't installed). Design: `docs/remote.md`.
 
 - **Logs, ops, publishing (Track D, 2026-11-05):** business mileage log
@@ -143,7 +144,11 @@ A copy runs on the NAS at **http://192.168.1.20:3950** (LAN only; port 3950 is
 not forwarded and must not be). It uses the image GitHub builds on every push
 to main (`ghcr.io/jraben/slate-cockpit`) and `deploy/nas/docker-compose.yml`,
 copied to `~/slate-cockpit/` on the NAS. With no truck, `SIM=1` drives a
-simulated one. To update after a push, once the "Build image" action is green:
+simulated one, and **More › Test panel (SIM)** drives it by hand: gear,
+ignition, speed, which leg of the route, cabin heat, a weak 12V battery, a low
+tire, the Five Switch, a bump and a tow-away (the theft alert), every desk
+camera live, and the CarPlay simulator on or off. The panel's routes
+(`/api/sim*`, `brain/src/simRoutes.ts`) answer 404 on a real truck. To update after a push, once the "Build image" action is green:
 
 ```sh
 cd ~/slate-cockpit && sudo -n /usr/local/bin/docker-compose pull && sudo -n /usr/local/bin/docker-compose up -d

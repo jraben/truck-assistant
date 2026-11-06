@@ -12,7 +12,7 @@ import { dongleDpi, dongleSize, mapTouch, mapTouchClamped, type Size } from './g
 import { brainMedia, emptyNowPlaying, mergeMedia, type NowPlaying } from './media.ts';
 import { MicIn } from './mic.ts';
 import type { FromWorker, Status, ToWorker } from './protocol.ts';
-import { SimSource } from './sim.ts';
+import { carplaySimWanted, SimSource } from './sim.ts';
 import { VideoSink, webCodecsSupported, type VideoStats } from './video.ts';
 
 export type { Status } from './protocol.ts';
@@ -67,11 +67,11 @@ class CarPlayController {
   private sentMediaKey = '';
   private nowPlaying: NowPlaying = emptyNowPlaying();
 
-  /** Start at page load. `?carplaySim=1` runs the simulator instead of the dongle. */
+  /** Start at page load. `?carplaySim=1`, or the test panel's switch, runs the simulator instead of the dongle. */
   init() {
     if (this.started) return;
     this.started = true;
-    const sim = new URLSearchParams(location.search).get('carplaySim') === '1';
+    const sim = carplaySimWanted();
     patch({ sim, webCodecs: webCodecsSupported() });
     this.audio.onBlocked = (b) => patch({ soundBlocked: b });
     this.audio.onMic = (open) => { if (open) void this.mic?.start(); else this.mic?.stop(); };

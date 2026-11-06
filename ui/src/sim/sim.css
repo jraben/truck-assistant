@@ -1,0 +1,20 @@
+/* Test panel (SIM only): docked on the right, over the stage, below the strip. */
+.simpanel { position: fixed; top: 64px; right: 10px; bottom: 10px; width: min(440px, calc(100vw - 20px)); z-index: 80; display: grid; grid-template-rows: auto auto 1fr; gap: 10px; padding: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
+.simbody { overflow-y: auto; overflow-x: hidden; min-height: 0; }
+.simgrid { display: grid; gap: 14px; }
+.simrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.simrow.col { flex-direction: column; align-items: stretch; }
+.simrow .lbl { min-width: 96px; }
+.simseg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: calc(10px * var(--r)); padding: 3px; gap: 2px; }
+.simseg button { min-height: 40px; min-width: 44px; padding: 0 12px; border-radius: calc(8px * var(--r)); font-weight: 600; color: var(--dim); }
+.simseg button.sel { background: var(--accent); color: var(--accent-ink); }
+.simtabs { display: flex; }
+.simtabs button { flex: 1; }
+.simseg.gears button { min-width: 56px; font-size: 20px; font-family: var(--display); }
+.simread { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.simspeed { font-size: 40px; font-family: var(--display); line-height: 1; }
+.simspeed small { font-size: 14px; color: var(--dim); }
+.simcams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.simcams .camplayer { aspect-ratio: 16 / 9; min-height: 0; }
+.simpanel input[type="range"] { width: 100%; }
+.simpanel-tab { position: fixed; right: 10px; bottom: 10px; z-index: 80; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--accent); background: var(--panel); color: var(--accent); font-family: var(--mono); font-weight: 700; }

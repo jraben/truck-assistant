@@ -69,6 +69,8 @@ export class Brain extends EventEmitter {
   readonly mqtt: MqttLink | null;
   private gpsd: GpsdClient | null = null;
   private sim: SimTruck | null = null;
+  /** The simulated truck (SIM=1 only), for the test panel's routes. */
+  get simTruck(): SimTruck | null { return this.sim; }
   private soc: SocModel;
   private detector: TripDetector;
   private stopDet: StopDetector;

@@ -28,12 +28,13 @@ export function camera(id: string, name: string, role: CameraConfig['role'], sou
   };
 }
 
-/** On a desk (SIM=1): four test patterns, front and rear recorded. On a Pi: the capture stick and one UVC cam. */
+/** On a desk (SIM=1): five test patterns (the truck's four cameras plus the 360 kit), front and rear recorded. On a Pi: the capture stick and one UVC cam. */
 export function defaultCameras(sim: boolean): CameraConfig[] {
   if (sim) {
     return [
       camera('rear', 'Rear', 'rear', 'test', { width: 640, height: 360, fps: 15, record: true }),
       camera('front', 'Front', 'front', 'test', { width: 640, height: 360, fps: 15, record: true }),
+      camera('hitch', 'Hitch', 'hitch', 'test', { width: 640, height: 360, fps: 15, guides: true }),
       camera('bed', 'Bed', 'bed', 'test', { width: 640, height: 360, fps: 15 }),
       camera('surround', '360°', '360', 'test', { width: 640, height: 360, fps: 15 }),
     ];

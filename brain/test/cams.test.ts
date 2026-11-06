@@ -17,7 +17,7 @@ describe('go2rtc config', () => {
     expect(y).toContain('webrtc:\n  listen: ":8555"');
     expect(y).toContain('  rear:\n    - "exec:ffmpeg -hide_banner -loglevel error -re -f lavfi -i testsrc=size=640x360:rate=15,hue=h=0 -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 30 -f rtsp {output}"');
     expect(y).toContain('  surround:\n    - "exec:ffmpeg');
-    expect(y.split('streams:')[1].match(/^ {2}[a-z]+:$/gm)).toHaveLength(4);
+    expect(y.split('streams:')[1].match(/^ {2}[a-z]+:$/gm)).toHaveLength(5);
   });
 
   it('a capture stick and a UVC webcam: ffmpeg device sources, H.264 with hardware if there is any', () => {

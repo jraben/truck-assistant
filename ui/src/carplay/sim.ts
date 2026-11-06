@@ -4,6 +4,20 @@
 import { splitAccessUnits } from './h264.ts';
 
 export const SIM_CLIP_URL = '/carplay-sim/test.h264';
+
+/** The test panel's switch: remembered in this browser, so no ?carplaySim=1 is needed. */
+const LS_SIM = 'slate.carplaySim';
+export function carplaySimWanted(): boolean {
+  if (new URLSearchParams(location.search).get('carplaySim') === '1') return true;
+  try { return localStorage.getItem(LS_SIM) === '1'; } catch { return false; }
+}
+/** Flip the simulator and reload (the controller picks its source once, at page load). */
+export function setCarplaySim(on: boolean) {
+  try { if (on) localStorage.setItem(LS_SIM, '1'); else localStorage.removeItem(LS_SIM); } catch { /* private window */ }
+  const u = new URL(location.href);
+  u.searchParams.delete('carplaySim');
+  location.replace(u.toString());
+}
 const SIM_FPS = 30; // the clip is generated at 30 fps (scripts/make-carplay-sim-clip.mjs)
 
 const TRACKS = [
