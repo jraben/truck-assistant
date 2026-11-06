@@ -1,0 +1,171 @@
+<title>Slate Cockpit Parts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@600;800&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a shopping list. Summary totals first, then one table per stage in buying order; tick boxes remember what's ordered (this browser only). */
+:root {
+  --bg: #0d1114; --panel: #151b20; --panel-2: #1c242b; --line: #2a343c;
+  --fg: #e8eef2; --dim: #8a99a5; --accent: #4fc3d9; --accent-ink: #062027;
+  --ok: #5fd08a; --warn: #f2b33d;
+  --display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #eef2f4; --panel: #ffffff; --panel-2: #f3f6f8; --line: #d3dbe0; --fg: #11181d; --dim: #56656f;
+  --accent: #0b7f96; --accent-ink: #ffffff; --ok: #1d8a4b; --warn: #9a6200; color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #eef2f4; --panel: #ffffff; --panel-2: #f3f6f8; --line: #d3dbe0; --fg: #11181d; --dim: #56656f;
+  --accent: #0b7f96; --accent-ink: #ffffff; --ok: #1d8a4b; --warn: #9a6200; color-scheme: light; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 26px; }
+h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(32px, 5vw, 46px); line-height: 1.05; }
+h2 { font-size: 24px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h2 .sum { font-family: var(--mono); font-size: 14px; color: var(--dim); font-weight: 500; }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.tot { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 2px; }
+.tot b { font-family: var(--display); font-size: 34px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.tot.first { border: 2px solid var(--accent); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); background: var(--panel-2); }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+td.ck { width: 40px; }
+td.ck input { width: 22px; height: 22px; accent-color: var(--accent); }
+tr.done td:not(.ck) { opacity: .45; text-decoration: line-through; }
+.tag { font-family: var(--mono); font-size: 11px; padding: 1px 7px; border-radius: 6px; border: 1px solid currentColor; white-space: nowrap; }
+.tag.req { color: var(--accent); } .tag.opt { color: var(--dim); } .tag.wait { color: var(--warn); }
+a { color: var(--accent); }
+.note { font-size: 14px; color: var(--dim); }
+.bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--dim); }
+.bar button { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:10px">
+    <span class="eyebrow">Slate Cockpit · hardware · prices as of Nov 5, 2026</span>
+    <h1>What to buy, in order</h1>
+    <p>Everything the build needs, grouped by when to buy it. Prices are estimates; street prices move, and Pi prices have gone up three times since 2025. Tick a box when it's ordered; this browser remembers.</p>
+    <div class="bar"><span id="progress">0 of 0 ordered</span><button type="button" id="clear">Clear ticks</button></div>
+  </header>
+
+  <section class="totals" aria-label="Totals">
+    <div class="tot first"><span class="eyebrow">1 · Bench kit</span><b>$734</b><span class="note">Runs everything on a desk</span></div>
+    <div class="tot"><span class="eyebrow">2 · Cameras</span><b>$285</b><span class="note">Front, hitch, bed + factory cam</span></div>
+    <div class="tot"><span class="eyebrow">3 · Rest of the truck</span><b>≈ $476</b><span class="note">Install, remote, extras</span></div>
+    <div class="tot"><span class="eyebrow">Full build</span><b>≈ $1,475</b><span class="note">All three, less the bench power supply. Before the amp or a 360° kit.</span></div>
+  </section>
+
+  <section style="display:grid;gap:12px">
+    <h2>1 · Bench kit <span class="sum">≈ $734 · buy now</span></h2>
+    <p class="note">Enough to run the real software on real hardware at home. The Pi 4 route saves about $110 (Pi 4 + its CarPiHAT); Pi 4 vs Pi 5 gets settled on the bench.</p>
+    <div class="tablewrap"><table data-group="bench">
+      <thead><tr><th></th><th>Part</th><th>Why</th><th>Est.</th><th>Link</th></tr></thead>
+      <tbody>
+        <tr><td class="ck"><input type="checkbox" id="b1"></td><td>Raspberry Pi 5, 8 GB</td><td>The brain: dashboard, CarPlay, cameras</td><td class="n">$130</td><td><a href="https://www.raspberrypi.com/products/raspberry-pi-5/">raspberrypi.com</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b2"></td><td>Pi 5 Active Cooler</td><td>Phoenix heat</td><td class="n">$5</td><td><a href="https://www.raspberrypi.com/products/active-cooler/">raspberrypi.com</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b3"></td><td>CarPiHAT PRO 5</td><td>Car-grade 12V power, clean shutdown on ignition off, CAN</td><td class="n">$145</td><td><a href="https://thepihut.com/products/carpihat-pro-5-car-interface-dac-for-raspberry-pi-5">The Pi Hut</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b4"></td><td>High-endurance microSD, 64 GB</td><td>Boot</td><td class="n">$20</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b5"></td><td>USB 3 SSD, 256–500 GB (T7 size)</td><td>Trips, music, dashcam</td><td class="n">$40</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b6"></td><td>Powered USB 3 hub</td><td>The CarPlay dongle needs about 1 A</td><td class="n">$20</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b7"></td><td>12V 5A bench power supply</td><td>Powers the CarPiHAT on a desk</td><td class="n">$20</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b8"></td><td>Waveshare 12.3" 1920×720 HDMI touch</td><td>The main bar screen (600-nit claim unverified)</td><td class="n">$165</td><td><a href="https://www.waveshare.com/wiki/12.3inch_1920x720_LCD">waveshare.com</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b9"></td><td>Pololu D36V28F5 5V buck</td><td>Separate 5V for the screen</td><td class="n">$16</td><td><a href="https://www.pololu.com/product/3782">pololu.com</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b10"></td><td>Right-angle HDMI + 2× USB-C cables</td><td>The screen's plugs sit close to the edge</td><td class="n">$20</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b11"></td><td>Carlinkit CPC200-CCPA</td><td>Wireless CarPlay. Never let it update its firmware.</td><td class="n">$45</td><td><a href="https://www.carlinkit.com/">carlinkit.com</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b12"></td><td>USB GPS puck (u-blox 7/8/M10)</td><td>Location, speed, trips</td><td class="n">$20</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b13"></td><td>USB Wi-Fi adapter (MT7612U / RTL8811CU class)</td><td>Joins your phone's hotspot or home Wi-Fi</td><td class="n">$20</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b14"></td><td>"ESP32 Relay Board x8" (ESP32-WROOM-32E; not the LCTech Modbus one)</td><td>The truck box: relays and sensors</td><td class="n">$20</td><td><a href="https://devices.esphome.io/devices/esp32e-relay-x8">ESPHome</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b15"></td><td>8-ch PC817 opto module, 12V → 3.3V</td><td>Reads the Five Switch, ignition, reverse</td><td class="n">$8</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b16"></td><td>Pololu D36V28F5 5V buck (second one)</td><td>Truck box power</td><td class="n">$16</td><td><a href="https://www.pololu.com/product/3782">pololu.com</a></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b17"></td><td>SMBJ24A TVS + SS54 diode</td><td>Protects against 12V spikes and reverse wiring</td><td class="n">$2</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b18"></td><td>SHT31 (or BME280) breakout</td><td>Cabin temperature and humidity</td><td class="n">$6</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b19"></td><td>MPU-6050 breakout (GY-521)</td><td>Tilt for the truck drawing</td><td class="n">$4</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b20"></td><td>BH1750 or VEML7700 light sensor</td><td>Auto screen brightness</td><td class="n">$5</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b21"></td><td>47k + 10k 1% resistors, 100 nF cap, BAT54S</td><td>Reads the 12V battery voltage</td><td class="n">$1</td><td>—</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="b22"></td><td>3.3V USB-serial adapter (CP2102 / CH340)</td><td>Flashing the truck box once</td><td class="n">$6</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section style="display:grid;gap:12px">
+    <h2>2 · Cameras <span class="sum">≈ $285 · after the bench works</span></h2>
+    <p class="note">Sealed 12V analog (AHD) cameras outside, each turned into a USB camera by a small module that stays inside the cab. Plus a copy of the factory backup camera. Skip a stitched 360° kit until a delivered truck shows where side cameras can go. Details: <code>docs/cameras.md</code>.</p>
+    <div class="tablewrap"><table data-group="cams">
+      <thead><tr><th></th><th>Part</th><th>Why</th><th>Est.</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="ck"><input type="checkbox" id="c1"></td><td>3× AHD 1080p 170° IP69K cameras (bed one with IR)</td><td>Front, hitch, bed under the tonneau</td><td class="n">$75</td><td>Pick listings rated to +70 °C or better</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="c2"></td><td>3× AHD-to-USB (UVC) modules</td><td>Cameras show up on the Pi as USB cameras</td><td class="n">$75</td><td>Check for MJPEG on arrival</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="c3"></td><td>UTV007 EasyCAP stick</td><td>Factory backup camera into the Pi</td><td class="n">$12</td><td><code>lsusb</code> shows 1b71:3002</td></tr>
+        <tr><td class="ck"><input type="checkbox" id="c4"></td><td>12V composite distribution amp, 1 in / 2 out</td><td>Splits the factory camera without weakening it</td><td class="n">$25</td><td></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="c5"></td><td>Factory-camera Y-harness pigtail</td><td>No cutting factory wires</td><td class="n">$15</td><td><span class="tag wait">find part on the truck</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="c6"></td><td>Powered USB hub + Pololu buck + TVS</td><td>The modules need more power than the Pi gives</td><td class="n">$41</td><td></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="c7"></td><td>10 m AHD extension</td><td>Hitch run to the dash</td><td class="n">$12</td><td></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="c8"></td><td>3M VHB <b>LSE-110WF</b>, PG7 glands, grommets, loom, 2 A fuse, relay</td><td>Mounting and wiring</td><td class="n">$30</td><td>LSE tape: the body panels are polypropylene</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section style="display:grid;gap:12px">
+    <h2>3 · Rest of the truck <span class="sum">≈ $476 · closer to delivery</span></h2>
+    <div class="tablewrap"><table data-group="rest">
+      <thead><tr><th></th><th>Part</th><th>Why</th><th>Est.</th><th>Need</th></tr></thead>
+      <tbody>
+        <tr><td class="ck"><input type="checkbox" id="r1"></td><td>Fuse taps, inline holders, assorted fuses</td><td>One fuse per run</td><td class="n">$15</td><td><span class="tag req">install</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r2"></td><td>6-circuit blade fuse block with ground bus</td><td>One fused distribution point</td><td class="n">$30</td><td><span class="tag req">install</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r3"></td><td>WAGO 221 levers, 18/14 AWG TXL wire, loom</td><td>Truck box wiring</td><td class="n">$20</td><td><span class="tag req">install</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r4"></td><td>Deutsch DT connectors, extra wire, PG7 glands, zip ties</td><td>Serviceable joints</td><td class="n">$40</td><td><span class="tag req">install</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r5"></td><td>ASA filament, 2 × 1 kg</td><td>Dash insert, Pi box, brackets</td><td class="n">$50</td><td><span class="tag req">install</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r6"></td><td>Heat-set inserts, M3/M4/M5 screws, 40 mm fan, EVA foam</td><td>Printed parts' hardware</td><td class="n">$35</td><td><span class="tag req">install</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r7"></td><td>USB microphone</td><td>Siri, calls, WOPR voice</td><td class="n">$15</td><td><span class="tag opt">voice</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r8"></td><td>BLE TPMS valve caps, set of 4</td><td>Tire pressure and temperature</td><td class="n">$35</td><td><span class="tag opt">TPMS</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r9"></td><td>LilyGO T-SIM7080G-S3 + antennas</td><td>Always-on watch: location, alerts, wake the Pi</td><td class="n">$45</td><td><span class="tag opt">remote</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r10"></td><td>1NCE IoT SIM (500 MB / 10 years)</td><td>The watch's data</td><td class="n">$15</td><td><span class="tag opt">remote</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r11"></td><td>USB Cat-4 LTE modem (Quectel EC25/EG25)</td><td>Live cameras from anywhere</td><td class="n">$75</td><td><span class="tag opt">remote</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r12"></td><td>RTL-SDR Blog V4 + car antenna</td><td>AM/FM with no data</td><td class="n">$40</td><td><span class="tag opt">radio</span></td></tr>
+        <tr><td class="ck"><input type="checkbox" id="r13"></td><td>Guition 10.1" ESP32-P4 screen + buck</td><td>Optional second screen for gauges</td><td class="n">$61</td><td><span class="tag opt">2nd screen</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section style="display:grid;gap:10px">
+    <h2>Wait for the truck</h2>
+    <ul>
+      <li><b>Amp, $100–180:</b> only if Slate's speakers turn out to be passive (members think the center one is Bluetooth).</li>
+      <li><b>Stitched 360° kit, $380–730:</b> once side-camera spots are known; choose one with AHD output.</li>
+      <li><b>Data plan for the LTE modem, $10–25/month:</b> only if you want live cameras away from home.</li>
+      <li><b>Factory camera pigtail:</b> the connector is only known on a delivered truck.</li>
+    </ul>
+  </section>
+
+  <p class="note">Slate Cockpit is an independent DIY project, not affiliated with Slate Auto. Links go to makers' pages for reference; none are affiliate links. Full list with alternatives: <code>docs/bom.md</code>.</p>
+</div>
+
+<script>
+(function () {
+  const boxes = Array.from(document.querySelectorAll('td.ck input'));
+  const key = 'slate.parts.v1';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { saved = {}; }
+  function paint() {
+    let n = 0;
+    boxes.forEach((b) => { b.closest('tr').classList.toggle('done', b.checked); if (b.checked) n++; });
+    document.getElementById('progress').textContent = n + ' of ' + boxes.length + ' ordered';
+  }
+  boxes.forEach((b) => {
+    b.checked = !!saved[b.id];
+    b.setAttribute('aria-label', 'Ordered: ' + b.closest('tr').children[1].textContent);
+    b.addEventListener('change', () => { saved[b.id] = b.checked; try { localStorage.setItem(key, JSON.stringify(saved)); } catch (e) {} paint(); });
+  });
+  document.getElementById('clear').addEventListener('click', () => { boxes.forEach((b) => { b.checked = false; }); saved = {}; try { localStorage.removeItem(key); } catch (e) {} paint(); });
+  paint();
+})();
+</script>
