@@ -58,6 +58,12 @@ remove later" (Jeff, 2026-11-05). Design docs are linked; a ✓ means built.
 - ✓ Hardware parts list: [bom](bom.md)
 - ✓ ESP32-P4 second screen firmware (`firmware/p4-screen/`, compiles; no board yet)
 
+## Main screen: the Galaxy Tab S7 FE (2026-11-06)
+- ✓ Cockpit layout fits the tablet (1280×800 CSS px); installs as a full-screen Chrome app
+- ✓ Parked apps open the real Android apps; Tasker brings the cockpit back when the truck moves
+- Desk test: CarPlay dongle through a PD hub, WOPR mic, Netflix hand-off, wake/sleep on power (`deploy/android/README.md`)
+- Check the tablet fits Slate's Tablet Mount
+
 ## Waiting on the truck (Q2 2027 delivery window)
 - CAN/OBD data (SoC, real gear, energy), Five Switch wiring, speaker input,
   dash depth, Tablet Mount, 12V behaviour when parked, reverse/ignition wires

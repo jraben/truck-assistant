@@ -41,6 +41,22 @@ $110 (board −$55, HAT −$55).
 
 ## 2. Main screen and CarPlay
 
+**Changed 2026-11-06: the main screen is the Samsung Galaxy Tab S7 FE Jeff
+already owns** (`deploy/android/README.md`). With it, the screen rows below
+marked *bar screen* drop out (about $200), and the tablet needs:
+
+| Part | Role | Est. $ | Need | Notes |
+|---|---|---|---|---|
+| Samsung Galaxy Tab S7 FE (SM-T738U) | Main screen, in Slate's Tablet Mount | owned | Required | Check it fits the mount (about 285 × 185 mm) |
+| USB-C hub with PD pass-through (USB-C power in, at least one USB-A data port) | Charges the tablet and carries the CarPlay dongle at the same time | 20–30 | Required | Pass-through must be 45 W or more |
+| 45 W USB-C PD car charger (12V) | Powers the hub from an ignition-switched 12V feed | 15–25 | Required (truck) | |
+| 45 W USB-C PD wall charger | Same, on the desk | owned or 15–25 | Desk test | |
+| Tasker (Play Store) | Wakes the tablet with the truck; brings the cockpit back when you drive | 3.50 | Required | |
+
+The Pi still runs the brain; a **Pi 4** is enough now that it drives no screen.
+
+*Bar-screen build (alternative):*
+
 | Part | Role | Est. $ | Need | Kit | Maker link |
 |---|---|---|---|---|---|
 | Waveshare 12.3" 1920×720 HDMI capacitive (IPS, in-cell 10-point, toughened glass) | Main bar screen, 301.2 × 123.35 × 12.4 mm. **The 600-nit rating is unverified** (one listing says 300). It gets a printed hood. | 165 (range 150–180, not confirmed) | Required | B | [waveshare.com wiki](https://www.waveshare.com/wiki/12.3inch_1920x720_LCD) (store page not confirmed) |

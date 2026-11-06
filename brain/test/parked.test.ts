@@ -61,3 +61,28 @@ describe('camp / pet / trailers', () => {
     expect(nextDue(null, 12)).toBeNull();
   });
 });
+
+import { intentUrl, okTabletIp } from '../src/tablet.ts';
+describe('dash tablet (Android)', () => {
+  it('opens streaming apps as the real Android app, with the website as the fallback', () => {
+    expect(intentUrl('https://www.netflix.com/browse', 'com.netflix.mediaclient'))
+      .toBe('intent://www.netflix.com/browse#Intent;scheme=https;package=com.netflix.mediaclient;S.browser_fallback_url=https%3A%2F%2Fwww.netflix.com%2Fbrowse;end');
+    const p = new Parked();
+    expect(p.launch('netflix', false, { android: true }).open).toMatch(/^intent:\/\/www\.netflix\.com/);
+    expect(p.launch('moonlight', false, { android: true })).toMatchObject({ tasker: 'com.limelight' });
+  });
+  it('asks Tasker to bring the cockpit back when the truck moves', () => {
+    const p = new Parked();
+    let front = 0;
+    p.onAndroidClose = () => { front++; };
+    p.launch('youtube', false, { android: true });
+    p.guard(true);
+    expect(front).toBe(1);
+    expect(p.status().open).toBeNull();
+  });
+  it('only trusts truck-network addresses for the tablet', () => {
+    expect(okTabletIp('::ffff:10.42.0.23')).toBe(true);
+    expect(okTabletIp('100.101.5.6')).toBe(true);
+    expect(okTabletIp('8.8.8.8')).toBe(false);
+  });
+});

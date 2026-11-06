@@ -21,7 +21,7 @@ OpenSCAD sources are parametric; each folder's README lists what to measure firs
 
 | Part | Purpose | Blocked on |
 |---|---|---|
-| **Dash insert + sun hood for the 12.3" bar (main screen)**: [`dash-bar-insert/`](dash-bar-insert/) | Hold a 301.2 × 123.35 × 12.4 mm panel in a 352 × 133 mm opening; driver board and cable exit behind | Modelled; panel checked against Waveshare's drawing. Needs the opening, depth and retention measured on the truck |
+| **Dash insert + sun hood for the 12.3" bar** (alternative: the main screen is now the Galaxy Tab S7 FE in Slate's Tablet Mount): [`dash-bar-insert/`](dash-bar-insert/) | Hold a 301.2 × 123.35 × 12.4 mm panel in a 352 × 133 mm opening; driver board and cable exit behind | Modelled; panel checked against Waveshare's drawing. Needs the opening, depth and retention measured on the truck |
 | ESP32-P4 panel shell (optional second screen) | Small gauge/switch screen | Where it goes |
 | Brain enclosure: [`brain-enclosure/`](brain-enclosure/) | Pi / controller box under the dash, vented | Modelled for a Pi 4/5 + CarPiHAT + USB SSD; dash rail unmeasured |
 | Camera brackets ×4: [`cam-bracket/`](cam-bracket/) | 360° cams on mirrors, tailgate, front | Modelled (universal, VHB or M4, locking tilt); camera choice |

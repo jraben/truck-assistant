@@ -9,9 +9,13 @@ import { Parked, ParkedError } from './parked.ts';
 import { PlexError, type PlexService } from './media/plex.ts';
 import { PlexVideo } from './media/plexVideo.ts';
 import type { RemoteService } from './remote/service.ts';
+import { Tablet } from './tablet.ts';
 
 export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remote: RemoteService, plex: PlexService) {
   const parked = new Parked();
+  const tablet = new Tablet(db);
+  parked.onAndroidClose = () => { void tablet.front().then((r) => { if (!r.ok) console.warn('[tablet] front:', r.error); }); };
+  const isAndroid = (req: { headers: Record<string, unknown> }) => /Android/i.test(String(req.headers['user-agent'] ?? ''));
   const video = new PlexVideo(plex);
   const modes = new Modes(db, brain, (kind, title, message) => remote.notify({ kind, title, message, priority: 'high' }));
   /** Moving = the drive lockout is on (over Settings' lockout speed), or over 2 mph when that isn't known. */
@@ -33,10 +37,18 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   app.addHook('onClose', async () => clearInterval(timer));
 
   // ---- apps, games, karaoke --------------------------------------------------
-  app.get('/api/parked/apps', async () => ({ apps: parked.apps(), ...parked.status(), moving: moving() }));
+  app.get('/api/parked/apps', async (req) => ({ apps: parked.apps(isAndroid(req)), ...parked.status(), moving: moving() }));
   app.post('/api/parked/launch', async (req, reply) => {
     const b = (req.body ?? {}) as { id?: unknown; q?: unknown };
-    try { return parked.launch(String(b.id ?? ''), moving(), { q: typeof b.q === 'string' ? b.q : undefined }); } catch (e) { return fail(reply, e); }
+    try {
+      const r = parked.launch(String(b.id ?? ''), moving(), { q: typeof b.q === 'string' ? b.q : undefined, android: isAndroid(req) });
+      if (r.tasker) {   // an Android app with no web address: Tasker on the tablet opens it
+        const t = await tablet.launch(r.tasker);
+        if (!t.ok) return reply.code(502).send({ error: t.error });
+        return { opened: true, label: r.label };
+      }
+      return r;
+    } catch (e) { return fail(reply, e); }
   });
   app.post('/api/parked/close', async () => ({ closed: parked.close() }));
   // The launcher in the Pi's desktop session (deploy/pi/parked-launcher.sh). Local only.
@@ -44,6 +56,12 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
     if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip)) return reply.code(403).send({ error: 'local only' });
     return parked.next(String(req.query.have ?? '').split(',').filter(Boolean)) ?? {};
   });
+
+  // ---- the dash tablet (tablet.ts) ----------------------------------------------
+  app.post('/api/tablet/hello', async (req) => tablet.hello(req.ip, String(req.headers['user-agent'] ?? '')));
+  app.get('/api/tablet', async () => tablet.get());
+  app.put('/api/tablet', async (req, reply) => { try { return tablet.setPort((req.body as { taskerPort?: unknown } | null)?.taskerPort); } catch (e) { return reply.code(400).send({ error: (e as Error).message }); } });
+  app.post('/api/tablet/test', async () => tablet.front());
 
   // ---- Plex video ----------------------------------------------------------------
   const pv = <Q>(p: string, f: (q: Q) => Promise<unknown>) => app.get<{ Querystring: Q }>(p, async (req, reply) => { try { return await f(req.query as Q); } catch (e) { return fail(reply, e); } });

@@ -80,7 +80,13 @@ Built for Jeff's truck first, published for other Slate owners later.
   `docs/security.md`. Contributing: `CONTRIBUTING.md`.
 - **Prototype UI:** `prototype/index.html`. Open it in any browser; all data is
   simulated. Views: Drive, CarPlay, Control, Truck, Cams, Plan.
-- **Hardware (decided 2026-11-05):** one Pi brain under the dash, driving a
+- **Main screen (changed 2026-11-06): Jeff's Samsung Galaxy Tab S7 FE**
+  (SM-T738U, 12.4" 2560×1600) in Slate's Tablet Mount, running the cockpit in
+  Chrome; the Pi under the dash stays the brain and the tablet reaches it over
+  the truck's Wi-Fi. CarPlay's dongle plugs into the tablet; the Parked screen
+  opens the real Android streaming apps. Setup and the desk test:
+  `deploy/android/README.md`. The bar screen below is the alternative now.
+- **Hardware (decided 2026-11-05, screen superseded above):** one Pi brain under the dash, driving a
   **12.3" 1920×720 bar touchscreen set into a dash panel opening** (CarPlay,
   cameras, browser) and/or a cheap ESP32-P4 panel (gauges, switches).
   Candidate: Waveshare 12.3" HDMI capacitive, 301.2 × 123.35 × 12.4 mm, into

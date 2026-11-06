@@ -11,7 +11,7 @@ import { NetPanel, NetPill } from './network.tsx';
 import { WeatherOverlay, WeatherStrip } from '../drive/WeatherStrip.tsx';
 import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
 import { GaragePrompt, HOME_ICON, withHomeView } from '../home/Home.tsx';
-import { ModeOverlays, PARKED_ICON, withParkedView } from '../parked/Parked.tsx';
+import { ModeOverlays, PARKED_ICON, TabletHello, withParkedView } from '../parked/Parked.tsx';
 import { WoprButton } from '../wopr/WoprUi.tsx';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { LogsPanel } from '../ops/OpsSettings.tsx';
@@ -137,6 +137,7 @@ export function App() {
       {cur.id === 'drive' && <DriverPrompt />}
       <GaragePrompt />
       <ModeOverlays />
+      <TabletHello />
       {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {moreOpen && (

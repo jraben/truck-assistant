@@ -30,6 +30,21 @@ type Modes = {
   trailers: Trailer[]; activeTrailer: string | null; checklist: string[]; light: { wledUrl: string | null };
 };
 
+/** The cockpit is on the dash tablet (Android Chrome). */
+export const IS_ANDROID = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+
+/** On the tablet: tell the brain where it is every minute, so it can bring the cockpit back to the front (Tasker). */
+export function TabletHello() {
+  useEffect(() => {
+    if (!IS_ANDROID) return;
+    const hi = () => void api('/api/tablet/hello', { method: 'POST', body: '{}' }).catch(() => {});
+    hi();
+    const t = window.setInterval(hi, 60_000);
+    return () => clearInterval(t);
+  }, []);
+  return null;
+}
+
 const TABS = ['Watch', 'Games', 'Karaoke', 'Camp', 'Pet', 'Tow', 'Lights'] as const;
 type Tab = (typeof TABS)[number];
 const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -47,7 +62,8 @@ function useModes(): [Modes | null, (m: Modes) => void, (patch: unknown) => Prom
 async function launch(id: string, q?: string) {
   try {
     const r = await api<{ opened: boolean; open?: string; label: string }>('/api/parked/launch', { method: 'POST', body: JSON.stringify({ id, q }) });
-    if (!r.opened && r.open) window.open(r.open, '_blank', 'noopener');
+    // An intent:// link (the dash tablet) opens the real Android app in place; anything else a new tab.
+    if (!r.opened && r.open) { if (r.open.startsWith('intent:')) window.location.href = r.open; else window.open(r.open, '_blank', 'noopener'); }
     else toast(`Opening ${r.label}… (Close returns to the cockpit)`);
   } catch (e) { toast((e as Error).message); }
 }
@@ -91,7 +107,7 @@ function AppTiles({ kind }: { kind: 'video' | 'games' }) {
         {r.apps.filter((a) => a.kind === kind).map((a) => (
           <button type="button" class={`app-tile app-${a.id}`} disabled={!a.available} onClick={() => void launch(a.id)} title={a.note ?? a.label}>
             <b>{a.label}</b>
-            <span class="dimtxt">{!a.available ? (a.native ? `Install ${a.native} on the Pi` : '') : a.note ?? (r.onScreen ? 'Opens full screen' : 'Opens in a new tab')}</span>
+            <span class="dimtxt">{!a.available ? (a.native ? `Install ${a.native} on the Pi` : '') : a.note ?? (IS_ANDROID ? 'Opens the app' : r.onScreen ? 'Opens full screen' : 'Opens in a new tab')}</span>
           </button>
         ))}
       </div>

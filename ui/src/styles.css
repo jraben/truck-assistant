@@ -229,6 +229,22 @@ textarea { min-height: 120px; font-family: var(--mono); font-size: 13px; resize:
   .tile { min-height: 104px; }
 }
 
+/* Tablet in landscape (Galaxy Tab S7 FE: 12.4", 2560x1600, about 1280x800 in CSS px).
+   The rail carries 10 views plus WOPR, driver and More: shorter buttons so all fit
+   without scrolling; the clock and weather never wrap; the place pill gives way first. */
+@media (min-width: 821px) and (max-aspect-ratio: 2/1) and (max-height: 900px) {
+  :root { --rail: 92px; --strip: 50px; }
+  .rail { gap: 2px; padding: 4px 6px; }
+  .rail a, .rail button { min-height: 52px; font-size: 11px; gap: 2px; letter-spacing: .06em; }
+  .rail svg { width: 22px; height: 22px; }
+  .rail .voice { margin-top: 4px; }
+  .strip { gap: 10px; padding: 0 12px; }
+  .strip .clock { font-size: 22px; white-space: nowrap; flex: none; }
+  .strip .pill { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
+  .strip .wxstrip { flex: none; }
+  .strip .wxstrip .wxhl { display: none; }
+}
+
 /* phone / narrow: one scrolling column, rail across the top */
 @media (max-width: 820px) {
   body { overflow: auto; }
