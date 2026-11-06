@@ -303,7 +303,7 @@ describe('alert text: miles and place names, not meters and coordinates', () => 
     expect(miles(32_000)).toBe('20 mi');
   });
   it('the theft alert names the place and has no coordinates', () => {
-    const e = new AlertEngine(defaultRemote().alerts);
+    const e = new AlertEngine(defaultRemote(false).alerts);
     const out = e.evaluate(input({ theft: { movedM: 805, at: { lat: 33.5, lon: -111.9 }, place: 'Fashion Square', why: 'with no driver phone nearby' } }));
     const t = out.find((f) => f.kind === 'theft')!;
     expect(t.message).toContain('0.5 mi');

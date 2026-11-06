@@ -59,3 +59,4 @@
   .receipt-pill { left: 12px; }
   .fmfreq { font-size: 60px; }
 }
+.mtile.sel { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }

@@ -14,7 +14,10 @@ export type RadioStation = {
   hls: boolean;
 };
 
-export type FmPreset = { mhz: number; name: string };
+/** streamId: the internet stream it plays when there is no tuner ("tunein:s123" | "rb:<uuid>"). */
+export type FmPreset = { mhz: number; name: string; streamId?: string | null };
+/** auto = the tuner when one is plugged in, else the stations' internet streams. */
+export type FmSource = 'auto' | 'internet' | 'tuner';
 
 export type SpotifyToken = { access: string; refresh: string; expiresAt: number; scope: string; user: string | null };
 
@@ -29,7 +32,7 @@ export type MediaSettings = {
   };
   plex: { url: string | null; token?: string };
   radio: { kjefUrl: string; favourites: Record<string, RadioStation[]> };
-  fm: { presets: FmPreset[]; ppm: number; gain: number | null };
+  fm: { presets: FmPreset[]; ppm: number; gain: number | null; source: FmSource };
   local: { folder: string | null };  // null = DATA_DIR/music
   receipts: { autoImport: boolean };
 };

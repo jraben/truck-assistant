@@ -201,7 +201,7 @@ describe('media settings', () => {
     expect(mergeMedia(s, { wopr: { password: '' } }).wopr.password).toBeUndefined();
     expect(() => mergeMedia(s, { wopr: { url: 'wopr.local' } })).toThrow(MediaSettingsError);
     expect(() => mergeMedia(s, { spotify: { clientId: 'short' } })).toThrow(/Client ID/);
-    expect(mergeMedia(s, { fm: { presets: [{ mhz: 91.5 }, { mhz: 0.62, name: 'KTAR' }] } }).fm.presets).toEqual([{ mhz: 91.5, name: '91.5 FM' }, { mhz: 0.62, name: 'KTAR' }]);
+    expect(mergeMedia(s, { fm: { presets: [{ mhz: 91.5 }, { mhz: 0.62, name: 'KTAR' }] } }).fm.presets).toEqual([{ mhz: 91.5, name: '91.5 FM', streamId: null }, { mhz: 0.62, name: 'KTAR', streamId: null }]);
     expect(() => mergeMedia(s, { fm: { presets: [{ mhz: 120 }] } })).toThrow();
     expect(mergeMedia(s, { radio: { kjefUrl: '' } }).radio.kjefUrl).toBe(KJEF_PUBLIC);
   });

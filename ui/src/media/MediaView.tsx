@@ -9,9 +9,13 @@ import { Card, Modal } from '../components/common.tsx';
 import type { WP } from '../components/drive.tsx';
 import { mbPerHour, player, playerStore, type Track } from './player.ts';
 import { mediaStatusStore, pollMediaStatus, refreshMediaStatus, type LocalListing, type LocalTrack, type MaskedMediaSettings, type PlexItem, type PlexSection, type RadioStation, type SpotifyPlaylist } from './status.ts';
+import { FmTab, fmName, fmNetTrack, fmTrack, presetTrack } from './FmTab.tsx';
+import { ShortcutsTab } from './Shortcuts.tsx';
 import './media.css';
+export { fmTrack, fmNetTrack, presetTrack };
 
 export const TABS = [
+  { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'carplay', label: 'CarPlay' },
   { id: 'spotify', label: 'Spotify' },
   { id: 'radio', label: 'Radio' },
@@ -39,7 +43,7 @@ function useLoad<T>(fn: () => Promise<T>, deps: unknown[]): { data: T | null; er
 
 /** The Media view widget (type "media"). */
 export function MediaW({ go }: WP) {
-  const [tab, setTab] = useState<TabId>(() => (TABS.some((t) => t.id === lsGet(LS_TAB)) ? lsGet(LS_TAB) as TabId : 'radio'));
+  const [tab, setTab] = useState<TabId>(() => (TABS.some((t) => t.id === lsGet(LS_TAB)) ? lsGet(LS_TAB) as TabId : 'shortcuts'));
   useEffect(() => pollMediaStatus(true), []);
   const pick = (t: TabId) => { setTab(t); lsSet(LS_TAB, t); };
   const ms = useStore(mediaStatusStore);
@@ -48,8 +52,9 @@ export function MediaW({ go }: WP) {
       <div class="mtabs" role="tablist" aria-label="Sources">
         {TABS.map((t) => <button type="button" role="tab" aria-selected={tab === t.id} onClick={() => pick(t.id)}>{t.label}</button>)}
       </div>
-      {ms?.saveData && (tab === 'radio' || tab === 'spotify' || tab === 'plex') && <div class="banner" style="font-size:14px">On a phone hotspot with "save data" on: streaming asks first. AM/FM, Files and CarPlay use no truck data.</div>}
+      {ms?.saveData && (tab === 'radio' || tab === 'spotify' || tab === 'plex' || tab === 'shortcuts') && <div class="banner" style="font-size:14px">On a phone hotspot with "save data" on: streaming asks first. AM/FM, Files and CarPlay use no truck data.</div>}
       <div class="mbody">
+        {tab === 'shortcuts' && <ShortcutsTab stationTrack={stationTrack} plexTrack={plexTrack} />}
         {tab === 'carplay' && <CarPlayTab go={go} />}
         {tab === 'spotify' && <SpotifyTab />}
         {tab === 'radio' && <RadioTab />}
@@ -262,61 +267,6 @@ function RadioTab() {
 }
 
 // ---- AM/FM ------------------------------------------------------------------------------
-
-const fmName = (mhz: number) => (mhz < 2 ? `${Math.round(mhz * 1000)} AM` : `${mhz.toFixed(1)} FM`);
-export const fmTrack = (mhz: number, name?: string): Track => ({ source: 'fm', id: String(mhz), url: `/api/media/fm/stream?mhz=${mhz}`, title: name && name !== fmName(mhz) ? `${name} · ${fmName(mhz)}` : fmName(mhz), artist: null, album: 'AM/FM radio', art: null, live: true, dataHeavy: false, kbps: null });
-
-function FmTab() {
-  const ms = useStore(mediaStatusStore);
-  const p = useStore(playerStore);
-  const [mhz, setMhz] = useState<number>(() => Number(lsGet('slate.fm.mhz')) || 91.5);
-  const [settings, setSettings] = useState<MaskedMediaSettings | null>(null);
-  const [seeking, setSeeking] = useState(false);
-  useEffect(() => { api<MaskedMediaSettings>('/api/media/settings').then(setSettings).catch(() => {}); }, []);
-  const tuner = ms?.fm.tuner;
-  const playing = p.current?.source === 'fm';
-  const tune = (f: number) => {
-    const n = Math.round(f * 10) / 10;
-    const v = n < 2 ? Math.min(1.71, Math.max(0.53, n)) : Math.min(107.9, Math.max(87.9, n));
-    setMhz(v); lsSet('slate.fm.mhz', String(v));
-    if (playing) player.play(fmTrack(v));
-  };
-  const seek = async (dir: 1 | -1) => {
-    setSeeking(true);
-    try { const r = await api<{ mhz: number | null }>('/api/media/fm/seek', { method: 'POST', body: JSON.stringify({ from: mhz, dir }) }); if (r.mhz) { setMhz(r.mhz); player.play(fmTrack(r.mhz)); } else toast('No strong stations found'); }
-    catch (e) { toast((e as Error).message); } finally { setSeeking(false); }
-  };
-  const presets = settings?.fm.presets ?? [];
-  const savePreset = async () => {
-    if (presets.some((x) => Math.abs(x.mhz - mhz) < 0.05)) return toast('Already a preset');
-    try { setSettings(await api<MaskedMediaSettings>('/api/media/settings', { method: 'PUT', body: JSON.stringify({ fm: { presets: [...presets, { mhz }] } }) })); toast(`Saved ${fmName(mhz)}`); }
-    catch (e) { toast((e as Error).message); }
-  };
-  const ok = tuner?.state === 'present' || tuner?.state === 'busy';
-  return (
-    <div class="mpane">
-      {tuner && !ok && <div class={`banner ${tuner.state === 'sim' ? 'ok' : ''}`}>{tuner.message}{tuner.state === 'none' && ' Details: deploy/pi/README.md (AM/FM).'}</div>}
-      {playing && p.error && <div class="banner bad">{p.error}</div>}
-      <div class="row wrap" style="gap:18px">
-        <div class="fmfreq num" aria-live="polite">{mhz < 2 ? Math.round(mhz * 1000) : mhz.toFixed(1)}<small>{mhz < 2 ? 'kHz AM' : 'MHz FM'}</small></div>
-        <div class="row wrap">
-          <button class="btn big" type="button" disabled={seeking} onClick={() => void seek(-1)} aria-label="Seek down">⏪ Seek</button>
-          <button class="btn big" type="button" onClick={() => tune(mhz < 2 ? mhz - 0.01 : mhz - 0.2)} aria-label="Down one step">−</button>
-          <button class="btn big" type="button" onClick={() => tune(mhz < 2 ? mhz + 0.01 : mhz + 0.2)} aria-label="Up one step">+</button>
-          <button class="btn big" type="button" disabled={seeking} onClick={() => void seek(1)} aria-label="Seek up">Seek ⏩</button>
-          <button class="btn big primary" type="button" onClick={() => (playing && p.playing ? player.stop() : player.play(fmTrack(mhz)))}>{playing && p.playing ? 'Stop' : 'Listen'}</button>
-          <button class="btn big" type="button" onClick={() => tune(mhz < 2 ? 98.7 : 0.62)}>{mhz < 2 ? 'FM' : 'AM'}</button>
-        </div>
-      </div>
-      {seeking && <div class="dimtxt">Scanning the band (a few seconds)…</div>}
-      <div class="row between"><span class="lbl">Presets</span><button class="btn sm" type="button" onClick={() => void savePreset()}>+ Save {fmName(mhz)}</button></div>
-      <div class="row wrap">
-        {presets.length ? presets.map((x) => <button type="button" class={`btn big ${playing && p.current?.id === String(x.mhz) ? 'primary' : ''}`} onClick={() => { setMhz(x.mhz); player.play(fmTrack(x.mhz, x.name)); }}>{x.name}</button>) : <span class="dimtxt" style="font-size:14px">No presets yet: tune, then Save.</span>}
-      </div>
-      <div class="attrib">Over-the-air radio through an RTL-SDR USB tuner: no data used. AM needs the RTL-SDR Blog V4 (or a long-wire antenna) and is experimental.</div>
-    </div>
-  );
-}
 
 // ---- Plex ----------------------------------------------------------------------------------
 

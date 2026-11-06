@@ -16,6 +16,7 @@ import { SpotifyService } from './media/spotifyService.ts';
 import { PlexError, PlexService } from './media/plex.ts';
 import { LocalError, LocalService } from './media/local.ts';
 import { FmService } from './media/fm.ts';
+import { AirStreams, type AirStation } from './media/airstreams.ts';
 import { WoprError } from './wopr/client.ts';
 import { WoprService } from './wopr/service.ts';
 import type { ChatMsg } from './wopr/primer.ts';
@@ -46,6 +47,16 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
   const plex = new PlexService(() => media.get(), () => `slate-cockpit-${brain.settings.get().truckId}`);
   const local = new LocalService(() => media.get().local.folder ?? path.join(config.dataDir, 'music'));
   const fm = new FmService(config.sim, () => media.get());
+  const air = new AirStreams(config.version);
+  /** Where the dial is built for: the truck's GPS, else the home place, else Phoenix. */
+  const dialPos = () => brain.getState().gps ?? brain.stops.places.all().find((p) => /home/i.test(p.name)) ?? { lat: 33.4484, lon: -112.074 };
+  /** Tuner or internet streams, for this request. */
+  const fmSource = async (): Promise<'tuner' | 'internet'> => {
+    const s = media.get().fm.source;
+    if (s !== 'auto') return s;
+    const t = await fm.detect();
+    return t.state === 'present' || t.state === 'busy' ? 'tuner' : 'internet';
+  };
   const wopr = new WoprService(brain, media);
   const receipts = new ReceiptService(brain.db, brain.charges, driverId);
 
@@ -125,7 +136,38 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
   });
 
   // ---- AM/FM -------------------------------------------------------------------------
-  app.get('/api/media/fm/status', async () => ({ tuner: await fm.detect(true), tuned: fm.current(), presets: media.get().fm.presets }));
+  app.get('/api/media/fm/status', async () => ({ tuner: await fm.detect(true), tuned: fm.current(), presets: media.get().fm.presets, source: await fmSource(), setting: media.get().fm.source }));
+  // Internet streams of the local AM/FM stations (no tuner needed; uses data).
+  app.get('/api/media/fm/stations', async (_req, reply) => {
+    if (!online()) return reply.code(503).send({ error: 'Offline: station streams need the internet.' });
+    try { return { stations: await air.dial(dialPos()) }; } catch (e) { return reply.code(502).send({ error: (e as Error).message }); }
+  });
+  app.get<{ Querystring: { q?: string } }>('/api/media/fm/find', async (req, reply) => {
+    const s = q(req.query.q);
+    if (s.length < 2) return reply.code(400).send({ error: 'type a call sign or name, e.g. KTAR' });
+    if (!online()) return reply.code(503).send({ error: 'Offline: search needs the internet.' });
+    return { stations: await air.find(s) };
+  });
+  app.get<{ Params: { id: string } }>('/api/media/fm/net/:id', async (req, reply) => {
+    const id = req.params.id;
+    if (!air.station(id)) {
+      const p = media.get().fm.presets.find((x) => x.streamId === id);
+      if (p) air.learn({ id, mhz: p.mhz, band: p.mhz < 2 ? 'AM' : 'FM', hd: null, name: p.name, slogan: null, image: null, url: null });
+      else return reply.code(404).send({ error: 'Unknown station: open the AM/FM list again.' });
+    }
+    if (!online()) return reply.code(503).send({ error: 'Offline: station streams need the internet.' });
+    const ac = new AbortController();
+    reply.raw.on('close', () => ac.abort());
+    try {
+      const st = await air.playable(id);
+      const s = await radio.open(st, ac.signal);
+      reply.header('content-type', s.type).header('cache-control', 'no-store').header('x-station', encodeURIComponent(st.name));
+      return reply.send(Readable.from(s.body));
+    } catch (e) {
+      if (ac.signal.aborted) return reply;
+      return reply.code(502).send({ error: (e as Error).message });
+    }
+  });
   app.get<{ Querystring: { mhz?: string } }>('/api/media/fm/stream', async (req, reply) => {
     const mhz = Number(req.query.mhz);
     if (!validFm(mhz)) return reply.code(400).send({ error: 'mhz must be 87.5-108.0 (FM) or 0.53-1.71 (AM)' });
