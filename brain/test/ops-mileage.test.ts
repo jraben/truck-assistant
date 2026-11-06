@@ -15,7 +15,7 @@ const trip = (id: number, startedAt: string, miles: number, extra: Partial<Trip>
   id, startedAt, endedAt: new Date(Date.parse(startedAt) + 1800_000).toISOString(), miles, durationS: 1800,
   startSoc: null, endSoc: null, kwhEst: null, start: { lat: 0, lon: 0 }, end: null, driverId: 'jeff', source: 'truck',
   from: { stopId: 1, name: 'Home' }, to: { stopId: 2, name: 'Costco' },
-  cityMiles: null, highwayMiles: null, cityKwh: null, highwayKwh: null, ...extra,
+  cityMiles: null, highwayMiles: null, cityKwh: null, highwayKwh: null, simulated: false, ...extra,
 });
 
 describe('mileage auto-tagging', () => {

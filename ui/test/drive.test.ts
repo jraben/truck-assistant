@@ -16,6 +16,11 @@ describe('Drive screen context cards', () => {
     expect(pickCards(st({ locked: true, trip: true }), true)).toEqual(['np', 'trip', 'since']);
     expect(pickCards(st({ locked: true, trip: true }), false)).toEqual(['trip', 'since', 'tilt']);
   });
+  it('the payoff goal: parked only, after the others, never pushing one out', () => {
+    expect(pickCards(st({}), false, true)).toEqual(['since', 'tilt', 'goal']);
+    expect(pickCards(st({}), true, true)).toEqual(['since', 'tilt', 'np']);
+    expect(pickCards(st({ locked: true, trip: true }), false, true)).toEqual(['trip', 'since', 'tilt']);
+  });
   it('a tilt warning goes first', () => {
     expect(pickCards(st({ locked: true, trip: true, tilt: 'danger' }), true)).toEqual(['tilt', 'np', 'trip']);
   });

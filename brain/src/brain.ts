@@ -5,7 +5,7 @@ import { config } from './config.ts';
 import { kvGet, kvSet, type Db } from './db.ts';
 import { haversineMi, metersBetween } from './geo.ts';
 import { GpsdClient, type GpsFix } from './gps.ts';
-import { chargesTopic, discoveryConfigs, haEntityStateTopic, stateTopic, statusTopic, tripEndedTopic } from './ha.ts';
+import { chargesTopic, discoveryConfigs, goalTopic, haEntityStateTopic, stateTopic, statusTopic, tripEndedTopic } from './ha.ts';
 import { HaClient, presenceOf } from './ha/client.ts';
 import { MqttLink } from './mqtt.ts';
 import { RELAY_IDS, type SettingsStore } from './settings.ts';
@@ -15,7 +15,8 @@ import { TripDetector } from './tripDetector.ts';
 import { TripStore } from './trips.ts';
 import { applyTruckbox, parseTruckbox } from './truckbox.ts';
 import { ChargerFinder, type FinderSettings } from './chargers/finder.ts';
-import { ChargeService } from './charges/service.ts';
+import { ChargeService, isHome } from './charges/service.ts';
+import { chargePeakState, powerKw } from './charges/peak.ts';
 import { ChargeStore } from './charges/store.ts';
 import { sameNowPlaying } from './media.ts';
 import { StopDetector, type StopEvent } from './stops/detector.ts';
@@ -26,6 +27,8 @@ import { VehicleLookup } from './gas/vehicles.ts';
 import { PhoneImporter } from './import/phone.ts';
 import { NetManager, pickBackend, SimBackend, UnavailableBackend } from './network.ts';
 import { DriveService } from './drive/service.ts';
+import { GoalService } from './goal/service.ts';
+import { goalLine } from './goal/ledger.ts';
 import type { CompareVehicle, Driver, Health, NowPlaying, Settings, State, Stop } from './types.ts';
 
 /** Ignore GPS jumps faster than this between fixes (multipath, cold start). */
@@ -59,6 +62,9 @@ export class Brain extends EventEmitter {
   readonly importer: PhoneImporter;
   readonly net: NetManager;
   readonly drive: DriveService;
+  readonly goal: GoalService;
+  private goalTimer: NodeJS.Timeout | null = null;
+  private goalSoon: NodeJS.Timeout | null = null;
   private netTimer: NodeJS.Timeout | null = null;
   readonly mqtt: MqttLink | null;
   private gpsd: GpsdClient | null = null;
@@ -73,6 +79,11 @@ export class Brain extends EventEmitter {
   private lastFix: GpsFix | null = null;
   private lastGpsAt = 0;
   private haKwh: number | null = null;
+  /** Wall charger power (kW) from Settings.homeAssistant.homeChargerPowerEntity, and when it was read. */
+  private haPower: { kw: number | null; plugged: boolean | null; at: number } = { kw: null, plugged: null, at: 0 };
+  private powerPolling = false;
+  private pluggedIn: boolean | null = null;
+  private canCharging: boolean | null = null;
   private s: State;
   private tickTimer: NodeJS.Timeout | null = null;
   private stateTimer: NodeJS.Timeout | null = null;
@@ -92,11 +103,11 @@ export class Brain extends EventEmitter {
     this.settings = settings;
     this.setMaxListeners(100);
     const st = settings.get();
-    this.trips = new TripStore(db);
+    this.trips = new TripStore(db, { sim: config.sim });
     const orphans = this.trips.closeOrphans();
     if (orphans) console.log(`[trips] closed ${orphans} trip(s) left open by a restart`);
     this.finder = new ChargerFinder(db);
-    this.charges = new ChargeService(new ChargeStore(db));
+    this.charges = new ChargeService(new ChargeStore(db, { sim: config.sim }));
     this.ha = new HaClient(() => this.settings.get());
     this.stops = new StopService(db, this.ha, () => this.settings.get(), config.geocodeDisabled ? null : new Geocoder(db, config.version));
     this.gas = new GasService(db, this.ha, () => this.settings.get());
@@ -119,6 +130,7 @@ export class Brain extends EventEmitter {
       driver: null, driverSuggestion: null, place: null,
       network: null as unknown as State['network'],
       drive: null,
+      chargePeak: null,
     };
     this.mqtt = config.mqttDisabled ? null : new MqttLink(config.mqttUrl, statusTopic(st.truckId));
     settings.onChange((next, prev) => this.onSettings(next, prev));
@@ -139,6 +151,10 @@ export class Brain extends EventEmitter {
       online: this.net.status?.link !== 'offline' || this.net.status?.backend !== 'nmcli',
     }));
     this.charges.onChange(() => this.drive.refreshSince());
+    this.goal = new GoalService(db, () => this.settings.get(), () => this.gas.rows());
+    this.charges.onChange(() => this.goalChanged());
+    this.on('trip', () => this.goalChanged());
+    this.on('gas', () => this.goalChanged());
   }
 
   start() {
@@ -166,10 +182,14 @@ export class Brain extends EventEmitter {
       .catch((e) => console.error('[net]', e));
     this.netTimer = setInterval(() => void this.net.tick(), 20_000);
     this.drive.start();
+    this.refreshGoal();
+    // Hourly: closes a month that has ended (freezing it) and keeps "today" current.
+    this.goalTimer = setInterval(() => this.refreshGoal(), 3600_000);
   }
 
   async stop() {
-    for (const t of [this.tickTimer, this.slowTimer, this.geoTimer, this.netTimer]) if (t) clearInterval(t);
+    for (const t of [this.tickTimer, this.slowTimer, this.geoTimer, this.netTimer, this.goalTimer]) if (t) clearInterval(t);
+    if (this.goalSoon) clearTimeout(this.goalSoon);
     if (this.stateTimer) clearTimeout(this.stateTimer);
     if (this.refreshSoon) clearTimeout(this.refreshSoon);
     this.sim?.stop();
@@ -183,6 +203,77 @@ export class Brain extends EventEmitter {
     try { await this.stops.refreshZones(); } catch (e) { console.error('[stops] zones', e); }
     try { await this.stops.refreshFeed(); } catch (e) { console.error('[stops] feed', e); }
     try { if (await this.gas.poll()) this.emit('gas'); } catch (e) { console.error('[gas] poll', e); }
+  }
+
+  // ---- charging on-peak ---------------------------------------------------------
+
+  /** The Track C plug entity's reading (RemoteService polls it). */
+  setPluggedIn(v: boolean | null) { this.pluggedIn = v; }
+
+  /** Hook for the truck's own charging signal (CAN, when there is one). Counts only at home. */
+  setCanCharging(v: boolean | null) { this.canCharging = v; }
+
+  /** Every 30 s: the wall charger's power sensor from HA (W or kW, by unit_of_measurement). */
+  private async pollPower(now: number) {
+    const ent = this.settings.get().homeAssistant.homeChargerPowerEntity;
+    if (!ent) { if (this.haPower.kw !== null || this.haPower.plugged !== null) this.haPower = { kw: null, plugged: null, at: 0 }; return; }
+    if (!this.ha.configured() || this.powerPolling || now - this.haPower.at < 30_000) return;
+    this.powerPolling = true;
+    try {
+      const s = await this.ha.state(ent);
+      const a = s.attributes ?? {};
+      const status = String(a.status ?? a.charger_status ?? a.state ?? '').toLowerCase();
+      const plugged = /connected|plugged|waiting|ready|charging/.test(status) && !/disconnected|unplugged/.test(status) ? true : /disconnected|unplugged|available|idle/.test(status) ? false : null;
+      this.haPower = { kw: powerKw(s.state, a.unit_of_measurement), plugged, at: now };
+    } catch { this.haPower = { kw: null, plugged: null, at: now }; }
+    finally { this.powerPolling = false; }
+  }
+
+  private updatePeak(now: number) {
+    const st = this.settings.get();
+    const gps = this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null;
+    const last = this.charges.store.latest();
+    const recent = !!last && last.place === 'home' && last.source === 'detected' && now - Date.parse(last.endedAt ?? last.startedAt) < 10 * 60_000;
+    const fresh = this.haPower.at && now - this.haPower.at < 120_000;
+    const cp = chargePeakState({
+      now: new Date(now), rate: st.homeRate, atHome: isHome(st, gps),
+      powerKw: fresh ? this.haPower.kw : null, canCharging: this.canCharging, recentHomeSession: recent,
+      pluggedIn: this.pluggedIn ?? (fresh ? this.haPower.plugged : null),
+    });
+    if (JSON.stringify(cp) !== JSON.stringify(this.s.chargePeak)) {
+      if (cp.onPeak && !this.s.chargePeak?.onPeak) console.warn(`[charges] ${cp.message}`);
+      this.s.chargePeak = cp;
+      this.changed();
+    }
+  }
+
+  // ---- payoff goal -------------------------------------------------------------
+
+  /** Something the ledger reads changed: refresh in a moment (several changes, one pass). */
+  goalChanged() {
+    if (this.goalSoon) clearTimeout(this.goalSoon);
+    this.goalSoon = setTimeout(() => { this.goalSoon = null; this.refreshGoal(); }, 1500);
+  }
+
+  refreshGoal() {
+    try { this.goal.refresh(); } catch (e) { console.error('[goal] refresh', e); }
+    this.publishGoal();
+  }
+
+  /** "Truck payoff: $X of $Y (Z%)" for WOPR's truck block; null before there is a start date. */
+  goalLine(): string | null {
+    try { const g = this.goal.summary(); return g.startDate ? goalLine(g) : null; } catch { return null; }
+  }
+
+  private publishGoal() {
+    try {
+      const g = this.goal.summary();
+      this.mqtt?.publish(goalTopic(this.settings.get().truckId), JSON.stringify({
+        saved: g.saved, target: g.target, pct: g.pct, thisMonth: g.thisMonth,
+        projectedPayoff: g.projection.date, projectionState: g.projection.state,
+      }), { retain: true });
+    } catch (e) { console.error('[goal] publish', e); }
+    this.emit('goal');
   }
 
   // ---- drivers ---------------------------------------------------------------
@@ -261,6 +352,7 @@ export class Brain extends EventEmitter {
   private subscriptions(st: Settings): string[] {
     const t = [`${st.truckId}/truckbox/#`, ...this.extraTopics];
     if (st.homeAssistant.homeChargerEnergyEntity) t.push(haEntityStateTopic(st.homeAssistant.homeChargerEnergyEntity));
+    if (st.homeAssistant.homeChargerPowerEntity) t.push(haEntityStateTopic(st.homeAssistant.homeChargerPowerEntity));
     return t;
   }
 
@@ -278,6 +370,9 @@ export class Brain extends EventEmitter {
       const v = Number(payload.replace(/^"|"$/g, ''));
       this.haKwh = Number.isFinite(v) && v >= 0 ? v : null;
     }
+    const pw = st.homeAssistant.homeChargerPowerEntity;
+    // mqtt_statestream carries no unit here; the REST poll (which does) wins when HA is configured.
+    if (pw && topic === haEntityStateTopic(pw) && !this.ha.configured()) this.haPower = { kw: powerKw(payload, ''), plugged: this.haPower.plugged, at: Date.now() };
   }
 
   private onTruckbox(sub: string, payload: string) {
@@ -386,6 +481,8 @@ export class Brain extends EventEmitter {
     } else if (ev?.type === 'end' && this.s.trip) {
       this.endTrip(new Date(now), pos, ev.reason, this.openStop?.id ?? null);
     }
+    void this.pollPower(now);
+    try { this.updatePeak(now); } catch (e) { console.error('[charges] peak', e); }
     // The ignition prompt goes away once the drive is properly under way.
     const t = this.s.trip;
     if (this.s.driverSuggestion && t && (now - Date.parse(t.startedAt) > SUGGEST_WINDOW_MS || t.miles > SUGGEST_WINDOW_MI)) {
@@ -476,6 +573,7 @@ export class Brain extends EventEmitter {
       place: this.s.place ? { ...this.s.place } : null,
       network: { ...this.net.status, bytesThisMonth: { ...this.net.status.bytesThisMonth } },
       drive: this.drive.state(),
+      chargePeak: this.s.chargePeak ? { ...this.s.chargePeak } : null,
     };
   }
 
@@ -502,6 +600,7 @@ export class Brain extends EventEmitter {
     this.publishDiscovery(st);
     this.mqtt?.publish(stateTopic(st.truckId), JSON.stringify(this.getState()), { retain: true });
     this.publishCharges();
+    this.publishGoal();
   }
 
   /** homeAssistant.bridge on: publish discovery; off: clear it, so HA drops the entities. */
@@ -535,6 +634,8 @@ export class Brain extends EventEmitter {
     if (!this.settings.driver(this.driverId)) this.driverId = this.activeDriver().id;
     if (JSON.stringify([next.homeWifi, next.drivers.map((d) => [d.hotspot, d.btTetherMac])]) !== JSON.stringify([prev.homeWifi, prev.drivers.map((d) => [d.hotspot, d.btTetherMac])])) void this.net.tick();
     const ha = (s: Settings) => JSON.stringify([s.homeAssistant.url, s.homeAssistant.token, s.placesFeed, s.keys.placesFeed, s.gas]);
+    const goalKey = (s: Settings) => JSON.stringify([s.payoffGoal, s.compareVehicle, s.gas.source, s.gas.manualPrice]);
+    if (goalKey(next) !== goalKey(prev)) this.goalChanged();
     if (ha(next) !== ha(prev)) {
       if (next.homeAssistant.url !== prev.homeAssistant.url || next.homeAssistant.token !== prev.homeAssistant.token) this.ha.lastError = null;
       if (this.refreshSoon) clearTimeout(this.refreshSoon);

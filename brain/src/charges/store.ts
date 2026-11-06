@@ -5,7 +5,7 @@ import type { ChargeSession } from '../types.ts';
 type Row = {
   id: number; started_at: string; ended_at: string | null; place: string; network: string | null; station_name: string | null;
   lat: number | null; lon: number | null; kwh: number | null; cost: number | null; cost_source: string | null;
-  start_soc: number | null; end_soc: number | null; max_kw: number | null; note: string | null; source: string; driver_id: string | null;
+  start_soc: number | null; end_soc: number | null; max_kw: number | null; note: string | null; source: string; driver_id: string | null; simulated?: number | null;
 };
 
 const toSession = (r: Row): ChargeSession => ({
@@ -14,11 +14,14 @@ const toSession = (r: Row): ChargeSession => ({
   lat: r.lat, lon: r.lon, kwh: r.kwh, cost: r.cost, costSource: r.cost_source as ChargeSession['costSource'],
   startSoc: r.start_soc, endSoc: r.end_soc, maxKw: r.max_kw, note: r.note, source: r.source as ChargeSession['source'],
   driverId: r.driver_id ?? null,
+  simulated: !!r.simulated,
 });
 
 export class ChargeInputError extends Error {}
 
-export type SessionInput = Partial<Omit<ChargeSession, 'id'>>;
+export type SessionInput = Partial<Omit<ChargeSession, 'id' | 'simulated' | 'onPeak'>>;
+/** A new row. `simulated` defaults to the store's SIM flag (receipts are always real). */
+export type NewSession = Omit<ChargeSession, 'id' | 'simulated' | 'onPeak'> & { simulated?: boolean };
 
 const PLACES = ['home', 'public', 'other'] as const;
 const COST_SOURCES = ['receipt', 'home-rate', 'free'] as const;
@@ -80,7 +83,7 @@ export function parseSessionInput(body: unknown): SessionInput {
   return out;
 }
 
-const COLS: Record<keyof Omit<ChargeSession, 'id'>, string> = {
+const COLS: Record<keyof Omit<ChargeSession, 'id' | 'simulated' | 'onPeak'>, string> = {
   startedAt: 'started_at', endedAt: 'ended_at', place: 'place', network: 'network', stationName: 'station_name',
   lat: 'lat', lon: 'lon', kwh: 'kwh', cost: 'cost', costSource: 'cost_source', startSoc: 'start_soc', endSoc: 'end_soc',
   maxKw: 'max_kw', note: 'note', source: 'source', driverId: 'driver_id',
@@ -88,8 +91,9 @@ const COLS: Record<keyof Omit<ChargeSession, 'id'>, string> = {
 
 export class ChargeStore {
   private db: Db;
+  private sim: boolean;
 
-  constructor(db: Db) { this.db = db; }
+  constructor(db: Db, opts: { sim?: boolean } = {}) { this.db = db; this.sim = !!opts.sim; }
 
   list(fromIso?: string | null, toIso?: string | null, driver?: string | null): ChargeSession[] {
     const args = [fromIso ?? '0000', toIso ?? '9999', ...(driver ? [driver] : [])];
@@ -107,10 +111,11 @@ export class ChargeStore {
     return r ? toSession(r) : null;
   }
 
-  create(s: Omit<ChargeSession, 'id'>): ChargeSession {
+  create(s: NewSession): ChargeSession {
     const keys = Object.keys(COLS) as (keyof typeof COLS)[];
-    const res = this.db.prepare(`INSERT INTO charge_sessions (${keys.map((k) => COLS[k]).join(', ')}) VALUES (${keys.map(() => '?').join(', ')})`)
-      .run(...keys.map((k) => (s[k] ?? null) as string | number | null));
+    const sim = s.simulated ?? (this.sim && s.source !== 'receipt');
+    const res = this.db.prepare(`INSERT INTO charge_sessions (${keys.map((k) => COLS[k]).join(', ')}, simulated) VALUES (${keys.map(() => '?').join(', ')}, ?)`)
+      .run(...keys.map((k) => (s[k] ?? null) as string | number | null), sim ? 1 : 0);
     return this.get(Number(res.lastInsertRowid))!;
   }
 
@@ -128,7 +133,7 @@ export class ChargeStore {
   }
 }
 
-const CSV_FIELDS: (keyof ChargeSession)[] = ['id', 'startedAt', 'endedAt', 'place', 'network', 'stationName', 'lat', 'lon', 'kwh', 'cost', 'costSource', 'startSoc', 'endSoc', 'maxKw', 'note', 'source', 'driverId'];
+const CSV_FIELDS: (keyof ChargeSession)[] = ['id', 'startedAt', 'endedAt', 'place', 'network', 'stationName', 'lat', 'lon', 'kwh', 'cost', 'costSource', 'startSoc', 'endSoc', 'maxKw', 'note', 'source', 'driverId', 'simulated'];
 
 export function toCsv(sessions: ChargeSession[]): string {
   const esc = (v: unknown) => {

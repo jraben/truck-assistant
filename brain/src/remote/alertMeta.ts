@@ -13,5 +13,7 @@ export const ALERT_META: Record<AlertKind, { label: string; unit: string | null;
   unplugged: { label: 'Unplugged', unit: null, threshold: null, holdSec: 0, cooldownMin: 10 },
   tirePressure: { label: 'Tire pressure low', unit: 'psi', threshold: 30, min: 10, max: 80, holdSec: 60, cooldownMin: 240 },
   truckboxOffline: { label: 'Truck box offline', unit: 'min', threshold: 120, min: 5, max: 1440, holdSec: 0, cooldownMin: 720 },
+  chargingPeak: { label: 'Charging during on-peak', unit: null, threshold: null, holdSec: 30, cooldownMin: 15 },
+  peakSoon: { label: 'Plugged in just before on-peak (heads-up)', unit: null, threshold: null, holdSec: 0, cooldownMin: 60 },
 };
 export const ALERT_KINDS = Object.keys(ALERT_META) as AlertKind[];

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Driver, Settings, State } from '../../../brain/src/types.ts';
 
-export type { Charger, ChargeSession, ChargeSummary, CompareVehicle, Driver, GasSensor, NetCandidate, NetworkStatus, GasStatus, Health, ImportJob, Layout, LayoutWidget, Place, PlaceSuggestion, Settings, State, Stop, TimelineItem, Trip, TripPoint } from '../../../brain/src/types.ts';
+export type { ChargePeak, GoalAdjustment, GoalDay, GoalSummary, PayoffGoal, Charger, ChargeSession, ChargeSummary, CompareVehicle, Driver, GasSensor, NetCandidate, NetworkStatus, GasStatus, Health, ImportJob, Layout, LayoutWidget, Place, PlaceSuggestion, Settings, State, Stop, TimelineItem, Trip, TripPoint } from '../../../brain/src/types.ts';
 
 export type Store<T> = { get: () => T; set: (v: T) => void; sub: (f: () => void) => () => void };
 export function store<T>(init: T): Store<T> {

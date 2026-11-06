@@ -10,6 +10,8 @@ import { config } from './config.ts';
 import { maskDriver, maskSettings, SettingsError } from './settings.ts';
 import { summarize, type Period } from './charges/summary.ts';
 import { ChargeInputError, parseSessionInput, toCsv } from './charges/store.ts';
+import { sessionOnPeak } from './charges/peak.ts';
+import type { ChargeSession } from './types.ts';
 import { mediaSourceOf, NowPlayingHub, parseMediaMessage } from './media.ts';
 import { registerTrackB } from './trackb.ts';
 import { PlaceInputError } from './stops/service.ts';
@@ -20,6 +22,7 @@ import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { registerVehiclePhoto } from './drive/photo.ts';
 import { mountOps } from './ops/routes.ts';
+import { registerGoalRoutes } from './goal/routes.ts';
 
 const optStr = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const srcOf = (v: unknown) => (v === 'phone' || v === 'truck' ? v : null);
@@ -224,7 +227,8 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
 
   // ---- charge sessions -----------------------------------------------------------
   const range = (q: { from?: string; to?: string }) => [isoOrNull(q.from), isoOrNull(q.to)] as const;
-  app.get<{ Querystring: { from?: string; to?: string; driver?: string } }>('/api/charges', async (req) => brain.charges.store.list(...range(req.query), optStr(req.query.driver)));
+  const withPeak = (list: ChargeSession[]) => { const rate = brain.settings.get().homeRate; return list.map((s) => ({ ...s, onPeak: s.place === 'home' ? sessionOnPeak(s, rate)?.name ?? null : null })); };
+  app.get<{ Querystring: { from?: string; to?: string; driver?: string } }>('/api/charges', async (req) => withPeak(brain.charges.store.list(...range(req.query), optStr(req.query.driver))));
   app.get<{ Querystring: { from?: string; to?: string; driver?: string } }>('/api/charges.csv', async (req, reply) => {
     reply.header('content-type', 'text/csv; charset=utf-8').header('content-disposition', 'attachment; filename="charges.csv"');
     return toCsv(brain.charges.store.list(...range(req.query), optStr(req.query.driver)).reverse());
@@ -251,6 +255,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     return brain.charges.delete(Number(req.params.id)) ? reply.code(204).send() : reply.code(404).send({ error: 'no such session' });
   });
 
+  registerGoalRoutes(app, brain.goal, () => brain.refreshGoal());
   registerDriveRoutes(app, brain.drive);
   await registerVehiclePhoto(app, brain.settings, config.dataDir);
   // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----

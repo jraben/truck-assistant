@@ -4,6 +4,7 @@ import type { TouPeriod } from '../../../brain/src/types.ts';
 import { activeDriver, api, settingsStore, stateStore, useStore, type Health, type Settings } from '../lib/brain.ts';
 import { paintTheme, pickTheme } from '../lib/theme.ts';
 import { ChargeForm, CostSessions, CostSummary } from '../components/costs.tsx';
+import { GoalSettings } from '../components/goal.tsx';
 import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
@@ -148,6 +149,7 @@ export function SettingsApp() {
       const body: Record<string, unknown> = { ...draft, homeAssistant: { ...draft.homeAssistant } };
       // The truck look and drive settings have their own Save (DriveSection); a stale draft copy must not undo it.
       delete body.truck; delete body.drive;
+      delete body.payoffGoal; // the goal section saves itself
       if (keys.haToken.trim()) (body.homeAssistant as Record<string, unknown>).token = keys.haToken.trim();
       // no password typed = keep the stored one (for the same network)
       body.homeWifi = draft.homeWifi?.ssid.trim() ? { ssid: draft.homeWifi.ssid.trim(), password: keys.homeWifi || settings.homeWifi?.password } : null;
@@ -198,7 +200,9 @@ export function SettingsApp() {
           <div class="fields">
             <label class="f"><span>Flat $/kWh</span><input type="number" step="0.001" value={draft.homeRate.flatPerKwh ?? ''} placeholder="not set" onInput={(e) => { const v = (e.target as HTMLInputElement).value; setRate('flatPerKwh', v === '' ? null : Number(v)); }} /></label>
             <label class="f"><span>Fixed $ per session</span><input type="number" step="0.01" value={draft.homeRate.fixedPerSession} onInput={(e) => setRate('fixedPerSession', num((e.target as HTMLInputElement).value))} /></label>
+            <label class="f"><span>Demand charge $/kW</span><input type="number" step="0.00001" min="0" value={draft.homeRate.demandPerKw ?? ''} placeholder="none" onInput={(e) => { const v = (e.target as HTMLInputElement).value; setRate('demandPerKw', v === '' ? null : Number(v)); }} /></label>
           </div>
+          <p class="help">Demand charge: your plan's on-peak demand charge, $/kW.</p>
           <div style="overflow-x:auto">
             <table class="tou">
               <tbody>
@@ -209,6 +213,7 @@ export function SettingsApp() {
                     <td><input type="text" inputMode="numeric" value={t.start} placeholder="16:00" style="width:90px" onInput={(e) => setTou(i, { start: (e.target as HTMLInputElement).value })} /></td>
                     <td><input type="text" inputMode="numeric" value={t.end} placeholder="19:00" style="width:90px" onInput={(e) => setTou(i, { end: (e.target as HTMLInputElement).value })} /></td>
                     <td><input type="number" step="0.001" value={t.perKwh} style="width:100px" onInput={(e) => setTou(i, { perKwh: num((e.target as HTMLInputElement).value) })} /></td>
+                    <td><label class="check" title="Alert (phone + red banner) if the truck charges at home in this period"><input type="checkbox" checked={t.alertOnCharging ?? (draft.homeRate.flatPerKwh === null || t.perKwh > draft.homeRate.flatPerKwh)} onChange={(e) => setTou(i, { alertOnCharging: (e.target as HTMLInputElement).checked })} /> alert</label></td>
                     <td><button class="btn sm danger" type="button" onClick={() => setRate('tou', draft.homeRate.tou.filter((_, j) => j !== i))}>Remove</button></td>
                   </tr>
                 ))}
@@ -216,8 +221,12 @@ export function SettingsApp() {
             </table>
           </div>
           <div><button class="btn sm" type="button" onClick={() => setRate('tou', [...draft.homeRate.tou, { name: 'on-peak', days: [1, 2, 3, 4, 5], start: '16:00', end: '19:00', perKwh: 0.25 }])}>+ Add time-of-use period</button></div>
-          <p class="help">A period like 21:00–06:00 crosses midnight and belongs to the day it starts on.</p>
+          <p class="help">A period like 21:00–06:00 crosses midnight and belongs to the day it starts on. "alert": charging at home during the period sends a phone alert (Cameras &amp; remote → Alerts → "Charging during on-peak") and shows a red banner; plugged in during the 30 minutes before it gets a heads-up.</p>
         </div>
+      </Section>
+
+      <Section id="payoff" title="Truck payoff goal" help="Pay off the truck with what it saves on gas, tracked day by day for good.">
+        <GoalSettings value={settings.payoffGoal} onSaved={(g) => settingsStore.set({ ...settings, payoffGoal: g })} />
       </Section>
 
       <Section id="gas" title="Gas comparison" help="What the gas vehicle you'd otherwise drive would have cost for the same miles. A driver can pick their own vehicle in Drivers.">
@@ -290,7 +299,10 @@ export function SettingsApp() {
         <label class="f"><span>Wall charger session-energy entity (optional)</span>
           <input type="text" value={draft.homeAssistant.homeChargerEnergyEntity ?? ''} placeholder="sensor.emporia_charger_session_energy" onInput={(e) => set('homeAssistant', { ...draft.homeAssistant, homeChargerEnergyEntity: (e.target as HTMLInputElement).value || undefined })} />
         </label>
-        <p class="help">Read from HA's mqtt_statestream (base_topic: homeassistant) when the bridge is up; used for home session kWh instead of the charge-level estimate. The token is stored on the truck only and never shown again in full.</p>
+        <label class="f"><span>Wall charger power entity (optional)</span>
+          <input type="text" value={draft.homeAssistant.homeChargerPowerEntity ?? ''} placeholder="sensor.wall_charger_power" onInput={(e) => set('homeAssistant', { ...draft.homeAssistant, homeChargerPowerEntity: (e.target as HTMLInputElement).value || undefined })} />
+        </label>
+        <p class="help">Session energy is read from HA's mqtt_statestream (base_topic: homeassistant) when the bridge is up; used for home session kWh instead of the charge-level estimate. The power sensor (W or kW, by its unit) is read every 30 s: over 500 W during an on-peak period with alerts on is "charging on-peak". The token is stored on the truck only and never shown again in full.</p>
       </Section>
 
       <Section id="import" title="Phone history" help="Real trips and stops before the truck arrives: replay a driver's phone locations from Home Assistant.">

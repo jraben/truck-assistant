@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { ChargingPrefs, CompareVehicle, Driver, Layout, Settings, WifiNet } from './types.ts';
-import { DEFAULT_LAYOUT } from './layout.ts';
+import type { ChargingPrefs, CompareVehicle, Driver, Layout, PayoffGoal, Settings, WifiNet } from './types.ts';
+import { DEFAULT_LAYOUT, migrateChargeLayout } from './layout.ts';
+import { defaultAlertOn } from './charges/peak.ts';
 import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
 import { defaultThemeSettings, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
 
@@ -46,6 +47,10 @@ export function newDriver(id: string, name: string, opts: Partial<Pick<Driver, '
 
 export const customVehicle = (mpg: number): CompareVehicle => ({ id: null, label: 'Custom', mpgCity: mpg, mpgHighway: mpg, mpgCombined: mpg, fuel: 'regular' });
 
+/** Jeff's build (29,290.78) + destination (1,450). Taxes, title and registration are not in it. */
+export const DEFAULT_PAYOFF_TARGET = 30740.78;
+export const defaultPayoffGoal = (): PayoffGoal => ({ target: DEFAULT_PAYOFF_TARGET, startDate: null, includeHomeCharging: true });
+
 export const guestDriver = () => newDriver(GUEST_ID, 'Guest', { initials: 'G', color: '#8a99a5', guest: true });
 
 /** The family, seeded only when settings have no drivers at all. */
@@ -69,7 +74,7 @@ export function defaultSettings(): Settings {
     },
     keys: {},
     homeAssistant: { bridge: true, url: null },
-    homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0 },
+    homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0, demandPerKw: null },
     homeLocation: null,
     compareVehicle: customVehicle(22),
     gas: { source: 'manual', manualPrice: 3.5, haEntities: [], pick: 'cheapest' },
@@ -78,6 +83,7 @@ export function defaultSettings(): Settings {
     saveDataOnHotspot: true,
     truck: defaultTruck(),
     drive: defaultDrive(),
+    payoffGoal: defaultPayoffGoal(),
     drivers: seedDrivers(),
   };
 }
@@ -278,6 +284,25 @@ export function validateVehicle(v: unknown, where = 'compareVehicle'): CompareVe
   return { id: id as number | null, label, mpgCity, mpgHighway, mpgCombined, fuel: v.fuel as CompareVehicle['fuel'] };
 }
 
+const YMD = /^(\d{4})-(\d{2})-(\d{2})$/;
+/** A real calendar day "YYYY-MM-DD"? */
+export function isDay(v: unknown): v is string {
+  const m = typeof v === 'string' ? YMD.exec(v) : null;
+  if (!m) return false;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+}
+
+export function validatePayoffGoal(g: unknown): PayoffGoal {
+  if (g === undefined || g === null) return defaultPayoffGoal();
+  if (!isObj(g)) throw new SettingsError('payoffGoal must be {target, startDate, includeHomeCharging}');
+  const target = num(g.target, 'payoffGoal.target', 1, 10_000_000);
+  const sd = g.startDate === '' || g.startDate === undefined ? null : g.startDate;
+  if (sd !== null && !isDay(sd)) throw new SettingsError('payoffGoal.startDate must be YYYY-MM-DD (the day the truck was delivered) or empty');
+  if (g.includeHomeCharging !== undefined && typeof g.includeHomeCharging !== 'boolean') throw new SettingsError('payoffGoal.includeHomeCharging must be true or false');
+  return { target: Math.round(target * 100) / 100, startDate: sd as string | null, includeHomeCharging: g.includeHomeCharging !== false };
+}
+
 /** Wi-Fi network: SSID 1-32 bytes; WPA password 8-63 characters, or none (open network). */
 export function validateWifi(w: unknown, where: string): WifiNet | null {
   if (w === null || w === undefined) return null;
@@ -306,7 +331,7 @@ export function validateDriver(d: unknown, idHint: string | number = '?'): Drive
   if (x.tracker === undefined || x.tracker === '') x.tracker = null;
   if (x.tracker !== null && (typeof x.tracker !== 'string' || !/^(person|device_tracker)\.[a-z0-9_]+$/.test(x.tracker))) throw new SettingsError(`${where}: tracker must look like person.jeff or device_tracker.jeffs_iphone`);
   try { x.theme = validateThemeSettings(x.theme); } catch (e) { if (e instanceof ThemeError) throw new SettingsError(`${where}: ${e.message}`); throw e; }
-  x.layout = migrateDriveLayout(validateLayout(x.layout, `${where} layout`));
+  x.layout = migrateChargeLayout(migrateDriveLayout(validateLayout(x.layout, `${where} layout`)));
   x.charging = validateCharging(x.charging, `${where} charging`);
   if (!Array.isArray(x.favouritePlaceIds) || x.favouritePlaceIds.some((n) => !Number.isInteger(n))) x.favouritePlaceIds = [];
   if (x.guest) x.favouritePlaceIds = [];
@@ -335,6 +360,9 @@ export function validate(s: Settings): Settings {
   const ent = ha.homeChargerEnergyEntity as string | null | undefined;
   if (ent && !ENTITY.test(String(ent))) throw new SettingsError('homeAssistant.homeChargerEnergyEntity must look like sensor.wall_charger_session_energy');
   if (!ent) delete ha.homeChargerEnergyEntity;
+  const pw = ha.homeChargerPowerEntity as string | null | undefined;
+  if (pw && !ENTITY.test(String(pw))) throw new SettingsError('homeAssistant.homeChargerPowerEntity must look like sensor.wall_charger_power');
+  if (!pw) delete ha.homeChargerPowerEntity;
   if (ha.url === undefined || ha.url === '') ha.url = null;
   if (ha.url !== null) {
     if (typeof ha.url !== 'string' || !/^https?:\/\/[^\s/]+/i.test(ha.url.trim())) throw new SettingsError('homeAssistant.url must start with http:// or https:// (e.g. http://homeassistant.local:8123)');
@@ -352,6 +380,12 @@ export function validate(s: Settings): Settings {
     if (!Array.isArray(t.days) || t.days.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) throw new SettingsError(`homeRate.tou[${i}].days must be 0 (Sun) to 6 (Sat)`);
     num(t.perKwh, `homeRate.tou[${i}].perKwh`, 0, 5);
   });
+  for (const t of r.tou) {
+    if (t.alertOnCharging === undefined || t.alertOnCharging === null) t.alertOnCharging = defaultAlertOn(t, r);
+    else if (typeof t.alertOnCharging !== 'boolean') throw new SettingsError(`homeRate.tou "${t.name}": alertOnCharging must be true or false`);
+  }
+  if (r.demandPerKw === undefined || (r.demandPerKw as unknown) === '') r.demandPerKw = null;
+  if (r.demandPerKw !== null) num(r.demandPerKw, 'homeRate.demandPerKw', 0, 500);
   if (s.homeLocation !== null && s.homeLocation !== undefined) {
     if (!isObj(s.homeLocation)) throw new SettingsError('homeLocation must be {lat, lon} or null');
     num(s.homeLocation.lat, 'homeLocation.lat', -90, 90);
@@ -373,6 +407,7 @@ export function validate(s: Settings): Settings {
   if (fu === undefined || fu === '' || fu === null) s.placesFeed.url = null;
   else if (typeof fu !== 'string' || !/^https?:\/\/\S+$/i.test(fu.trim())) throw new SettingsError('placesFeed.url must start with http:// or https://');
   else s.placesFeed.url = fu.trim();
+  s.payoffGoal = validatePayoffGoal(s.payoffGoal);
   try { s.truck = validateTruck(s.truck); s.drive = validateDrive(s.drive); } catch (e) { if (e instanceof DriveSettingsError) throw new SettingsError(e.message); throw e; }
   if (!Array.isArray(s.drivers)) throw new SettingsError('drivers must be a list');
   s.drivers = s.drivers.map((d, i) => validateDriver(d, i));

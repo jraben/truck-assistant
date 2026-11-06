@@ -142,6 +142,7 @@ export function App() {
         </div>
       )}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
+      <PeakBanner s={s} />
       <ChargePrompt />
       <WeatherOverlay s={s} />
       <TrackBOverlays />
@@ -183,3 +184,11 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
 }
 
 export type { State };
+
+/** Charging at home during on-peak (red), or plugged in just before it (amber). Every view. */
+function PeakBanner({ s }: { s: State | null }) {
+  const cp = s?.chargePeak;
+  if (cp?.onPeak) return <div class="banner bad peakbanner" role="alert"><b>{cp.title}</b><span>{cp.message}</span></div>;
+  if (cp?.headsUp) return <div class="banner peakbanner" role="status"><b>{cp.headsUpTitle}</b><span>{cp.headsUp}</span></div>;
+  return null;
+}

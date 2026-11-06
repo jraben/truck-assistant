@@ -86,7 +86,7 @@ describe('gas comparison uses the split', () => {
 
 const session = (p: Partial<ChargeSession>): ChargeSession => ({
   id: 1, startedAt: '2027-05-01T08:00:00Z', endedAt: '2027-05-01T10:00:00Z', place: 'public', network: null, stationName: null, lat: null, lon: null,
-  kwh: 40, cost: 16, costSource: 'receipt', startSoc: 20, endSoc: 90, maxKw: null, note: null, source: 'manual', driverId: 'jeff', ...p,
+  kwh: 40, cost: 16, costSource: 'receipt', startSoc: 20, endSoc: 90, maxKw: null, note: null, source: 'manual', driverId: 'jeff', simulated: false, ...p,
 });
 
 describe('since last charge', () => {

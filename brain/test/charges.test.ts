@@ -80,7 +80,7 @@ describe('home session pricing', () => {
 
 const sess = (o: Partial<ChargeSession>): ChargeSession => ({
   id: 1, startedAt: at(2027, 5, 10, 12).toISOString(), endedAt: null, place: 'public', network: null, stationName: null,
-  lat: null, lon: null, kwh: null, cost: null, costSource: null, startSoc: null, endSoc: null, maxKw: null, note: null, source: 'manual', driverId: null, ...o,
+  lat: null, lon: null, kwh: null, cost: null, costSource: null, startSoc: null, endSoc: null, maxKw: null, note: null, source: 'manual', driverId: null, simulated: false, ...o,
 });
 
 describe('summary math', () => {

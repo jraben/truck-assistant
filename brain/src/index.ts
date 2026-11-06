@@ -11,7 +11,7 @@ import { applyPendingRestore } from './ops/backup.ts';
 async function main() {
   console.log(`[brain] v${config.version}, data in ${config.dataDir}${config.sim ? ', SIM=1' : ''}`);
   applyPendingRestore(config.dataDir); // a restore staged from /settings, before anything opens the files
-  const db = openDb(config.dataDir);
+  const db = openDb(config.dataDir, { sim: config.sim });
   const settings = new SettingsStore(config.dataDir);
   const brain = new Brain(db, settings);
   const app = await buildServer(brain);

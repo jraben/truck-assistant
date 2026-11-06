@@ -16,11 +16,13 @@ type Row = {
   driver_id: string | null; source: string | null; start_stop_id: number | null; end_stop_id: number | null;
   city_miles?: number | null; highway_miles?: number | null; city_kwh?: number | null; highway_kwh?: number | null;
   from_name?: string | null; to_name?: string | null;
+  simulated?: number | null;
 };
 
 const SELECT = 'SELECT t.*, a.name AS from_name, b.name AS to_name FROM trips t LEFT JOIN stops a ON a.id = t.start_stop_id LEFT JOIN stops b ON b.id = t.end_stop_id';
 
-export type TripFilter = { driver?: string | null; source?: 'truck' | 'phone' | null };
+/** `real`: only trips not recorded by a SIM=1 brain. */
+export type TripFilter = { driver?: string | null; source?: 'truck' | 'phone' | null; real?: boolean };
 
 function toTrip(r: Row): Trip {
   const now = Date.now();
@@ -39,6 +41,7 @@ function toTrip(r: Row): Trip {
     cityMiles: r.city_miles == null ? null : Math.round(r.city_miles * 100) / 100,
     highwayMiles: r.highway_miles == null ? null : Math.round(r.highway_miles * 100) / 100,
     cityKwh: r.city_kwh ?? null, highwayKwh: r.highway_kwh ?? null,
+    simulated: !!r.simulated,
   };
 }
 
@@ -58,8 +61,10 @@ export class TripStore {
   private lastKept: (LatLon & { t: number; headingDeg: number | null }) | null = null;
 
   private db: Db;
+  /** SIM=1: every truck trip this store starts is marked simulated. */
+  private sim: boolean;
 
-  constructor(db: Db) { this.db = db; }
+  constructor(db: Db, opts: { sim?: boolean } = {}) { this.db = db; this.sim = !!opts.sim; }
 
   /** A trip still open from before a crash or power cut is closed at its last point. */
   closeOrphans(): number {
@@ -74,8 +79,8 @@ export class TripStore {
   }
 
   start(at: Date, soc: number | null, pos: LatLon | null, driverId: string | null = null, startStopId: number | null = null): Trip {
-    const res = this.db.prepare("INSERT INTO trips (started_at, start_soc, start_lat, start_lon, driver_id, source, start_stop_id) VALUES (?, ?, ?, ?, ?, 'truck', ?)")
-      .run(at.toISOString(), soc, pos?.lat ?? null, pos?.lon ?? null, driverId, startStopId);
+    const res = this.db.prepare("INSERT INTO trips (started_at, start_soc, start_lat, start_lon, driver_id, source, start_stop_id, simulated) VALUES (?, ?, ?, ?, ?, 'truck', ?, ?)")
+      .run(at.toISOString(), soc, pos?.lat ?? null, pos?.lon ?? null, driverId, startStopId, this.sim ? 1 : 0);
     this.lastKept = null;
     return this.get(Number(res.lastInsertRowid))!;
   }
@@ -126,6 +131,7 @@ export class TripStore {
     if (f.driver) { w.push('t.driver_id = ?'); args.push(f.driver); }
     if (f.source === 'phone') w.push("t.source = 'phone'");
     else if (f.source === 'truck') w.push("(t.source IS NULL OR t.source = 'truck')");
+    if (f.real) w.push('t.simulated = 0');
     return w.length ? ` AND ${w.join(' AND ')}` : '';
   }
 

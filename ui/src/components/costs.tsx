@@ -90,7 +90,9 @@ export function CostSessions(_: WP) {
               {s.startSoc !== null && s.endSoc !== null && <span class="tag dim">{Math.round(s.startSoc)}→{Math.round(s.endSoc)}%</span>}
               {s.costSource && <span class="tag dim">{s.costSource}</span>}
               {s.source !== 'manual' && <span class="tag dim">{s.source}</span>}
+              {s.onPeak && <span class="tag bad" title={`Charged during ${s.onPeak}: the demand charge may apply this month`}>on-peak</span>}
             </div>
+            {s.onPeak && <div class="dimtxt" style="font-size:12px">Overlapped {s.onPeak}: your plan's demand charge may bill this hour.</div>}
           </button>
         ))}
       </div>

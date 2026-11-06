@@ -33,6 +33,19 @@ Built for Jeff's truck first, published for other Slate owners later.
   (`ui/src/carplay/`, vendored node-carplay 4.1.0); on a desk,
   `?carplaySim=1` plays a test clip through the same path. Pi setup and
   dongle notes: `deploy/pi/README.md`.
+- **Truck payoff goal (2026-11-05):** "pay off the truck with gas savings",
+  tracked for good in a day-by-day SQLite ledger (closed months frozen;
+  Recalculate on /settings). Charge view card, a Drive card when parked,
+  /settings → Charging & costs (target, delivery date, adjustments, ledger,
+  CSV), HA sensors and a line for WOPR. Only real truck trips count: trips
+  and sessions logged under `SIM=1` are marked `simulated` and never do, so
+  a SIM brain shows $0. Contract: "Payoff goal".
+- **Charging on-peak alert (2026-11-05):** charging at home inside a TOU
+  period marked "alert" (APS 4–7pm weekdays) sends a phone alert (Track C,
+  every 15 min while it lasts), shows a red banner and sets an HA
+  binary_sensor; plugged in during the 30 min before gets a heads-up. With
+  `homeRate.demandPerKw` set it says what one hour adds in demand charges.
+  Contract: "Charging on-peak".
 - **Media and WOPR (Track B, 2026-11-05):** a MEDIA view (CarPlay, Spotify
   Connect, internet radio with KJEF, AM/FM on an RTL-SDR, Plex, files, Apple
   Music via CarPlay), the WOPR voice button, next appointment to Waze, gate

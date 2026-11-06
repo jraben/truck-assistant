@@ -15,6 +15,8 @@ import { WIcon } from './icons.tsx';
 import { Speedo, SPEEDO_LABELS } from './Speedo.tsx';
 import { TiltPair } from './Tilt.tsx';
 import { openWeather } from './weatherStore.ts';
+import { GoalDriveCard } from '../components/goal.tsx';
+import { useGoal } from '../lib/data.ts';
 import './drive.css';
 
 const MODE_LABEL = { city: 'City', highway: 'Highway' } as const;
@@ -170,10 +172,11 @@ function TiltCard({ s }: { s: State | null }) {
 
 function Cards({ s, go }: { s: State | null; go: WP['go'] }) {
   const np = useStore(nowPlayingStore);
-  const cards = pickCards(s, !!np);
+  const { g } = useGoal();
+  const cards = pickCards(s, !!np, !!g?.startDate);
   return (
     <section class={`dz dz-cards n${cards.length}`} aria-label="Context">
-      {cards.map((c) => c === 'np' ? <NowPlayingCard go={go} /> : c === 'since' ? <SinceChargeCard s={s} go={go} /> : c === 'trip' ? <TripCard s={s} go={go} /> : <TiltCard s={s} />)}
+      {cards.map((c) => c === 'np' ? <NowPlayingCard go={go} /> : c === 'since' ? <SinceChargeCard s={s} go={go} /> : c === 'trip' ? <TripCard s={s} go={go} /> : c === 'goal' ? <GoalDriveCard go={go} /> : <TiltCard s={s} />)}
     </section>
   );
 }

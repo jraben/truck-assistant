@@ -6,6 +6,8 @@ export const stateTopic = (id: string) => `${id}/brain/state`;
 export const statusTopic = (id: string) => `${id}/brain/status`;
 export const chargesTopic = (id: string) => `${id}/brain/charges`;
 export const tripEndedTopic = (id: string) => `${id}/brain/trip/ended`;
+/** {saved, target, pct, projectedPayoff, projectionState, thisMonth}, retained. */
+export const goalTopic = (id: string) => `${id}/brain/goal`;
 
 export function discoveryConfigs(id: string, version: string): Discovery[] {
   const device = { identifiers: [`${id}_cockpit`], name: 'Slate Truck', manufacturer: 'Slate Cockpit (DIY)', model: 'Pi brain', sw_version: version };
@@ -37,6 +39,22 @@ export function discoveryConfigs(id: string, version: string): Discovery[] {
     {
       topic: `homeassistant/sensor/${id}/charge_cost_last/config`,
       payload: { name: 'Last charge cost', unique_id: `${id}_charge_cost_last`, object_id: `${id}_charge_cost_last`, state_topic: chargesTopic(id), unit_of_measurement: 'USD', device_class: 'monetary', icon: 'mdi:receipt-text', value_template: '{{ value_json.lastSessionCost }}', json_attributes_topic: chargesTopic(id), json_attributes_template: '{{ {"at": value_json.lastSessionAt, "place": value_json.lastSessionPlace} | tojson }}', ...common },
+    },
+    {
+      topic: `homeassistant/binary_sensor/${id}/charging_on_peak/config`,
+      payload: { name: 'Charging on-peak', unique_id: `${id}_charging_on_peak`, object_id: `${id}_charging_on_peak`, state_topic: stateTopic(id), device_class: 'problem', icon: 'mdi:ev-plug-type1', value_template: "{{ 'ON' if value_json.chargePeak and value_json.chargePeak.onPeak else 'OFF' }}", json_attributes_topic: stateTopic(id), json_attributes_template: '{{ {"period": value_json.chargePeak.period.name if value_json.chargePeak and value_json.chargePeak.period else none, "power_kw": value_json.chargePeak.powerKw if value_json.chargePeak else none, "estimate_usd": value_json.chargePeak.estimate if value_json.chargePeak else none} | tojson }}', ...common },
+    },
+    {
+      topic: `homeassistant/sensor/${id}/payoff_saved/config`,
+      payload: { name: 'Truck payoff: saved on gas', unique_id: `${id}_payoff_saved`, object_id: `${id}_payoff_saved`, state_topic: goalTopic(id), unit_of_measurement: 'USD', device_class: 'monetary', icon: 'mdi:piggy-bank', value_template: '{{ value_json.saved }}', json_attributes_topic: goalTopic(id), json_attributes_template: '{{ {"target": value_json.target, "this_month": value_json.thisMonth} | tojson }}', ...common },
+    },
+    {
+      topic: `homeassistant/sensor/${id}/payoff_pct/config`,
+      payload: { name: 'Truck payoff: percent paid off', unique_id: `${id}_payoff_pct`, object_id: `${id}_payoff_pct`, state_topic: goalTopic(id), unit_of_measurement: '%', state_class: 'measurement', icon: 'mdi:progress-check', value_template: '{{ value_json.pct }}', ...common },
+    },
+    {
+      topic: `homeassistant/sensor/${id}/payoff_date/config`,
+      payload: { name: 'Truck payoff: projected date', unique_id: `${id}_payoff_date`, object_id: `${id}_payoff_date`, state_topic: goalTopic(id), device_class: 'date', icon: 'mdi:calendar-check', value_template: '{{ value_json.projectedPayoff if value_json.projectedPayoff else None }}', json_attributes_topic: goalTopic(id), json_attributes_template: '{{ {"state": value_json.projectionState} | tojson }}', ...common },
     },
   ];
 }

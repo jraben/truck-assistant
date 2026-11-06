@@ -62,7 +62,8 @@ export type RemoteSettings = {
 
 export type AlertKind =
   | 'cabinHot' | 'low12v' | 'motionParked' | 'theft' | 'geofence'
-  | 'chargeStopped' | 'chargeDone' | 'unplugged' | 'tirePressure' | 'truckboxOffline';
+  | 'chargeStopped' | 'chargeDone' | 'unplugged' | 'tirePressure' | 'truckboxOffline'
+  | 'chargingPeak' | 'peakSoon';     // home charging inside an on-peak (alert) TOU period / plugged in just before one
 
 export type AlertRule = {
   enabled: boolean;

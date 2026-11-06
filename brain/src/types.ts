@@ -31,6 +31,7 @@ export type State = {
   place: { stopId: number; name: string | null; since: string } | null;
   network: NetworkStatus;
   drive: DriveState | null;         // Track A: range modes, weather, limits, lockout, heat, brightness
+  chargePeak: ChargePeak | null;    // charging during on-peak (null until the brain has looked)
 };
 
 export type NetworkStatus = {
@@ -63,7 +64,21 @@ export type DriverRef = { id: string; name: string; initials: string; color: str
 export type NowPlayingSource = 'carplay' | 'spotify' | 'radio' | 'fm' | 'plex' | 'local';
 export type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: NowPlayingSource };
 
-export type TouPeriod = { name: string; days: number[]; start: string; end: string; perKwh: number };
+/** alertOnCharging: warn when the truck charges at home inside this period (default on for a period priced above the flat / off-peak rate). */
+export type TouPeriod = { name: string; days: number[]; start: string; end: string; perKwh: number; alertOnCharging?: boolean };
+
+/** Charging at home inside an alert (on-peak) period. Part of State. */
+export type ChargePeak = {
+  charging: boolean | null;         // null = no way to tell
+  source: 'ha-power' | 'can' | 'session' | null;  // the wall charger's power sensor, the truck (future CAN), or a just-detected home session
+  powerKw: number | null;           // live, when the power sensor shows charging
+  atHome: boolean;
+  period: { name: string; start: string; end: string } | null;  // the alert period now, if any
+  onPeak: boolean;                  // charging inside an alert period: the red banner, the alert, the HA binary_sensor
+  estimate: number | null;          // USD one hour at powerKw adds in demand charges (homeRate.demandPerKw); null = unknown
+  title: string | null; message: string | null;
+  headsUp: string | null; headsUpTitle: string | null;  // plugged in at home in the 30 min before an alert period
+};
 
 export type ChargingPrefs = {
   networks: string[];
@@ -89,11 +104,13 @@ export type Settings = {
   efficiencyMiPerKwh: number;
   relays: Record<string, string>;
   keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string };
-  homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; url: string | null; token?: string };
+  homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {
     flatPerKwh: number | null;
     tou: TouPeriod[];
     fixedPerSession: number;
+    /** The plan's on-peak demand charge, $/kW (billed on the single highest on-peak hour of the month); null = none / unknown. */
+    demandPerKw?: number | null;
   };
   /** Where "home" is (within 150 m = a home charge session). */
   homeLocation: { lat: number; lon: number } | null;
@@ -104,7 +121,66 @@ export type Settings = {
   saveDataOnHotspot: boolean;
   truck: TruckLook;                 // Track A: what the truck looks like (tilt drawing)
   drive: DriveSettings;             // Track A
+  payoffGoal: PayoffGoal;           // "pay off the truck with gas savings"
   drivers: Driver[];
+};
+
+/** Truck-level: what the truck cost and from when its gas savings count. */
+export type PayoffGoal = {
+  /** USD. Default 30740.78 = the build (29,290.78) + destination (1,450); taxes and fees are not in it. */
+  target: number;
+  /** YYYY-MM-DD, the day the truck was delivered / first driven. Null = the first real truck trip's day. */
+  startDate: string | null;
+  /** true: savings = gas - every charge's cost. false: home charging is treated as free (only public/other charges are subtracted). */
+  includeHomeCharging: boolean;
+};
+
+/** A one-off line Jeff wants counted (rebate, incentive; negative for a cost). Stored in SQLite. */
+export type GoalAdjustment = { id: number; day: string; label: string; amount: number; createdAt: string };
+
+/** One local day of the payoff ledger (SQLite goal_ledger). Frozen days are never rewritten except by POST /api/goal/recalc. */
+export type GoalDay = {
+  day: string;                      // YYYY-MM-DD, local
+  trips: number;
+  miles: number; cityMiles: number; highwayMiles: number; otherMiles: number;  // other = no city/highway split, at combined mpg
+  gallons: number;
+  gasPrice: number;                 // USD/gal used for the day
+  priceSource: 'day' | 'nearest' | 'manual';  // that day's stored price, the nearest stored day's, or the manual price
+  vehicle: CompareVehicle;          // the comparison vehicle as it was when the day was computed
+  gasCost: number;
+  chargeSessions: number;
+  chargeCost: number;               // what counted (home excluded when includeHomeCharging is off)
+  chargeCostUnknown: number;        // sessions that day with no cost entered (counted as $0)
+  homeChargeExcluded: number;       // home charging $ left out because includeHomeCharging was off
+  net: number;                      // gasCost - chargeCost
+  /** USD a home charge inside an on-peak period may add as a demand charge (kW x homeRate.demandPerKw). Shown, never subtracted from net. */
+  possibleDemandCharge: number | null;
+  frozen: boolean;
+  computedAt: string;
+};
+
+export type GoalMonth = { month: string; net: number; gasCost: number; chargeCost: number; miles: number; days: number; possibleDemandCharge: number | null };  // demand: the month's highest (billed once a month)
+
+export type GoalSummary = {
+  target: number;
+  startDate: string | null;
+  startSource: 'setting' | 'first-trip' | null;
+  includeHomeCharging: boolean;
+  saved: number;                    // ledger net since startDate + every adjustment
+  ledgerSaved: number;
+  adjustmentsTotal: number;
+  pct: number;                      // saved / target x 100, not capped
+  remaining: number;
+  miles: number; gasCost: number; chargeCost: number;
+  thisMonth: number;                // ledger net this calendar month
+  avgPerMonth: number | null;       // ledger net over the last 90 days (or since start), per 30.44 days
+  daysOfData: number;               // days from startDate to today, inclusive
+  projection: { state: 'no-data' | 'not-enough-data' | 'not-saving' | 'projected' | 'paid-off'; date: string | null };
+  months: GoalMonth[];              // oldest first
+  vehicle: string;                  // the comparison vehicle now (frozen days keep their own)
+  excluded: { simulatedTrips: number; phoneTrips: number; simulatedSessions: number };
+  message: string | null;
+  computedAt: string | null;
 };
 
 export type Driver = {
@@ -153,6 +229,7 @@ export type Trip = {
   from: StopRef | null; to: StopRef | null;
   cityMiles: number | null; highwayMiles: number | null;   // Track A: null before the split was recorded
   cityKwh: number | null; highwayKwh: number | null;
+  simulated: boolean;               // recorded by a brain running SIM=1 (never counts toward the payoff goal)
 };
 
 export type StopRef = { stopId: number; name: string | null };
@@ -208,6 +285,9 @@ export type ChargeSession = {
   note: string | null;
   source: 'manual' | 'detected' | 'home-charger' | 'receipt';  // receipt: confirmed from a charging receipt email (Track B)
   driverId: string | null;
+  simulated: boolean;               // logged by a brain running SIM=1 (receipts never are: the money was real)
+  /** Set by GET /api/charges: the alert (on-peak) period the session overlapped, null if none. */
+  onPeak?: string | null;
 };
 
 export type ChargeSummary = {

@@ -17,6 +17,10 @@ export type TruckContext = {
   next: Appointment | null;
   nowPlaying: { title: string | null; artist: string | null; source: string } | null;
   network: string | null;
+  /** The on-peak charging warning (or the pre-peak heads-up), or null. */
+  chargePeak?: string | null;
+  /** "Truck payoff: $X of $Y (Z%)" from the payoff goal, or null. */
+  payoff?: string | null;
   /** WOPR's own /api/mobile/context text (calendar, tasks, dinner), or ''. */
   woprContext: string;
 };
@@ -55,6 +59,8 @@ export function truckBlock(c: TruckContext): string {
   else lines.push('  Next stop: nothing on the calendar soon');
   if (c.nowPlaying && (c.nowPlaying.title || c.nowPlaying.artist)) lines.push(`  Playing (${c.nowPlaying.source}): ${[c.nowPlaying.title, c.nowPlaying.artist].filter(Boolean).join(' by ')}`);
   if (c.network) lines.push(`  Online via: ${c.network}`);
+  if (c.chargePeak) lines.push(`  Charging alert: ${c.chargePeak}`);
+  if (c.payoff) lines.push(`  ${c.payoff}`);
   return `[TRUCK — live]\n${lines.join('\n')}`;
 }
 

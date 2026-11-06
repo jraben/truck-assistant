@@ -14,6 +14,8 @@ export type BrainView = {
   getState(): State;
   on(ev: 'change', f: () => void): unknown;
   off(ev: 'change', f: () => void): unknown;
+  /** "Truck payoff: $X of $Y (Z%)", or null before the goal has a start date. */
+  goalLine?(): string | null;
 };
 
 export const CAL_POLL_MS = 5 * 60_000;
@@ -167,6 +169,8 @@ export class WoprService {
       gps: s.gps?.fix ? { lat: s.gps.lat, lon: s.gps.lon } : null,
       speedMph: s.speedMph, soc: s.soc, socSource: s.socSource, rangeMi: s.rangeMi,
       next: this.nextStatus.next, nowPlaying: s.nowPlaying, network: s.network?.label ?? null,
+      payoff: this.brain.goalLine?.() ?? null,
+      chargePeak: s.chargePeak?.onPeak ? s.chargePeak.message : s.chargePeak?.headsUp ?? null,
       woprContext: await this.woprContext(),
     });
   }

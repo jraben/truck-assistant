@@ -8,6 +8,7 @@
 import { metersBetween } from '../geo.ts';
 import { ALERT_META } from './alertMeta.ts';
 import type { AlertKind, AlertSettings } from './types.ts';
+import type { ChargePeak } from '../types.ts';
 
 export type AlertInput = {
   now: number;
@@ -22,6 +23,8 @@ export type AlertInput = {
   position: { lat: number; lon: number } | null;
   soc: number | null;
   pluggedIn: boolean | null;        // HA charger entity, if set
+  /** State.chargePeak: charging at home inside an on-peak period, or plugged in just before one. */
+  chargePeak?: ChargePeak | null;
 };
 
 export type Fired = { kind: AlertKind; title: string; message: string; priority: 'default' | 'high' };
@@ -146,6 +149,11 @@ export class AlertEngine {
       this.charging = false;
       this.event('chargeStopped', true, now, () => ({ title: `Charging stopped at ${fmt(i.soc!)}%`, message: `The charge level hasn't risen for ${fmt(stallMin)} minutes, short of ${fmt(target)}%.`, priority: 'high' }), out);
     }
+    // On-peak charging: a level rule (repeats every cooldown, default 15 min, while it lasts); the heads-up once per window.
+    const cp = i.chargePeak ?? null;
+    this.level('chargingPeak', !!cp?.onPeak, now, () => ({ title: cp!.title ?? 'Charging on-peak', message: cp!.message ?? 'The truck is charging at home during on-peak.', priority: 'high' }), out);
+    this.level('peakSoon', !!cp?.headsUp, now, () => ({ title: cp!.headsUpTitle ?? 'On-peak soon', message: cp!.headsUp!, priority: 'default' }), out);
+
     if (i.pluggedIn !== null) {
       if (this.wasPlugged === true && i.pluggedIn === false) {
         this.event('unplugged', true, now, () => ({ title: 'Unplugged', message: `The charger was unplugged${i.soc !== null ? ` at ${fmt(i.soc)}%` : ''}.`, priority: 'default' }), out);

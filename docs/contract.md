@@ -47,7 +47,8 @@ Relay names (default, editable in settings): 1 Bed lights, 2 Light bar,
 | `slate/brain/status` | `online` / `offline` |
 | `slate/brain/state` | the JSON `state` object below, retained, at most 1/s |
 | `slate/brain/trip/ended` | a trip summary JSON (see `Trip`) |
-| `homeassistant/…/config` | HA discovery for: SoC, range, location (device_tracker), speed, charging, trip distance, now playing (title; artist/album/source as attributes), current place (stop name, "Driving" or "Unnamed stop"; since/stopId as attributes), driver (name) |
+| `slate/brain/goal` | payoff goal summary, retained (see "Payoff goal") |
+| `homeassistant/…/config` | HA discovery for: SoC, range, location (device_tracker), speed, charging, trip distance, now playing (title; artist/album/source as attributes), current place (stop name, "Driving" or "Unnamed stop"; since/stopId as attributes), driver (name), charging on-peak (binary_sensor), truck payoff (saved, percent, projected date) |
 
 ## HTTP + WebSocket (brain, port 8080)
 
@@ -146,6 +147,7 @@ type State = {
   driverSuggestion: { id: string; name: string; reason: string } | null;  // set on ignition until picked or dismissed
   place: { stopId: number; name: string | null; since: string } | null;  // the stop the truck is at; null while driving
   network: NetworkStatus;           // how the cockpit is online (docs/connectivity.md)
+  chargePeak: ChargePeak | null;    // charging at home during on-peak (see "Charging on-peak")
 };
 
 type NetworkStatus = {
@@ -175,13 +177,15 @@ type Settings = {
   homeAssistant: {
     bridge: boolean;                // publish MQTT discovery
     homeChargerEnergyEntity?: string;  // HA sensor with the wall charger's session kWh
+    homeChargerPowerEntity?: string;   // HA sensor with the wall charger's power, W or kW (see "Charging on-peak")
     url: string | null;             // e.g. http://homeassistant.local:8123 (LAN or Tailscale)
     token?: string;                 // long-lived access token; masked like keys, never logged
   };
   homeRate: {                       // home electricity, for pricing home sessions
     flatPerKwh: number | null;      // used when no TOU periods are set
-    tou: { name: string; days: number[]; start: string; end: string; perKwh: number }[];  // e.g. on-peak weekdays 16:00-19:00
+    tou: { name: string; days: number[]; start: string; end: string; perKwh: number; alertOnCharging: boolean }[];  // e.g. on-peak weekdays 16:00-19:00; see "Charging on-peak"
     fixedPerSession: number;        // default 0
+    demandPerKw: number | null;     // the plan's on-peak demand charge, $/kW (see "Charging on-peak")
   };
   compareVehicle: CompareVehicle;   // the gas vehicle you'd otherwise drive; replaces compareMpg
                                     // (an old compareMpg migrates to {id: null, label: "Custom", all three mpg = it, fuel: "regular"})
@@ -195,6 +199,7 @@ type Settings = {
   homeLocation: { lat: number; lon: number } | null;  // within 150 m = a home charge session
   homeWifi: { ssid: string; password?: string } | null;  // password masked like keys
   saveDataOnHotspot: boolean;       // default true: pause radar animation / internet radio on a phone link
+  payoffGoal: PayoffGoal;           // see "Payoff goal"
   drivers: Driver[];                // always has a Guest; seeded Jeff/Sam/Jordan when empty
 };
 
@@ -264,6 +269,7 @@ type Trip = {
   start: { lat: number; lon: number }; end: { lat: number; lon: number } | null;
   driverId: string | null;          // null = before drivers existed
   source: 'truck' | 'phone';        // phone = replayed from HA history: miles are straight lines between sparse points
+  simulated: boolean;               // recorded by a SIM=1 brain (see "Payoff goal")
   from: StopRef | null; to: StopRef | null;  // shown as "Home → Costco"
 };
 type StopRef = { stopId: number; name: string | null };   // null name = "Unnamed stop"
@@ -328,6 +334,8 @@ type ChargeSession = {
   note: string | null;
   source: 'manual' | 'detected' | 'home-charger';  // how the session was created
   driverId: string | null;          // active driver when it was logged
+  simulated: boolean;               // logged by a SIM=1 brain (receipts never are)
+  onPeak?: string | null;           // GET /api/charges only: the alert period a home session overlapped
 };
 
 type ChargeSummary = {
@@ -967,3 +975,174 @@ type MileageTotals = { trips: number; miles: number; byPurpose: Record<Purpose |
 - Discovery (the same "Slate Truck" device, when `homeAssistant.bridge`): sensors
   `maintenance_due` (count; items as attributes), `last_backup` (timestamp),
   `update_available`, `odometer_est` (mi); binary_sensor `backup_problem`.
+
+## Payoff goal: "pay off the truck with gas savings"
+
+Truck-level, permanent. Code: `brain/src/goal/` (`ledger.ts` pure math,
+`service.ts` SQLite, `routes.ts`), UI `ui/src/components/goal.tsx`.
+
+### Simulated data (`simulated` on trips and charge sessions)
+
+- `Trip.simulated: boolean` and `ChargeSession.simulated: boolean` (SQLite
+  `trips.simulated`, `charge_sessions.simulated`, INTEGER 0/1). A brain
+  running `SIM=1` sets it on every truck trip it starts and every session it
+  logs, except `source: 'receipt'` (a receipt email is real money). Phone
+  trips (`source: 'phone'`) are never marked; they never count anyway.
+- Rows from before the column existed carry no mark and cannot be told apart
+  after the fact. When the column is added on a brain started with `SIM=1`,
+  every existing truck trip and every non-receipt session is marked simulated
+  (that database was fed by the simulator). On a brain not on SIM they stay
+  unmarked; the goal still ignores everything before its start date.
+- `TripFilter.real` (brain) selects `simulated = 0`.
+
+### Settings
+
+```ts
+Settings.payoffGoal: PayoffGoal;    // PUT /api/settings {payoffGoal}
+type PayoffGoal = {
+  target: number;                   // USD, default 30740.78 (build 29,290.78 + destination 1,450; no taxes/fees)
+  startDate: string | null;         // YYYY-MM-DD, delivery / first drive; null = the first real truck trip's local day
+  includeHomeCharging: boolean;     // default true; false = home charging counts as free
+};
+```
+
+### Ledger (SQLite, in `cockpit.db`, so Track D backups carry it)
+
+- `goal_ledger`: one row per local day that has real trips or sessions, on or
+  after the start date (`GoalDay`). A day is computed only from its own trips
+  (`source` truck, `simulated` 0) and sessions (`simulated` 0): city miles at
+  the comparison vehicle's city mpg, highway at highway mpg, unsplit at
+  combined (`tripSplit`), x that day's gas price for the vehicle's grade
+  (stored HA price for the day → `day`; else the nearest stored day →
+  `nearest`; else, or with `gas.source: 'manual'`, `gas.manualPrice` →
+  `manual`). `net = gasCost - chargeCost`; sessions with no cost count $0 and
+  are counted in `chargeCostUnknown`. The vehicle is `Settings.compareVehicle`
+  (truck-level, not a driver's override) and is stored per day.
+- **Freezing:** the first refresh after a month ends computes its days one
+  last time and marks them `frozen` (`goal_months` records it). Nothing
+  rewrites a frozen day afterwards (a new comparison vehicle, gas source, or a
+  charge entered late) except `POST /api/goal/recalc`. The running month is
+  recomputed on each refresh. Moving the start date earlier fills the new
+  days of a closed month once, frozen.
+- Refreshed on start, hourly, 1.5 s after a trip ends, a charge session
+  changes, gas prices arrive or the goal/vehicle/gas settings change, and by
+  `GET /api/goal` when the last refresh is over 30 s old.
+- `goal_adjustments`: one-off amounts (rebates, incentives; negative for a
+  cost). Every adjustment counts, whatever its date.
+
+```ts
+type GoalDay = {
+  day: string; trips: number;
+  miles: number; cityMiles: number; highwayMiles: number; otherMiles: number;
+  gallons: number; gasPrice: number; priceSource: 'day' | 'nearest' | 'manual';
+  vehicle: CompareVehicle;          // as it was when the day was computed
+  gasCost: number;
+  chargeSessions: number; chargeCost: number; chargeCostUnknown: number;
+  homeChargeExcluded: number;       // home $ left out when includeHomeCharging is off
+  net: number;
+  possibleDemandCharge: number | null;  // see "Charging on-peak": shown, never subtracted
+  frozen: boolean; computedAt: string;
+};
+type GoalAdjustment = { id: number; day: string; label: string; amount: number; createdAt: string };
+type GoalMonth = { month: string; net: number; gasCost: number; chargeCost: number; miles: number; days: number; possibleDemandCharge: number | null };
+type GoalSummary = {
+  target: number; startDate: string | null; startSource: 'setting' | 'first-trip' | null;
+  includeHomeCharging: boolean;
+  saved: number;                    // ledger net since startDate (to today) + every adjustment
+  ledgerSaved: number; adjustmentsTotal: number;
+  pct: number;                      // saved / target x 100, one decimal, not capped
+  remaining: number;
+  miles: number; gasCost: number; chargeCost: number;
+  thisMonth: number;                // ledger net, this calendar month
+  avgPerMonth: number | null;       // ledger net over the last 90 days (or since start) / days x 30.44
+  daysOfData: number;               // startDate .. today inclusive
+  projection: { state: 'no-data' | 'not-enough-data' | 'not-saving' | 'projected' | 'paid-off'; date: string | null };
+                                    // projected: today + remaining / (90-day net per day), from 30 days of data
+  months: GoalMonth[];
+  vehicle: string;
+  excluded: { simulatedTrips: number; phoneTrips: number; simulatedSessions: number };  // since startDate (all, without one)
+  message: string | null;           // e.g. no real truck trips yet
+  computedAt: string | null;
+};
+```
+
+### HTTP (behind the Track D login from other devices, like every `/api` route)
+
+- `GET  /api/goal` → `GoalSummary`
+- `GET  /api/goal/ledger?from=&to=` (YYYY-MM-DD, inclusive) → `GoalDay[]`,
+  oldest first; `GET /api/goal/ledger.csv?from=&to=` the same as CSV
+- `POST /api/goal/recalc` `{confirm: true}` → `GoalSummary`: forget every day
+  (frozen too) and compute it all again with today's settings; without
+  `confirm: true` → 400
+- `GET /api/goal/adjustments` → `GoalAdjustment[]`; `POST` `{day, label, amount}`
+  → 201; `PUT /api/goal/adjustments/:id` (partial); `DELETE` → 204
+- Settings: `PUT /api/settings {payoffGoal}`
+
+### Screens, MQTT, WOPR
+
+- Charge view widget `payoffGoal` (default Charge view: `costSessions` col 7
+  row 2 w3, `payoffGoal` col 10 row 2 w3; an untouched old default view is
+  moved to it on load, a customised one is left alone). Drive screen context
+  card `goal`: parked only, after since-charge, tilt, media and trip, so it
+  never pushes one of those out. `/settings` → Charging & costs → Truck payoff goal.
+- MQTT `slate/brain/goal` (retained) `{saved, target, pct, thisMonth,
+  projectedPayoff, projectionState}`; discovery sensors `payoff_saved` (USD),
+  `payoff_pct` (%), `payoff_date` (date).
+- WOPR truck block: `  Truck payoff: $X of $Y (Z%)` once there is a start date.
+
+## Charging on-peak
+
+Alert when the truck charges at home inside an expensive TOU period. The
+point is the demand charge: Jeff's APS plan bills the single highest on-peak
+hour of the month at `demandPerKw`, so one hour at ~7.2 kW is ~$141. Code:
+`brain/src/charges/peak.ts` (pure), `Brain.updatePeak`, the Track C alert engine.
+
+### Settings
+
+- `TouPeriod.alertOnCharging: boolean`. Missing → on for a period priced above
+  `flatPerKwh` (or, with no flat rate, above the cheapest period).
+- `homeRate.demandPerKw: number | null` ($/kW, the plan's on-peak demand charge).
+- `homeAssistant.homeChargerPowerEntity?: string`: the wall charger's power
+  sensor (W or kW, by `unit_of_measurement`), read every 30 s over HA REST
+  (or from mqtt_statestream when REST isn't set up). If its attributes carry
+  a status (`status`, `charger_status`) it also tells plugged-in-not-charging.
+
+### Detection (`State.chargePeak: ChargePeak | null`)
+
+```ts
+type ChargePeak = {
+  charging: boolean | null;
+  source: 'ha-power' | 'can' | 'session' | null;
+  powerKw: number | null; atHome: boolean;
+  period: { name: string; start: string; end: string } | null;
+  onPeak: boolean;                  // charging inside an alert period
+  estimate: number | null;          // USD: powerKw x demandPerKw, whole dollars
+  title: string | null; message: string | null;
+  headsUp: string | null; headsUpTitle: string | null;
+};
+```
+
+Charging is, first available: the power sensor over 500 W (`ha-power`); the
+truck's own signal at home (`Brain.setCanCharging`, a hook for CAN); a home
+session detected in the last 10 minutes (`session`). Heads-up: at home,
+plugged in (Track C `chargerPlugEntity`, or the power sensor's status) and
+not charging, in the 30 minutes before an alert period on a day it applies.
+
+### Out
+
+- Alerts (Track C): kinds `chargingPeak` ("Charging during on-peak": hold
+  30 s, repeats every 15 min while it lasts) and `peakSoon` (the heads-up,
+  cooldown 60 min), each with its toggle on /settings → Cameras & remote →
+  Alerts. Wording: "Truck is charging at home during APS on-peak (4–7pm).
+  One hour at 7.2 kW can add about $141 in demand charges this month. Stop
+  or delay charging until 7pm." (the $ sentence only when power and
+  `demandPerKw` are known).
+- Red banner on every cockpit view (amber for the heads-up).
+- HA: binary_sensor `charging_on_peak` (device_class problem) from the state topic.
+- WOPR truck block: `  Charging alert: <message or heads-up>`.
+- `GET /api/charges` adds `onPeak: string | null` (the alert period a home
+  session overlapped); the session list shows an "on-peak" tag and a note.
+- The goal ledger uses the session's real cost and records the possible
+  demand charge (session kW, its `maxKw` or kWh / hours, x `demandPerKw`; a
+  day keeps its largest, a month its largest) as
+  `GoalDay.possibleDemandCharge`, never subtracting it.

@@ -5,7 +5,8 @@ import { DatabaseSync } from 'node:sqlite';
 
 export type Db = DatabaseSync;
 
-export function openDb(dataDir: string): Db {
+/** `sim`: this brain runs SIM=1, so rows that exist before the simulated column does were made by the simulator. */
+export function openDb(dataDir: string, opts: { sim?: boolean } = {}): Db {
   mkdirSync(dataDir, { recursive: true });
   const db = new DatabaseSync(path.join(dataDir, 'cockpit.db'));
   db.exec(`
@@ -64,9 +65,30 @@ export function openDb(dataDir: string): Db {
     CREATE TABLE IF NOT EXISTS http_cache (key TEXT PRIMARY KEY, fetched_at TEXT NOT NULL, body TEXT NOT NULL);
   `);
   // Columns added after the first release: ALTER only when missing.
+  const hadSimTrips = hasColumn(db, 'trips', 'simulated'), hadSimSessions = hasColumn(db, 'charge_sessions', 'simulated');
   addColumns(db, 'trips', { driver_id: 'TEXT', source: "TEXT NOT NULL DEFAULT 'truck'", start_stop_id: 'INTEGER', end_stop_id: 'INTEGER', city_miles: 'REAL', highway_miles: 'REAL', city_kwh: 'REAL', highway_kwh: 'REAL' });
   addColumns(db, 'charge_sessions', { driver_id: 'TEXT' });
+  addColumns(db, 'trips', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
+  addColumns(db, 'charge_sessions', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
+  // Rows from before the flag existed carry no mark. There is no reliable way to
+  // tell a simulated trip from a real one after the fact, so: a brain starting
+  // with SIM=1 when the column arrives made everything already there (truck
+  // trips and non-receipt sessions; phone trips and receipt emails are real).
+  // A brain not on SIM leaves them unmarked; the payoff goal still ignores
+  // anything before its start date (the truck's delivery day).
+  if (opts.sim && !hadSimTrips) {
+    const n = Number(db.prepare("UPDATE trips SET simulated = 1 WHERE source IS NULL OR source = 'truck'").run().changes);
+    if (n) console.log(`[db] marked ${n} existing truck trip(s) as simulated (SIM=1 when the flag was added)`);
+  }
+  if (opts.sim && !hadSimSessions) {
+    const n = Number(db.prepare("UPDATE charge_sessions SET simulated = 1 WHERE source <> 'receipt'").run().changes);
+    if (n) console.log(`[db] marked ${n} existing charge session(s) as simulated`);
+  }
   return db;
+}
+
+function hasColumn(db: Db, table: string, col: string): boolean {
+  return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some((c) => c.name === col);
 }
 
 function addColumns(db: Db, table: string, cols: Record<string, string>) {

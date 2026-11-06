@@ -160,6 +160,7 @@ export class RemoteService {
       this.plugPolledAt = now;
       try { const e = await this.brain.ha.state(s.alerts.chargerPlugEntity); this.pluggedIn = ['on', 'true', 'plugged', 'connected', 'charging'].includes(e.state.toLowerCase()) ? true : ['off', 'false', 'unplugged', 'disconnected', 'available'].includes(e.state.toLowerCase()) ? false : null; }
       catch { this.pluggedIn = null; }
+      this.brain.setPluggedIn(this.pluggedIn);
     }
 
     const tpms = st.tpms ? (['fl', 'fr', 'rl', 'rr'] as const).flatMap((w) => (st.tpms![w].psi !== null ? [{ wheel: w, psi: st.tpms![w].psi! }] : [])) : [];
@@ -168,6 +169,7 @@ export class RemoteService {
       cabinTempF: st.cabinTempF ?? this.watch.cabinTempF, aux12v: st.aux12v ?? this.watch.aux12v,
       tpms, truckboxOnline: st.truckbox, truckboxOfflineSince: this.truckboxOfflineSince,
       motion: this.motion, theft, position: pos, soc: st.soc, pluggedIn: this.pluggedIn,
+      chargePeak: st.chargePeak,
     });
     this.motion = null;
     for (const f of fired) void this.deliver(f);

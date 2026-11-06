@@ -180,6 +180,15 @@ input[type="range"].soc { width: 100%; height: 56px; accent-color: var(--accent)
 .bars .b.cur i { outline: 1px solid var(--fg); }
 .bars-x { display: flex; gap: 4px; font-family: var(--mono); font-size: 10px; color: var(--dim); }
 .bars-x span { flex: 1; text-align: center; }
+.goalbar { display: block; height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 12%, transparent); overflow: hidden; }
+.goalbar i { display: block; height: 100%; background: var(--ok); border-radius: inherit; }
+.goalbars { height: 44px; }
+.goalbars .b i { background: var(--ok); }
+.goalbars .b i.neg { background: var(--bad); }
+table.ledger th { text-align: left; font-weight: 500; color: var(--dim); padding: 4px; }
+table.ledger tr.mrow td { border-top: 1px solid var(--line); }
+.peakbanner { position: fixed; left: 50%; top: 8px; transform: translateX(-50%); z-index: 60; width: min(1100px, calc(100vw - 32px)); display: flex; gap: 12px; align-items: center; font-size: 18px; }
+.peakbanner b { white-space: nowrap; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; }
 .kv span:nth-child(even) { font-family: var(--mono); text-align: right; }
 

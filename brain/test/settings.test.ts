@@ -118,7 +118,8 @@ describe('migration from flat settings', () => {
     expect(s.relays.relay_2).toBe('Whip');
     expect(s.keys.afdc).toBe('AFDCKEY123456');
     expect(s.homeAssistant).toEqual({ bridge: false, homeChargerEnergyEntity: 'sensor.emporia_session_energy', url: null });
-    expect(s.homeRate).toEqual(OLD_FILE.homeRate);
+    // migrated: no demand charge yet; a period above the flat rate alerts on charging by default
+    expect(s.homeRate).toEqual({ ...OLD_FILE.homeRate, demandPerKw: null, tou: OLD_FILE.homeRate.tou.map((t) => ({ ...t, alertOnCharging: true })) });
     expect(s.homeLocation).toEqual(OLD_FILE.homeLocation);
     // the rest of the family gets defaults
     expect(s.drivers.map((d) => d.id)).toEqual(['jeff', 'sam', 'jordan', 'guest']);
@@ -158,7 +159,7 @@ describe('truck box topics', () => {
   const blank = (): State => ({
     ts: '', speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null, ignition: null, reverse: null,
     cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: { relay_1: { name: 'Bed lights', on: null } }, fiveSwitch: [null, null, null, null, null], trip: null, truckbox: false, nowPlaying: null,
-    driver: null, driverSuggestion: null, place: null, network: null as unknown as State['network'], drive: null,
+    driver: null, driverSuggestion: null, place: null, network: null as unknown as State['network'], drive: null, chargePeak: null,
   });
   it('parses ESPHome topics and derives gear R from reverse', () => {
     const s = blank(); const tilt = { pitch: null, roll: null };

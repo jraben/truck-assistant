@@ -128,7 +128,7 @@ describe('receipt drafts', () => {
   });
 
   it('matchSession: only detected, non-home, unpriced sessions within 3 h', () => {
-    const base = { endedAt: null, network: null, stationName: null, lat: null, lon: null, kwh: null, costSource: null, startSoc: null, endSoc: null, maxKw: null, note: null, driverId: null } as const;
+    const base = { endedAt: null, network: null, stationName: null, lat: null, lon: null, kwh: null, costSource: null, startSoc: null, endSoc: null, maxKw: null, note: null, driverId: null, simulated: false } as const;
     const s = (id: number, startedAt: string, extra: Partial<ChargeSession>): ChargeSession => ({ ...base, id, startedAt, place: 'public', cost: null, source: 'detected', ...extra });
     const list = [
       s(1, '2026-11-02T10:00:00Z', { place: 'home' }),

@@ -2,7 +2,7 @@
 // Charge view) and charge sessions/summary.
 import { useEffect } from 'preact/hooks';
 import { useState } from 'preact/hooks';
-import { api, stateStore, useStore, type Charger, type ChargeSession, type ChargeSummary, type GasStatus } from './brain.ts';
+import { api, stateStore, useStore, type Charger, type ChargeSession, type ChargeSummary, type GasStatus, type GoalSummary } from './brain.ts';
 
 type ChargerState = { list: Charger[]; message: string | null; loading: boolean; at: number; lat: number | null; lon: number | null };
 const chargerStore = (() => {
@@ -105,4 +105,26 @@ export async function saveSession(id: number | null, body: Partial<ChargeSession
 export async function deleteSession(id: number) {
   await api(`/api/charges/${id}`, { method: 'DELETE', headers: {} });
   await refreshCharges();
+}
+
+// ---- payoff goal (GET /api/goal), one fetch for the Charge card, the Drive card and /settings ----
+type GoalState = { g: GoalSummary | null; error: string | null; at: number };
+const goalStore = (() => {
+  let v: GoalState = { g: null, error: null, at: 0 };
+  const subs = new Set<() => void>();
+  return { get: () => v, set: (n: GoalState) => { v = n; subs.forEach((f) => f()); }, sub: (f: () => void) => { subs.add(f); return () => subs.delete(f); } };
+})();
+
+export async function refreshGoal() {
+  try { goalStore.set({ g: await api<GoalSummary>('/api/goal'), error: null, at: Date.now() }); }
+  catch (e) { goalStore.set({ ...goalStore.get(), error: (e as Error).message }); }
+}
+
+let goalPolling = false;
+export function useGoal() {
+  const v = useStore(goalStore);
+  useEffect(() => {
+    if (!goalPolling) { goalPolling = true; void refreshGoal(); setInterval(() => void refreshGoal(), 60_000); }
+  }, []);
+  return v;
 }

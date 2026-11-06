@@ -148,7 +148,7 @@ class FakeBrain extends EventEmitter implements BrainView {
     ignition: false, reverse: false, cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: {}, fiveSwitch: [], trip: null, truckbox: false,
     nowPlaying: null, driver: { id: 'jeff', name: 'Jeff', initials: 'J', color: '#fff' }, driverSuggestion: null, place: null,
     network: { link: 'home', label: 'HOME WI-FI', ssid: 'x', driverId: null, signal: 90, manual: false, saveData: false, bytesThisTrip: 0, bytesThisMonth: {}, backend: 'sim', bluetooth: 'supported', error: null },
-    drive: null,
+    drive: null, chargePeak: null,
   };
   getState() { return this.s; }
 }

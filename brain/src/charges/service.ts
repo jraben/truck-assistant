@@ -3,7 +3,7 @@ import { metersBetween } from '../geo.ts';
 import type { ChargeSession, Settings } from '../types.ts';
 import type { SocChange } from '../soc.ts';
 import type { Station } from '../chargers/score.ts';
-import { ChargeInputError, ChargeStore, type SessionInput } from './store.ts';
+import { ChargeInputError, ChargeStore, type NewSession, type SessionInput } from './store.ts';
 import { kwhFromSoc, priceHomeSession } from './pricing.ts';
 import { periodKey } from './summary.ts';
 
@@ -64,7 +64,7 @@ export class ChargeService {
     const prevAt = c.prevAt ? Date.parse(c.prevAt) : NaN;
     const startedAt = new Date(Number.isFinite(prevAt) && now.getTime() - prevAt < MAX_LOOKBACK_MS ? prevAt : now.getTime());
     const st = !home && ctx.gps ? ctx.nearestStation(ctx.gps.lat, ctx.gps.lon) : null;
-    const session: Omit<ChargeSession, 'id'> = {
+    const session: NewSession = {
       startedAt: startedAt.toISOString(), endedAt: now.toISOString(),
       place: home ? 'home' : st ? 'public' : 'other',
       network: st?.network ?? null, stationName: st?.name ?? null,
