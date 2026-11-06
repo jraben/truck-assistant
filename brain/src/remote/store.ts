@@ -149,7 +149,8 @@ export function validateRemote(s: RemoteSettings): RemoteSettings {
   if (!isObj(gf) || !Array.isArray(gf.zones)) throw new RemoteSettingsError('alerts.geofence.zones must be a list');
   gf.zones = gf.zones.map((z, i) => {
     if (!isObj(z) || typeof z.name !== 'string' || !z.name.trim()) throw new RemoteSettingsError(`geofence zone ${i + 1} needs a name`);
-    return { name: z.name.trim().slice(0, 30), lat: num(z.lat, `zone ${i + 1} lat`, -90, 90), lon: num(z.lon, `zone ${i + 1} lon`, -180, 180), radiusM: num(z.radiusM ?? 150, `zone ${i + 1} radiusM`, 20, 50_000) };
+    if (typeof z.lat !== 'number' || !Number.isFinite(z.lat) || typeof z.lon !== 'number' || !Number.isFinite(z.lon)) throw new RemoteSettingsError(`geofence "${z.name.trim()}": pick a saved place or search an address`);
+    return { name: z.name.trim().slice(0, 30), lat: num(z.lat, `zone ${i + 1} lat`, -90, 90), lon: num(z.lon, `zone ${i + 1} lon`, -180, 180), radiusM: num(z.radiusM ?? 150, `zone ${i + 1} radiusM`, 20, 50_000), where: typeof z.where === 'string' && z.where.trim() ? z.where.trim().slice(0, 120) : null };
   });
   if (!HHMM.test(gf.quietStart) || !HHMM.test(gf.quietEnd)) throw new RemoteSettingsError('geofence quiet hours must be HH:MM, 24-hour');
   num(a.chargeTargetSoc, 'alerts.chargeTargetSoc', 1, 100);

@@ -56,6 +56,24 @@ export class Geocoder {
     return run;
   }
 
+  /** Address or place search (Nominatim /search), for picking a geofence by name. Up to 5 hits; [] offline. */
+  search(q: string): Promise<{ name: string; lat: number; lon: number }[]> {
+    const run = this.chain.then(async () => {
+      const wait = this.lastAt + MIN_INTERVAL_MS - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      this.lastAt = Date.now();
+      const url = `${NOMINATIM.replace(/reverse$/, 'search')}?format=jsonv2&limit=5&countrycodes=us&q=${encodeURIComponent(q.slice(0, 120))}`;
+      try {
+        const res = await this.fetchFn(url, { headers: { 'user-agent': this.userAgent, accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+        if (!res.ok) return [];
+        const rows = await res.json() as { display_name?: string; lat?: string; lon?: string }[];
+        return (Array.isArray(rows) ? rows : []).filter((r) => r.lat && r.lon).map((r) => ({ name: String(r.display_name ?? '').split(',').slice(0, 3).join(',').trim(), lat: Number(r.lat), lon: Number(r.lon) }));
+      } catch { return []; }
+    });
+    this.chain = run.catch(() => {});
+    return run;
+  }
+
   private async fetchOne(lat: number, lon: number): Promise<string | null | undefined> {
     const again = this.cached(lat, lon);
     if (again.hit) return again.name;

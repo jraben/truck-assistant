@@ -20,6 +20,9 @@ export const config = {
   dataDir: path.resolve(process.env.DATA_DIR ?? './data'),
   sim: flag(process.env.SIM),
   /** Seconds of simulated driving per real second (SIM only). */
+  /** SIM only: push automatic alerts and maintenance reminders to the phone. Off by
+   *  default, so a simulated truck's "cabin hot" / "moved" alerts don't reach Jeff. */
+  simAlerts: flag(process.env.SIM_ALERTS),
   simSpeedup: Math.max(1, Number(process.env.SIM_SPEEDUP ?? 1) || 1),
   mqttUrl: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
   mqttDisabled: flag(process.env.MQTT_DISABLED),

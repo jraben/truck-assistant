@@ -179,6 +179,7 @@ export class OpsService {
     const m = this.store.get().maintenance;
     const s = this.brain.settings.get();
     if (!m.notifyService || !s.homeAssistant.url || !s.homeAssistant.token) return;
+    if (config.sim && !config.simAlerts) return;   // SIM: a simulated odometer's reminders stay on screen
     const now = new Date();
     if (now.getHours() < 9 || now.getHours() >= 21) return;
     const today = now.toDateString();

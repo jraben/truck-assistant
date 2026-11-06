@@ -184,6 +184,12 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     return { date, items };
   });
   app.get<{ Querystring: { driver?: string } }>('/api/places', async (req) => brain.stops.placesWithVisits(optStr(req.query.driver)));
+  app.get<{ Querystring: { q?: string } }>('/api/geocode/search', async (req, reply) => {
+    const q = String(req.query.q ?? '').trim();
+    if (q.length < 3) return reply.code(400).send({ error: 'type at least 3 letters' });
+    const r = brain.stops.searchAddress(q);
+    return r ? { results: await r } : reply.code(503).send({ error: 'address search is off (GEOCODE_DISABLED)' });
+  });
   app.get<{ Querystring: { driver?: string } }>('/api/places/suggestions', async (req) => brain.stops.suggestions(optStr(req.query.driver)));
   app.post('/api/places', async (req, reply) => {
     try { return reply.code(201).send(brain.stops.createPlace(req.body ?? {}, brain.activeDriver().id).place); }

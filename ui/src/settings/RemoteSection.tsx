@@ -13,6 +13,46 @@ const ROLES: CameraConfig['role'][] = ['rear', 'front', 'bed', 'hitch', '360', '
 
 const newCam = (n: number): CameraConfig => ({ id: `cam${n}`, name: `Camera ${n}`, role: 'other', source: 'uvc', device: '/dev/video0', url: null, width: 1280, height: 720, fps: 30, inputFormat: 'mjpeg', enabled: true, record: false, guides: false, mirror: false });
 
+type PlaceOpt = { id: number; name: string; lat: number; lon: number };
+type Zone = RemoteSettings['alerts']['geofence']['zones'][number];
+const MI = 1609.344;
+const toMi = (m: number) => String(Number((m / MI).toFixed(2)));
+const fromMi = (v: string) => (v.trim() === '' ? NaN : Math.round(Number(v) * MI));
+
+/** One geofence: a name, a place (saved place or address search; no lat/long typing), a radius in miles. */
+function ZoneRow({ z, places, set, remove }: { z: Zone; places: PlaceOpt[]; set: (f: (z: Zone) => void) => void; remove: () => void }) {
+  const [q, setQ] = useState('');
+  const [hits, setHits] = useState<{ name: string; lat: number; lon: number }[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const pick = (name: string, lat: number, lon: number) => { set((x) => { x.lat = lat; x.lon = lon; x.where = name; }); setHits(null); setQ(''); };
+  const search = async () => {
+    setErr(null);
+    try { const r = await rapi<{ results: { name: string; lat: number; lon: number }[] }>(`/api/geocode/search?q=${encodeURIComponent(q)}`); setHits(r.results); if (!r.results.length) setErr('nothing found'); }
+    catch (e) { setErr((e as Error).message); }
+  };
+  const where = z.where ?? (Number.isFinite(z.lat) ? places.find((p) => Math.abs(p.lat - z.lat) < 1e-4 && Math.abs(p.lon - z.lon) < 1e-4)?.name ?? 'a spot set earlier' : 'not picked yet');
+  return (
+    <div class="card" style="padding:10px;margin:6px 0">
+      <div class="row wrap">
+        <label class="f"><span>Name</span><input type="text" style="max-width:160px" value={z.name} onInput={(e) => set((x) => { x.name = (e.target as HTMLInputElement).value; })} /></label>
+        <label class="f"><span>Radius, miles</span><input type="number" step="0.05" min="0.02" style="max-width:100px" value={toMi(z.radiusM)} onChange={(e) => set((x) => { x.radiusM = fromMi((e.target as HTMLInputElement).value); })} /></label>
+        <button class="btn sm danger" type="button" onClick={remove}>Remove</button>
+      </div>
+      <div class="row wrap">
+        <span class="help">At: <b>{where}</b></span>
+        <select onChange={(e) => { const p = places.find((x) => String(x.id) === (e.target as HTMLSelectElement).value); if (p) pick(p.name, p.lat, p.lon); }}>
+          <option value="">Saved place…</option>
+          {places.map((p) => <option value={String(p.id)}>{p.name}</option>)}
+        </select>
+        <input type="text" placeholder="or search an address" style="max-width:220px" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void search(); } }} />
+        <button class="btn sm" type="button" disabled={q.trim().length < 3} onClick={() => void search()}>Search</button>
+      </div>
+      {err ? <p class="help">{err}</p> : null}
+      {hits?.length ? <div class="row wrap">{hits.map((h) => <button class="btn sm" type="button" onClick={() => pick(h.name, h.lat, h.lon)}>{h.name}</button>)}</div> : null}
+    </div>
+  );
+}
+
 export function RemoteSection() {
   const [saved, setSaved] = useState<RemoteSettings | null>(null);
   const [d, setD] = useState<RemoteSettings | null>(null);
@@ -21,6 +61,8 @@ export function RemoteSection() {
   const [link, setLink] = useState<string | null>(null);
   const [denied, setDenied] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [places, setPlaces] = useState<PlaceOpt[]>([]);
+  useEffect(() => { void rapi<PlaceOpt[]>('/api/places').then(setPlaces).catch(() => setPlaces([])); }, []);
 
   const load = async () => {
     try { const s = await rapi<RemoteSettings>('/api/remote/settings'); setSaved(s); setD(structuredClone(s)); setDenied(null); }
@@ -131,7 +173,9 @@ export function RemoteSection() {
                 return (
                   <tr>
                     <td><label class="check" style="border:0;padding:0"><input type="checkbox" checked={r.enabled} onChange={(e) => up((x) => { x.alerts.rules[k].enabled = (e.target as HTMLInputElement).checked; })} /> {m.label}</label></td>
-                    <td>{m.unit ? <label class="f"><span>{m.unit}</span><input type="number" step="0.1" style="width:90px" value={r.threshold ?? ''} onInput={(e) => up((x) => { x.alerts.rules[k].threshold = num((e.target as HTMLInputElement).value); })} /></label> : null}</td>
+                    <td>{m.unit === 'm'
+                      ? <label class="f"><span>miles</span><input type="number" step="0.05" min="0.05" style="width:90px" value={r.threshold === null ? '' : toMi(r.threshold)} onChange={(e) => up((x) => { x.alerts.rules[k].threshold = fromMi((e.target as HTMLInputElement).value); })} /></label>
+                      : m.unit ? <label class="f"><span>{m.unit}</span><input type="number" step="0.1" style="width:90px" value={r.threshold ?? ''} onInput={(e) => up((x) => { x.alerts.rules[k].threshold = num((e.target as HTMLInputElement).value); })} /></label> : null}</td>
                     <td><label class="f"><span>hold s</span><input type="number" style="width:80px" value={r.holdSec} onInput={(e) => up((x) => { x.alerts.rules[k].holdSec = num((e.target as HTMLInputElement).value); })} /></label></td>
                     <td><label class="f"><span>cooldown min</span><input type="number" style="width:90px" value={r.cooldownMin} onInput={(e) => up((x) => { x.alerts.rules[k].cooldownMin = num((e.target as HTMLInputElement).value); })} /></label></td>
                   </tr>
@@ -151,17 +195,14 @@ export function RemoteSection() {
           <label class="f"><span>to</span><input type="text" value={d.alerts.geofence.quietEnd} onInput={(e) => up((x) => { x.alerts.geofence.quietEnd = (e.target as HTMLInputElement).value; })} /></label>
         </div>
         <h3 class="sub">Geofences</h3>
+        <p class="help">Pick a saved place or search an address. Radius is in miles.</p>
         {d.alerts.geofence.zones.map((z, i) => (
-          <div class="row wrap">
-            <input type="text" style="max-width:160px" value={z.name} onInput={(e) => up((x) => { x.alerts.geofence.zones[i].name = (e.target as HTMLInputElement).value; })} />
-            <input type="number" step="0.00001" style="max-width:140px" value={z.lat} onInput={(e) => up((x) => { x.alerts.geofence.zones[i].lat = num((e.target as HTMLInputElement).value); })} />
-            <input type="number" step="0.00001" style="max-width:140px" value={z.lon} onInput={(e) => up((x) => { x.alerts.geofence.zones[i].lon = num((e.target as HTMLInputElement).value); })} />
-            <input type="number" style="max-width:100px" value={z.radiusM} onInput={(e) => up((x) => { x.alerts.geofence.zones[i].radiusM = num((e.target as HTMLInputElement).value); })} />
-            <button class="btn sm danger" type="button" onClick={() => up((x) => { x.alerts.geofence.zones.splice(i, 1); })}>Remove</button>
-          </div>
+          <ZoneRow z={z} places={places}
+            set={(f) => up((x) => { f(x.alerts.geofence.zones[i]); })}
+            remove={() => up((x) => { x.alerts.geofence.zones.splice(i, 1); })} />
         ))}
         <div class="row wrap">
-          <button class="btn sm" type="button" onClick={() => up((x) => { x.alerts.geofence.zones.push({ name: 'Home', lat: 33.4990, lon: -111.9800, radiusM: 150 }); })}>+ Add geofence</button>
+          <button class="btn sm" type="button" onClick={() => up((x) => { const home = places.find((p) => /home/i.test(p.name)) ?? places[0]; x.alerts.geofence.zones.push(home ? { name: home.name, lat: home.lat, lon: home.lon, radiusM: 150, where: home.name } : { name: 'Home', lat: NaN, lon: NaN, radiusM: 150, where: null }); })}>+ Add geofence</button>
           <button class="btn sm" type="button" onClick={() => void test()}>Send a test alert</button>
         </div>
       </section>

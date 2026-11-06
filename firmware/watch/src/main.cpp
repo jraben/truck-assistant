@@ -304,8 +304,9 @@ static void ntfy(const String &title, const String &msg) {
   at("+SHDISC");
 }
 
-static void alert(const char *kind, const String &title, const String &message) {
-  String j = String("{\"kind\":\"") + kind + "\",\"title\":\"" + esc(title) + "\",\"message\":\"" + esc(message) + "\",\"ts\":" + String((long)now()) + "}";
+// `url` (optional): where a tap on the push goes, e.g. a map of where the truck is now.
+static void alert(const char *kind, const String &title, const String &message, const String &url = "") {
+  String j = String("{\"kind\":\"") + kind + "\",\"title\":\"" + esc(title) + "\",\"message\":\"" + esc(message) + "\"" + (url.length() ? String(",\"url\":\"") + esc(url) + "\"" : String("")) + ",\"ts\":" + String((long)now()) + "}";
   publish(String(MQTT_PREFIX) + "/alert", j, false);
   ntfy(title, message);
 }
@@ -415,7 +416,11 @@ static bool checkAlerts() {
         moved = true;
         if (t - lastMovedAlert > COOLDOWN_MOVED_S) {
           lastMovedAlert = t;
-          alert("theft", "Truck moved", String("The truck is ") + String((int)m) + " m from where it parked" + (tb.ok ? ", ignition off" : ", and the truck box isn't answering") + ". Now at " + String(fix.lat, 5) + ", " + String(fix.lon, 5) + ".");
+          // Miles, not meters; no coordinates in the text: the tap opens a map of where it is now.
+          float mi = m / 1609.344f;
+          String dist = mi < 0.1f ? String((int)(m * 3.28084f / 10) * 10) + " ft" : String(mi, 1) + " mi";
+          alert("theft", "Truck moved", String("The truck is ") + dist + " from where it parked" + (tb.ok ? ", ignition off" : ", and the truck box isn't answering") + ". Tap to see where it is.",
+                String("https://maps.apple.com/?q=Truck&ll=") + String(fix.lat, 5) + "," + String(fix.lon, 5));
         }
       }
     }

@@ -23,6 +23,8 @@ services:
       # No truck here: SIM=1 drives a simulated truck so the screens have data.
       # Set SIM=0 to run with only real connections (HA, WOPR, phone history).
       SIM: ${SLATE_SIM:-1}
+      # SIM alerts are logged, not pushed to the phone. SLATE_SIM_ALERTS=1 sends them.
+      SIM_ALERTS: ${SLATE_SIM_ALERTS:-0}
       TZ: America/Phoenix
       # The NAS has a real wired network: don't simulate the truck's Wi-Fi/hotspot
       # (that would read OFFLINE and stop WOPR, weather and radar).

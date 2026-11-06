@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AlertEngine, inQuietHours, type AlertInput } from '../src/remote/alerts.ts';
+import { AlertEngine, inQuietHours, miles, type AlertInput } from '../src/remote/alerts.ts';
 import { PowerManager, VIEWER_TTL_MS } from '../src/remote/power.ts';
 import { theftCheck } from '../src/remote/theft.ts';
 import { defaultRemote, maskRemote, mergeRemote, RemoteSettingsError, loadRemote } from '../src/remote/store.ts';
@@ -293,5 +293,22 @@ describe('alert delivery', () => {
     const none = await new Notifier(async () => ({ ok: true, status: 200 })).send(out, defaultSettings(), defaultRemote(false).alerts);
     expect(none.delivered).toEqual([]);
     expect(none.error).toContain('no delivery set up');
+  });
+});
+
+describe('alert text: miles and place names, not meters and coordinates', () => {
+  it('formats distances in miles (feet under a tenth)', () => {
+    expect(miles(483)).toBe('0.3 mi');
+    expect(miles(40)).toBe('130 ft');
+    expect(miles(32_000)).toBe('20 mi');
+  });
+  it('the theft alert names the place and has no coordinates', () => {
+    const e = new AlertEngine(defaultRemote().alerts);
+    const out = e.evaluate(input({ theft: { movedM: 805, at: { lat: 33.5, lon: -111.9 }, place: 'Fashion Square', why: 'with no driver phone nearby' } }));
+    const t = out.find((f) => f.kind === 'theft')!;
+    expect(t.message).toContain('0.5 mi');
+    expect(t.message).toContain('at Fashion Square');
+    expect(t.message).not.toMatch(/-?\d+\.\d{4,}/);
+    expect(t.message).not.toMatch(/\d m/);
   });
 });

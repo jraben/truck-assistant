@@ -116,6 +116,9 @@ automation:
           data:
             tag: "slate-{{ trigger.payload_json.kind }}"
             push: { interruption-level: time-sensitive }
+            # "Truck moved" carries a map link of where it is now (the text has no coordinates)
+            url: "{{ trigger.payload_json.url | default('') }}"
+            clickAction: "{{ trigger.payload_json.url | default('') }}"
 ```
 
 Owners without HA set `NTFY_HOST`/`NTFY_TOPIC` in the watch's `secrets.h`: it

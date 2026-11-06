@@ -62,6 +62,21 @@ export class StopService extends EventEmitter {
     return n;
   }
 
+  /** A name for any point, for alert text: your places and zones, else OpenStreetMap
+   *  (cached; at most `waitMs` here). null when nothing names it. */
+  async placeName(p: { lat: number; lon: number }, waitMs = 4000): Promise<string | null> {
+    const local = resolveName(p as Stop, this.tiers());
+    if (local?.name) return local.name;
+    if (!this.geocoder) return null;
+    const timeout = new Promise<undefined>((r) => setTimeout(() => r(undefined), waitMs));
+    return (await Promise.race([this.geocoder.lookup(p.lat, p.lon), timeout])) ?? null;
+  }
+
+  /** Address search for pickers. null = no geocoder (GEOCODE_DISABLED). */
+  searchAddress(q: string): Promise<{ name: string; lat: number; lon: number }[]> | null {
+    return this.geocoder ? this.geocoder.search(q) : null;
+  }
+
   /** Name one stop now, and queue the geocoder if nothing local matched. */
   nameStop(id: number): Stop | null {
     const s = this.stops.get(id);

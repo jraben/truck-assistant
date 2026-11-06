@@ -9,6 +9,7 @@ import { CamManager, go2rtcConfigPath } from '../cams/manager.ts';
 import { Dashcam } from '../cams/dashcam.ts';
 import { AlertEngine, type AlertInput, type Fired } from './alerts.ts';
 import { remoteConfig } from './config.ts';
+import { config } from '../config.ts';
 import { Notifier } from './notify.ts';
 import { PowerManager } from './power.ts';
 import { RemoteStore } from './store.ts';
@@ -152,7 +153,7 @@ export class RemoteService {
       if (first.kind !== 'ok') {
         const v = theftCheck({ park: this.park, pos, ignition: st.ignition, driversNear: await this.driversNear(pos), radiusM });
         if (v.kind === 'drive') { console.log(`[theft] moved ${Math.round(v.movedM)} m with ${v.drivers.join(', ')}: a drive, re-armed later`); this.setPark(null); }
-        else if (v.kind === 'theft') theft = { movedM: v.movedM, at: pos, why: v.why };
+        else if (v.kind === 'theft') theft = { movedM: v.movedM, at: pos, place: await this.brain.stops.placeName(pos), why: v.why };
       }
     }
 
@@ -207,6 +208,9 @@ export class RemoteService {
   // ---- alerts ----------------------------------------------------------------
 
   private async deliver(f: Fired) {
+    // SIM: the simulated truck's alerts go in the log but not to the phone (SIM_ALERTS=1 sends them).
+    // The settings page's Test alert still sends: that is a person asking for one.
+    if (this.sim && !config.simAlerts) { this.record(f, 'brain', { delivered: [], error: 'SIM: not sent to the phone (SIM_ALERTS=1 sends)' }); return; }
     const r = await this.notifier.send({ ...f, clickUrl: null }, this.brain.settings.get(), this.store.get().alerts);
     const a = this.record(f, 'brain', r);
     console.log(`[alerts] ${f.kind}: ${f.title} -> ${a.delivered.join(', ') || 'not delivered'}${a.error ? ` (${a.error})` : ''}`);

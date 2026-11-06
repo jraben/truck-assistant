@@ -19,7 +19,7 @@ export type AlertInput = {
   truckboxOnline: boolean;
   truckboxOfflineSince: number | null;      // ms; null while online or never seen
   motion: { camera: string | null; how: string } | null;   // a motion/vibration event since the last call
-  theft: { movedM: number; at: { lat: number; lon: number }; why: string } | null;  // from theft.ts, already decided
+  theft: { movedM: number; at: { lat: number; lon: number }; place: string | null; why: string } | null;  // from theft.ts, already decided
   position: { lat: number; lon: number } | null;
   soc: number | null;
   pluggedIn: boolean | null;        // HA charger entity, if set
@@ -32,6 +32,8 @@ export type Fired = { kind: AlertKind; title: string; message: string; priority:
 type RuleState = { since: number | null; lastFired: number | null; latched: boolean };
 
 const fmt = (n: number, d = 0) => n.toFixed(d);
+/** Meters as miles for alert text: "0.3 mi", "12 mi"; under a tenth reads as feet. */
+export const miles = (m: number) => { const mi = m / 1609.344; return mi < 0.1 ? `${Math.round(m * 3.28084 / 10) * 10} ft` : `${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi`; };
 
 /** Inside "HH:MM".."HH:MM" (may cross midnight)? */
 export function inQuietHours(now: number, start: string, end: string): boolean {
@@ -115,7 +117,7 @@ export class AlertEngine {
     }), out);
 
     this.event('theft', i.theft !== null, now, () => ({
-      title: 'Truck moved', message: `The truck moved ${Math.round(i.theft!.movedM)} m from where it was parked, ${i.theft!.why}. Now at ${i.theft!.at.lat.toFixed(5)}, ${i.theft!.at.lon.toFixed(5)}.`, priority: 'high',
+      title: 'Truck moved', message: `The truck moved ${miles(i.theft!.movedM)} from where it was parked, ${i.theft!.why}. Now ${i.theft!.place ? `at ${i.theft!.place}` : 'at an unnamed spot (see the Truck page map)'}.`, priority: 'high',
     }), out);
 
     // Geofence: left a zone while inside the quiet hours.

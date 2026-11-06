@@ -74,7 +74,7 @@ export type AlertRule = {
 
 export type AlertSettings = {
   rules: Record<AlertKind, AlertRule>;
-  geofence: { zones: { name: string; lat: number; lon: number; radiusM: number }[]; quietStart: string; quietEnd: string };  // "unusual hour" = inside quietStart..quietEnd
+  geofence: { zones: { name: string; lat: number; lon: number; radiusM: number; where?: string | null }[]; quietStart: string; quietEnd: string };  // "unusual hour" = inside quietStart..quietEnd
   chargeTargetSoc: number;          // a charge that stops below this is "stopped early"
   chargerPlugEntity: string | null; // optional HA binary_sensor: the wall charger's "plugged in" (for Unplugged)
   delivery: {
