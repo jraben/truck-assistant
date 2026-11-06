@@ -17,7 +17,7 @@ import { PlexError, PlexService } from './media/plex.ts';
 import { LocalError, LocalService } from './media/local.ts';
 import { FmService } from './media/fm.ts';
 import { AirStreams, type AirStation } from './media/airstreams.ts';
-import { WoprError } from './wopr/client.ts';
+import { WoprError, woprJson } from './wopr/client.ts';
 import { WoprService } from './wopr/service.ts';
 import type { ChatMsg } from './wopr/primer.ts';
 import { ReceiptError, ReceiptService } from './receipts/service.ts';
@@ -254,6 +254,14 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
     try { return await wopr.checkGate(brain.getState().place?.stopId ?? null, true); } catch (e) { return fail(reply, e); }
   });
   app.post('/api/wopr/gate/dismiss', async () => { wopr.dismissGate(); return { ok: true }; });
+  // The mailbox (WOPR's USPS Informed Delivery read): delivered / coming today / collected.
+  app.get('/api/wopr/usps', async (_req, reply) => {
+    reply.header('cache-control', 'no-store');
+    try { return await woprJson(media.get().wopr, '/api/usps', { timeoutMs: 10_000 }); } catch (e) { return fail(reply, e); }
+  });
+  app.post('/api/wopr/usps/collected', async (_req, reply) => {
+    try { return await woprJson(media.get().wopr, '/api/usps', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ack: true }), timeoutMs: 10_000 }); } catch (e) { return fail(reply, e); }
+  });
   app.post('/api/wopr/tts', async (req, reply) => {
     const text = q((req.body as { text?: string } | null)?.text);
     if (!text) return reply.code(400).send({ error: 'text is required' });

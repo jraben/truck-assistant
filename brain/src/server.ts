@@ -17,7 +17,8 @@ import { registerTrackB } from './trackb.ts';
 import { PlaceInputError } from './stops/service.ts';
 import { ImportError } from './import/phone.ts';
 import { VehicleError, type MenuLevel } from './gas/vehicles.ts';
-import { NOT_CONFIGURED } from './ha/client.ts';
+import { HaError, NOT_CONFIGURED } from './ha/client.ts';
+import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { registerVehiclePhoto } from './drive/photo.ts';
@@ -216,6 +217,22 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     catch (e) { return { configured: true, reachable: false, message: (e as Error).message }; }
   });
   app.get('/api/ha/gasbuddy', async () => brain.gas.find());
+  // The Home screen (garage + HA tiles). Control is limited to its own entities.
+  const haPanel = new HaPanel(brain.db, brain.ha);
+  const haFail = (e: unknown, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => {
+    if (e instanceof HaError) return reply.code(e.status && e.status >= 400 && e.status < 600 ? e.status : 502).send({ error: e.message });
+    throw e;
+  };
+  app.get('/api/ha/panel', async (_req, reply) => { try { return await haPanel.view(); } catch (e) { return haFail(e, reply); } });
+  app.put('/api/ha/panel', async (req, reply) => { try { return haPanel.save(req.body); } catch (e) { return haFail(e, reply); } });
+  app.get('/api/ha/garage', async (_req, reply) => { try { return await haPanel.garage(); } catch (e) { return haFail(e, reply); } });
+  app.post('/api/ha/act', async (req, reply) => {
+    const b = (req.body ?? {}) as { entity?: unknown; action?: unknown };
+    if (typeof b.entity !== 'string' || typeof b.action !== 'string') return reply.code(400).send({ error: 'send {entity, action}' });
+    try { return await haPanel.act(b.entity, b.action); } catch (e) { return haFail(e, reply); }
+  });
+  app.get<{ Querystring: { q?: string } }>('/api/ha/entities', async (req, reply) => { try { return await haPanel.search(String(req.query.q ?? '')); } catch (e) { return haFail(e, reply); } });
+  app.get<{ Querystring: { dashboard?: string } }>('/api/ha/dashboard', async (req, reply) => { try { return { entities: await haPanel.fromDashboard(String(req.query.dashboard ?? '')) }; } catch (e) { return haFail(e, reply); } });
   app.get<{ Querystring: { driver?: string } }>('/api/gas', async (req) => brain.gas.status(brain.compareVehicle(optStr(req.query.driver) ?? brain.activeDriver().id).fuel));
   app.post('/api/gas/refresh', async () => { await brain.gas.poll(); return brain.gas.status(brain.compareVehicle(brain.activeDriver().id).fuel); });
   const vehErr = (e: unknown, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => {

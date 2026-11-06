@@ -78,6 +78,42 @@ export class HaClient {
     const body = await this.get<unknown>(`/api/history/period/${encodeURIComponent(start.toISOString())}?${q}`, 60_000);
     return historyStates(body, entity);
   }
+
+  /** POST /api/services/<domain>/<service>. For the Home screen; HaPanel decides what may be called. */
+  async call(domain: string, service: string, data: Record<string, unknown>): Promise<void> {
+    const ha = this.getSettings().homeAssistant;
+    if (!ha.url || !ha.token) throw new HaError(NOT_CONFIGURED);
+    let res: Response;
+    try {
+      res = await fetch(`${ha.url}/api/services/${encodeURIComponent(domain)}/${encodeURIComponent(service)}`, {
+        method: 'POST', headers: { authorization: `Bearer ${ha.token}`, 'content-type': 'application/json' }, body: JSON.stringify(data), signal: AbortSignal.timeout(15_000),
+      });
+    } catch (e) { throw new HaError(`Home Assistant not reachable (${(e as Error).name === 'TimeoutError' ? 'timed out' : (e as Error).message})`); }
+    if (res.status === 401 || res.status === 403) throw new HaError('Home Assistant refused the token (its user may not be allowed to control this)', res.status);
+    if (!res.ok) throw new HaError(`Home Assistant answered ${res.status} to ${domain}.${service}`, res.status === 400 ? 400 : 502);
+    this.lastOkAt = Date.now(); this.lastError = null;
+  }
+
+  /** One request over HA's WebSocket API (things REST doesn't have, like a dashboard's config). */
+  ws<T = unknown>(msg: Record<string, unknown>, timeoutMs = 15_000): Promise<T> {
+    const ha = this.getSettings().homeAssistant;
+    if (!ha.url || !ha.token) return Promise.reject(new HaError(NOT_CONFIGURED));
+    const url = ha.url.replace(/^http/, 'ws').replace(/\/$/, '') + '/api/websocket';
+    return new Promise<T>((resolve, reject) => {
+      const sock = new WebSocket(url);
+      const done = (f: () => void) => { clearTimeout(timer); try { sock.close(); } catch { /* closed */ } f(); };
+      const timer = setTimeout(() => done(() => reject(new HaError('Home Assistant did not answer in time'))), timeoutMs);
+      sock.onerror = () => done(() => reject(new HaError('Home Assistant WebSocket not reachable')));
+      sock.onmessage = (ev) => {
+        let m: { type?: string; id?: number; success?: boolean; result?: unknown; error?: { message?: string } };
+        try { m = JSON.parse(String(ev.data)); } catch { return; }
+        if (m.type === 'auth_required') sock.send(JSON.stringify({ type: 'auth', access_token: ha.token }));
+        else if (m.type === 'auth_invalid') done(() => reject(new HaError('Home Assistant refused the token', 401)));
+        else if (m.type === 'auth_ok') sock.send(JSON.stringify({ id: 1, ...msg }));
+        else if (m.type === 'result' && m.id === 1) done(() => (m.success ? resolve(m.result as T) : reject(new HaError(m.error?.message ?? 'Home Assistant refused the request', 404))));
+      };
+    });
+  }
 }
 
 /** HA's history answer is a list with one list of states per entity. */
