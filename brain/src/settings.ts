@@ -379,6 +379,12 @@ export function validate(s: Settings): Settings {
     if (!HHMM.test(t.start) || !HHMM.test(t.end)) throw new SettingsError(`homeRate.tou[${i}] start and end must be HH:MM, 24-hour`);
     if (!Array.isArray(t.days) || t.days.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) throw new SettingsError(`homeRate.tou[${i}].days must be 0 (Sun) to 6 (Sat)`);
     num(t.perKwh, `homeRate.tou[${i}].perKwh`, 0, 5);
+    if (t.months !== undefined && t.months !== null) {
+      if (!Array.isArray(t.months) || t.months.some((m) => !Number.isInteger(m) || m < 1 || m > 12)) throw new SettingsError(`homeRate.tou[${i}].months must be 1 (Jan) to 12 (Dec)`);
+      if (!t.months.length) delete t.months;
+    } else delete t.months;
+    if (t.demandPerKw === undefined || t.demandPerKw === null || (t.demandPerKw as unknown) === '') delete t.demandPerKw;
+    else num(t.demandPerKw, `homeRate.tou[${i}].demandPerKw`, 0, 500);
   });
   for (const t of r.tou) {
     if (t.alertOnCharging === undefined || t.alertOnCharging === null) t.alertOnCharging = defaultAlertOn(t, r);

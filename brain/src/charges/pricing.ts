@@ -16,6 +16,7 @@ export const minutesOf = (hhmm: string): number => {
  * start == end means all day.
  */
 export function periodCovers(period: TouPeriod, at: Date): boolean {
+  if (period.months?.length && !period.months.includes(at.getMonth() + 1)) return false;
   const t = at.getHours() * 60 + at.getMinutes();
   const day = at.getDay();
   const s = minutesOf(period.start), e = minutesOf(period.end);

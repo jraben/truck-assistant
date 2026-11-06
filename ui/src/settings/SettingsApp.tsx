@@ -58,6 +58,23 @@ const OLD_ANCHORS: Record<string, TabId> = {
   mileage: 'system', maintenance: 'system', updates: 'system', backups: 'system', security: 'system', setup: 'system', about: 'system',
 };
 
+/** "5-10" -> [5..10], "11-4" -> [11,12,1..4], "1,3,5" -> [1,3,5]; blank -> all year. */
+export function parseMonths(v: string): number[] | undefined {
+  const out = new Set<number>();
+  for (const part of v.split(',').map((x) => x.trim()).filter(Boolean)) {
+    const m = /^(\d{1,2})\s*-\s*(\d{1,2})$/.exec(part);
+    if (m) { let a = +m[1]; const b = +m[2]; if (a < 1 || a > 12 || b < 1 || b > 12) continue; for (let k = 0; k < 12; k++) { out.add(a); if (a === b) break; a = a % 12 + 1; } }
+    else if (/^\d{1,2}$/.test(part) && +part >= 1 && +part <= 12) out.add(+part);
+  }
+  return out.size ? [...out] : undefined;
+}
+function monthsText(m: number[] | undefined): string {
+  if (!m?.length) return '';
+  // Show a wrapped run (11,12,1..4) as "11-4" when it is one contiguous run.
+  for (const start of m) { const run = [start]; let x = start; while (m.includes(x % 12 + 1) && run.length < m.length) { x = x % 12 + 1; run.push(x); } if (run.length === m.length) return run.length === 1 ? `${start}` : `${start}-${x}`; }
+  return m.join(',');
+}
+
 function Section({ id, title, help, children }: { id?: string; title: string; help?: string; children: preact.ComponentChildren }) {
   return <section class="card" id={id}><h2>{title}</h2>{help && <p class="help">{help}</p>}{children}</section>;
 }
@@ -219,6 +236,8 @@ export function SettingsApp() {
                     <td><input type="text" inputMode="numeric" value={t.start} placeholder="16:00" style="width:90px" onInput={(e) => setTou(i, { start: (e.target as HTMLInputElement).value })} /></td>
                     <td><input type="text" inputMode="numeric" value={t.end} placeholder="19:00" style="width:90px" onInput={(e) => setTou(i, { end: (e.target as HTMLInputElement).value })} /></td>
                     <td><input type="number" step="0.001" value={t.perKwh} style="width:100px" onInput={(e) => setTou(i, { perKwh: num((e.target as HTMLInputElement).value) })} /></td>
+                    <td><input type="text" value={monthsText(t.months)} placeholder="all year" title="Months it applies, e.g. 5-10 (summer) or 11-4 (winter)" style="width:90px" onChange={(e) => setTou(i, { months: parseMonths((e.target as HTMLInputElement).value) })} /></td>
+                    <td><input type="number" step="0.001" value={t.demandPerKw ?? ''} placeholder="$/kW" title="Demand charge while this period applies (overrides the plan-wide one)" style="width:90px" onInput={(e) => { const v = (e.target as HTMLInputElement).value; setTou(i, { demandPerKw: v === '' ? null : Number(v) }); }} /></td>
                     <td><label class="check" title="Alert (phone + red banner) if the truck charges at home in this period"><input type="checkbox" checked={t.alertOnCharging ?? (draft.homeRate.flatPerKwh === null || t.perKwh > draft.homeRate.flatPerKwh)} onChange={(e) => setTou(i, { alertOnCharging: (e.target as HTMLInputElement).checked })} /> alert</label></td>
                     <td><button class="btn sm danger" type="button" onClick={() => setRate('tou', draft.homeRate.tou.filter((_, j) => j !== i))}>Remove</button></td>
                   </tr>

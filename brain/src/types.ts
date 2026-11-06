@@ -65,7 +65,8 @@ export type NowPlayingSource = 'carplay' | 'spotify' | 'radio' | 'fm' | 'plex' |
 export type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: NowPlayingSource };
 
 /** alertOnCharging: warn when the truck charges at home inside this period (default on for a period priced above the flat / off-peak rate). */
-export type TouPeriod = { name: string; days: number[]; start: string; end: string; perKwh: number; alertOnCharging?: boolean };
+/** months: 1-12 the period applies in (none = all year), for seasonal plans like APS summer May-Oct / winter Nov-Apr. demandPerKw overrides homeRate.demandPerKw while it applies. */
+export type TouPeriod = { name: string; days: number[]; start: string; end: string; perKwh: number; alertOnCharging?: boolean; months?: number[]; demandPerKw?: number | null };
 
 /** Charging at home inside an alert (on-peak) period. Part of State. */
 export type ChargePeak = {

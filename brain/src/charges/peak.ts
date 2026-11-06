@@ -40,6 +40,7 @@ export function headsUpPeriod(rate: Pick<Rate, 'tou'>, at: Date, leadMin = HEADS
     if (!p.alertOnCharging || alertPeriodAt({ tou: [p] }, at)) continue;
     const s = minutesOf(p.start);
     const until = s - t;
+    if (p.months?.length && !p.months.includes(at.getMonth() + 1)) continue;
     if (until > 0 && until <= leadMin && p.days.includes(at.getDay())) return p;
   }
   return null;
@@ -97,7 +98,8 @@ export function sessionKw(s: Pick<ChargeSession, 'startedAt' | 'endedAt' | 'kwh'
 /** "Possible demand charge" for a home session that overlapped an alert period, whole dollars; null when not on-peak or unknown. */
 export function sessionDemand(s: Pick<ChargeSession, 'startedAt' | 'endedAt' | 'kwh' | 'maxKw' | 'place'>, rate: Pick<Rate, 'tou' | 'demandPerKw'>): number | null {
   if (s.place !== 'home' || !sessionOnPeak(s, rate)) return null;
-  return demandEstimate(sessionKw(s), rate.demandPerKw ?? null);
+  const p = alertPeriodAt(rate as Rate, new Date(s.startedAt));
+  return demandEstimate(sessionKw(s), p?.demandPerKw ?? rate.demandPerKw ?? null);
 }
 
 /** Power sensor state -> kW, honouring unit_of_measurement (W, kW). Null when not a number. */
@@ -134,7 +136,7 @@ export function chargePeakState(i: PeakInput): import('../types.ts').ChargePeak 
   const p = alertPeriodAt(i.rate, i.now);
   const kw = i.powerKw !== null && i.powerKw * 1000 > CHARGING_W ? Math.round(i.powerKw * 10) / 10 : null;
   const onPeak = !!(charging && p && (source === 'ha-power' || i.atHome));
-  const msg = onPeak ? peakMessage(p!, kw, i.rate.demandPerKw ?? null) : null;
+  const msg = onPeak ? peakMessage(p!, kw, p!.demandPerKw ?? i.rate.demandPerKw ?? null) : null;
   // Heads-up: plugged in (or the charger connected but idle) at home, before an alert period.
   const soon = headsUpPeriod(i.rate, i.now);
   const plugged = i.pluggedIn === true;
@@ -143,7 +145,7 @@ export function chargePeakState(i: PeakInput): import('../types.ts').ChargePeak 
     charging, source, powerKw: kw, atHome: i.atHome,
     period: p ? { name: p.name, start: p.start, end: p.end } : null,
     onPeak,
-    estimate: onPeak ? demandEstimate(kw, i.rate.demandPerKw ?? null) : null,
+    estimate: onPeak ? demandEstimate(kw, p!.demandPerKw ?? i.rate.demandPerKw ?? null) : null,
     title: msg?.title ?? null, message: msg?.message ?? null,
     headsUp: headsUp ? headsUp.message : null, headsUpTitle: headsUp ? headsUp.title : null,
   };
