@@ -429,7 +429,12 @@ order above, and switches with `nmcli connection up`. Data use is read from
   through `GET/POST /api/sim` (`SimControl`: mode auto|manual, gear
   park|reverse|drive, ignition, targetMph, loop, cabinF, auxV, lowTire,
   switches), `POST /api/sim/jump {leg}`, `/api/sim/tow {seconds}`,
-  `/api/sim/bump` and `/api/sim/cameras` (back to the five desk cameras).
+  `/api/sim/bump`, `/api/sim/cameras` (back to the five desk cameras),
+  `POST /api/sim/charge {kind: home|fast, target}`, `/api/sim/unplug` and
+  `/api/sim/soc {value}`. Every answer adds `soc` and `rangeMi`. While plugged in
+  the brain anchors the charge level every 2 points (never a last step under 2),
+  so ChargeService logs one growing session; a home charge sets the CAN
+  charging hook for the on-peak warning. Putting it in gear unplugs it.
   The panel still only produces truck-box topics and GPS fixes, so the real
   code path runs. Every `/api/sim*` route is 404 unless `SIM=1`.
 

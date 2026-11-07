@@ -1,12 +1,15 @@
 // TEST PANEL (SIM=1 only): drive the simulated truck by hand and watch the
 // cockpit react. A side panel, so the screen behind it stays visible.
 //   Drive    gear, ignition, speed, which leg, auto loop vs manual
+//   Charge   plug in at home or a DC fast charger (sped up), unplug, set the level
 //   Truck    cabin heat, aux battery, a flat tire, the Five Switch, a bump, a tow-away
 //   Cameras  every desk camera live, and the desk camera set back
 //   CarPlay  the simulator on or off (remembered in this browser)
 // The brain refuses all of it on a real truck (brain/src/simRoutes.ts answers 404).
 import { useEffect, useState } from 'preact/hooks';
-import type { SimControl, SimStatus } from '../../../brain/src/sim.ts';
+import type { SimControl, SimStatus as SimTruckStatus } from '../../../brain/src/sim.ts';
+
+type SimStatus = SimTruckStatus & { soc: number | null; rangeMi: number | null };
 import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import { useCamStatus } from '../lib/cams.ts';
 import { CamPlayer } from '../components/camplayer.tsx';
@@ -14,7 +17,7 @@ import { carplaySimWanted, setCarplaySim } from '../carplay/sim.ts';
 import './sim.css';
 
 const LS_OPEN = 'slate.simPanel';
-type Tab = 'drive' | 'truck' | 'cams' | 'carplay';
+type Tab = 'drive' | 'charge' | 'truck' | 'cams' | 'carplay';
 
 const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* private window */ } };
@@ -72,13 +75,14 @@ export function TestPanel({ open, onClose, go }: { open: boolean; onClose: () =>
         </span>
       </div>
       <div class="simseg simtabs" role="tablist">
-        {(['drive', 'truck', 'cams', 'carplay'] as Tab[]).map((t) => (
+        {(['drive', 'charge', 'truck', 'cams', 'carplay'] as Tab[]).map((t) => (
           <button type="button" role="tab" aria-selected={tab === t} class={tab === t ? 'sel' : ''} onClick={() => pick(t)}>{t === 'cams' ? 'Cameras' : t === 'carplay' ? 'CarPlay' : t[0].toUpperCase() + t.slice(1)}</button>
         ))}
       </div>
       <div class="simbody">
         {!st ? <div class="dimtxt">Asking the brain…</div>
           : tab === 'drive' ? <DriveTab st={st} set={set} post={post} />
+          : tab === 'charge' ? <ChargeTab st={st} set={set} post={post} />
           : tab === 'truck' ? <TruckTab st={st} set={set} post={post} />
           : tab === 'cams' ? <CamsTab st={st} set={set} post={post} go={go} />
           : <CarPlayTab go={go} />}
@@ -96,6 +100,8 @@ function Readout({ st }: { st: SimStatus }) {
       <span class="num simspeed">{Math.round(st.speedMph)}<small> mph</small></span>
       <span class={`tag ${st.ignitionOn ? 'ok' : 'dim'}`}>IGN {st.ignitionOn ? 'ON' : 'OFF'}</span>
       {st.reverseOn && <span class="tag warn">REVERSE</span>}
+      {st.soc !== null && <span class={`tag ${st.soc <= 10 ? 'bad' : st.soc <= 20 ? 'warn' : 'dim'}`}>{Math.round(st.soc)}%</span>}
+      {st.charging && <span class="tag ok">CHARGING</span>}
       {st.towing && <span class="tag bad">BEING TOWED</span>}
       {st.arrived && <span class="tag">ARRIVED</span>}
       <span class="dimtxt">{st.legs[st.leg]}{s?.drive?.lockout.locked ? ' · lockout on' : ''}</span>
@@ -140,6 +146,44 @@ function DriveTab({ st, set, post }: TabProps) {
         <button type="button" class="btn" onClick={() => void set({ gear: 'park', ignition: false })}>Park and switch off</button>
       </div>
       {st.speedup > 1 && <div class="dimtxt">Time runs {st.speedup}× (SIM_SPEEDUP).</div>}
+    </div>
+  );
+}
+
+function ChargeTab({ st, post }: TabProps) {
+  const [target, setTarget] = useState(80);
+  const p = st.charging;
+  const plug = (kind: 'home' | 'fast') => void post('/api/sim/charge', { kind, target });
+  return (
+    <div class="simgrid">
+      <Readout st={st} />
+      <div class="simrow"><span class="lbl">Charge</span>
+        <span class="num simspeed">{st.soc === null ? '–' : Math.round(st.soc)}<small>%</small></span>
+        <span class="dimtxt">{st.rangeMi === null ? '' : `${Math.round(st.rangeMi)} mi range`}</span>
+      </div>
+      <div class="simrow"><span class="lbl">Charge to</span>
+        <div class="simseg">
+          {[80, 90, 100].map((v) => <button type="button" class={target === v ? 'sel' : ''} onClick={() => setTarget(v)}>{v}%</button>)}
+        </div>
+      </div>
+      {p ? (
+        <div class="simrow col">
+          <span>Plugged in: {p.kind === 'home' ? 'home wall charger' : 'DC fast charger'}, {p.kw} kW, to {p.targetPct}%.</span>
+          <button type="button" class="btn primary" onClick={() => void post('/api/sim/unplug')}>Unplug</button>
+        </div>
+      ) : (
+        <div class="row">
+          <button type="button" class="btn primary" disabled={st.speedMph > 1} onClick={() => plug('home')}>Plug in at home (7.2 kW)</button>
+          <button type="button" class="btn" disabled={st.speedMph > 1} onClick={() => plug('fast')}>DC fast charge (150 kW)</button>
+        </div>
+      )}
+      <div class="simrow col"><span class="lbl">Set the level now</span>
+        <div class="row">
+          {[5, 20, 50, 80, 100].map((v) => <button type="button" class="btn sm" onClick={() => void post('/api/sim/soc', { value: v })}>{v}%</button>)}
+        </div>
+        <span class="dimtxt">Like the cockpit's own slider: a jump up while parked is logged as a charge.</span>
+      </div>
+      <span class="dimtxt">Sped up: home charging runs 60× (an hour a minute), DC fast 10× and tapers past 80%. Plugging in parks the truck and switches it off; putting it in gear unplugs it. A home charge counts for the on-peak warning, and each charge shows in the charge history.</span>
     </div>
   );
 }

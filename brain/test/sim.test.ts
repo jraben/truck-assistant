@@ -89,4 +89,23 @@ describe('simulated truck, driven by hand', () => {
     vi.advanceTimersByTime(10_000);
     expect(sim.control({ mode: 'auto' }).mode).toBe('auto');
   });
+
+  it('plugs in parked, refuses while moving, and unplugs when put in gear', () => {
+    sim.control({ gear: 'drive', targetMph: 40 });
+    vi.advanceTimersByTime(20_000);
+    expect(() => sim.plugIn('home', 80)).toThrow(/Stop first/);
+    sim.control({ gear: 'park' });
+    vi.advanceTimersByTime(2000);
+    const st = sim.plugIn('fast', 90);
+    expect(st.charging).toMatchObject({ kind: 'fast', kw: 150, targetPct: 90 });
+    expect(st).toMatchObject({ gear: 'park', ignition: false, mode: 'manual' });
+    expect(() => sim.plugIn('solar' as never)).toThrow(/kind/);
+    expect(() => sim.plugIn('home', 0)).toThrow(/target/);
+    sim.control({ gear: 'drive' });
+    expect(sim.status().charging).toBeNull();
+    sim.control({ gear: 'park' });
+    vi.advanceTimersByTime(20_000);
+    sim.plugIn('home');
+    expect(sim.unplug().charging).toBeNull();
+  });
 });

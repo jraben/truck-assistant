@@ -71,6 +71,8 @@ export class Brain extends EventEmitter {
   private sim: SimTruck | null = null;
   /** The simulated truck (SIM=1 only), for the test panel's routes. */
   get simTruck(): SimTruck | null { return this.sim; }
+  /** Charge level and range, for the test panel. */
+  get socNow(): { soc: number | null; rangeMi: number | null } { const s = this.getState(); return { soc: s.soc, rangeMi: s.rangeMi }; }
   private soc: SocModel;
   private detector: TripDetector;
   private stopDet: StopDetector;
@@ -94,6 +96,9 @@ export class Brain extends EventEmitter {
   private refreshSoon: NodeJS.Timeout | null = null;
   private lastStatePub = 0;
   private socSaveAt = 0;
+  /** SIM: charge gained since the last anchor, in percentage points. */
+  private simChargeOwed = 0;
+  private simWasCharging = false;
   private discoveryOn = false;
 
   readonly db: Db;
@@ -455,8 +460,39 @@ export class Brain extends EventEmitter {
 
   // ---- periodic ------------------------------------------------------------
 
+  /**
+   * SIM: while the test panel has the truck plugged in, raise the charge level
+   * the way a real charge would arrive: an anchor every 2 points, so the charge
+   * history sees one session growing (ChargeService extends it), home sessions
+   * are priced from the rate, and a home charge counts for the on-peak warning.
+   */
+  private simChargeTick() {
+    const plug = this.sim?.status().charging ?? null;
+    if (!plug) {
+      if (this.simWasCharging) { this.simWasCharging = false; this.simChargeOwed = 0; this.setCanCharging(null); }
+      return;
+    }
+    this.simWasCharging = true;
+    this.setCanCharging(true);
+    const st = this.settings.get();
+    const soc = this.soc.value ?? 0;
+    if (soc >= plug.targetPct) { this.sim!.unplug(); return; }
+    // DC fast tapers hard past 80%, like the real thing.
+    const kw = plug.kind === 'fast' && soc >= 80 ? plug.kw * 0.25 : plug.kw;
+    this.simChargeOwed += (kw * plug.timeScale * config.simSpeedup) / 3600 / st.packKwh * 100;
+    // Anchor every 2 points, but never leave a last step under 2 (ChargeService ignores a rise that small).
+    const reached = soc + this.simChargeOwed >= plug.targetPct;
+    if (reached || (this.simChargeOwed >= 2 && plug.targetPct - (soc + this.simChargeOwed) >= 2)) {
+      const next = Math.min(plug.targetPct, soc + this.simChargeOwed);
+      this.simChargeOwed = 0;
+      this.setManualSoc(next);
+      if (next >= plug.targetPct) this.sim!.unplug();
+    }
+  }
+
   private tick() {
     const now = Date.now();
+    if (this.sim) { try { this.simChargeTick(); } catch (e) { console.error('[sim] charge', e); } }
     // A fix older than 10 s is no fix.
     if (this.s.gps && now - this.lastGpsAt > 10_000) {
       this.s.gps = { ...this.s.gps, fix: false };

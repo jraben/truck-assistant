@@ -45,9 +45,18 @@ export type SimControl = {
   lowTire: Wheel | null;      // that tire reads 22 psi
   switches: boolean[];        // the Five Switch, 1–5
 };
+/** Plugged in: what kind of charger, its power, where to stop, and how much faster than real time. */
+export type SimCharge = { kind: ChargeKind; kw: number; targetPct: number; timeScale: number };
+export type ChargeKind = 'home' | 'fast';
+/** Home is a 7.2 kW wall charger at 60x (an hour a minute); DC fast is 150 kW at 10x. */
+export const SIM_CHARGERS: Record<ChargeKind, { kw: number; timeScale: number }> = {
+  home: { kw: 7.2, timeScale: 60 },
+  fast: { kw: 150, timeScale: 10 },
+};
 export type SimStatus = SimControl & {
   leg: number; legs: string[]; speedMph: number; pos: LatLon; headingDeg: number;
   arrived: boolean; towing: boolean; ignitionOn: boolean; reverseOn: boolean; speedup: number;
+  charging: SimCharge | null;
 };
 
 export class SimError extends Error { status = 400; }
@@ -97,6 +106,7 @@ export class SimTruck {
   private rev = false;
   private towLeft = 0;          // simulated seconds of being towed still to go
   private arrived = false;
+  private plug: SimCharge | null = null; // the brain raises the charge level while this is set
 
   private emit: (sub: string, payload: string) => void;
   private onFix: (f: GpsFix) => void;
@@ -129,6 +139,7 @@ export class SimTruck {
       ...this.ctl, switches: [...this.ctl.switches],
       leg: this.leg, legs: SIM_LEG_NAMES, speedMph: Math.round(this.speed * 10) / 10, pos: { ...this.pos }, headingDeg: Math.round(this.heading),
       arrived: this.arrived, towing: this.towLeft > 0, ignitionOn: this.ign, reverseOn: this.rev, speedup: this.speedup,
+      charging: this.plug ? { ...this.plug } : null,
     };
   }
 
@@ -148,6 +159,7 @@ export class SimTruck {
     if (prev.mode === 'manual' && c.mode === 'auto') { this.towLeft = 0; this.arrived = false; this.setPhase(this.speed > 1 ? 'drive' : 'parked'); }
     if (c.mode === 'manual') {
       if (c.gear !== 'park' || c.ignition) this.towLeft = 0;
+      if (c.gear !== 'park') this.plug = null; // drove off: the cable comes out
       if (patch.gear !== undefined || patch.loop !== undefined) this.arrived = false;
       this.applyManualPins();
     }
@@ -167,9 +179,24 @@ export class SimTruck {
   /** Theft test: ignition off, in park, and the truck rolls away at tow speed for `seconds` (simulated). */
   tow(seconds = 90): SimStatus {
     this.control({ mode: 'manual', gear: 'park', ignition: false });
+    this.plug = null;
     this.towLeft = Math.max(10, Math.min(600, Number(seconds) || 90));
     return this.status();
   }
+
+  /** Plug in: takes the wheel, parks, switches off. The brain does the charging (it owns the charge level). */
+  plugIn(kind: ChargeKind, targetPct = 80): SimStatus {
+    if (kind !== 'home' && kind !== 'fast') throw new SimError('kind: home or fast');
+    const target = Number(targetPct);
+    if (!Number.isFinite(target) || target < 1 || target > 100) throw new SimError('target: 1 to 100');
+    if (this.speed > 1) throw new SimError('Stop first: park, or wait for 0 mph');
+    this.control({ mode: 'manual', gear: 'park', ignition: false });
+    this.towLeft = 0;
+    this.plug = { kind, ...SIM_CHARGERS[kind], targetPct: target };
+    return this.status();
+  }
+
+  unplug(): SimStatus { this.plug = null; return this.status(); }
 
   private setIgnition(on: boolean) { if (on !== this.ign) { this.ign = on; this.emit('binary_sensor/ignition/state', on ? 'ON' : 'OFF'); } }
   private setReverse(on: boolean) { if (on !== this.rev) { this.rev = on; this.emit('binary_sensor/reverse/state', on ? 'ON' : 'OFF'); } }

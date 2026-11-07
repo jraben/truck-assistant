@@ -145,7 +145,8 @@ not forwarded and must not be). It uses the image GitHub builds on every push
 to main (`ghcr.io/jraben/slate-cockpit`) and `deploy/nas/docker-compose.yml`,
 copied to `~/slate-cockpit/` on the NAS. With no truck, `SIM=1` drives a
 simulated one, and **More › Test panel (SIM)** drives it by hand: gear,
-ignition, speed, which leg of the route, cabin heat, a weak 12V battery, a low
+ignition, speed, which leg of the route, plugging in to charge (home 7.2 kW at
+60×, DC fast 150 kW at 10×, or set the level outright), cabin heat, a weak 12V battery, a low
 tire, the Five Switch, a bump and a tow-away (the theft alert), every desk
 camera live, and the CarPlay simulator on or off. The panel's routes
 (`/api/sim*`, `brain/src/simRoutes.ts`) answer 404 on a real truck. To update after a push, once the "Build image" action is green:

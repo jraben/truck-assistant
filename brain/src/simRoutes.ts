@@ -5,7 +5,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Brain } from './brain.ts';
 import type { RemoteService } from './remote/service.ts';
 import { defaultCameras } from './remote/store.ts';
-import { SimError, type SimControl } from './sim.ts';
+import { SimError, type ChargeKind, type SimControl, type SimStatus } from './sim.ts';
 
 export function registerSim(app: FastifyInstance, brain: Brain, remote: RemoteService) {
   const off = (reply: FastifyReply) => reply.code(404).send({ error: 'Not a simulated truck (SIM=1 is off)' });
@@ -14,27 +14,52 @@ export function registerSim(app: FastifyInstance, brain: Brain, remote: RemoteSe
     throw e;
   };
 
+  /** Every answer carries the charge level, so the panel can show it beside the plug. */
+  const withSoc = (st: SimStatus) => ({ ...st, ...brain.socNow });
+
   app.get('/api/sim', async (_req, reply) => {
     const sim = brain.simTruck;
-    return sim ? sim.status() : off(reply);
+    return sim ? withSoc(sim.status()) : off(reply);
   });
 
   app.post('/api/sim', async (req, reply) => {
     const sim = brain.simTruck;
     if (!sim) return off(reply);
-    try { return sim.control((req.body ?? {}) as Partial<SimControl>); } catch (e) { return fail(reply, e); }
+    try { return withSoc(sim.control((req.body ?? {}) as Partial<SimControl>)); } catch (e) { return fail(reply, e); }
   });
 
   app.post<{ Body: { leg?: number } }>('/api/sim/jump', async (req, reply) => {
     const sim = brain.simTruck;
     if (!sim) return off(reply);
-    try { return sim.jump(Number(req.body?.leg ?? 0)); } catch (e) { return fail(reply, e); }
+    try { return withSoc(sim.jump(Number(req.body?.leg ?? 0))); } catch (e) { return fail(reply, e); }
   });
 
   app.post<{ Body: { seconds?: number } }>('/api/sim/tow', async (req, reply) => {
     const sim = brain.simTruck;
     if (!sim) return off(reply);
-    return sim.tow(Number(req.body?.seconds ?? 90));
+    return withSoc(sim.tow(Number(req.body?.seconds ?? 90)));
+  });
+
+  /** Plug in: home wall charger or DC fast, up to `target` percent. */
+  app.post<{ Body: { kind?: ChargeKind; target?: number } }>('/api/sim/charge', async (req, reply) => {
+    const sim = brain.simTruck;
+    if (!sim) return off(reply);
+    try { return withSoc(sim.plugIn(req.body?.kind ?? 'home', Number(req.body?.target ?? 80))); } catch (e) { return fail(reply, e); }
+  });
+
+  app.post('/api/sim/unplug', async (_req, reply) => {
+    const sim = brain.simTruck;
+    return sim ? withSoc(sim.unplug()) : off(reply);
+  });
+
+  /** Set the charge level outright (the same as the cockpit's slider: a rise while parked logs a charge). */
+  app.post<{ Body: { value?: number } }>('/api/sim/soc', async (req, reply) => {
+    const sim = brain.simTruck;
+    if (!sim) return off(reply);
+    const v = Number(req.body?.value);
+    if (!Number.isFinite(v) || v < 0 || v > 100) return reply.code(400).send({ error: 'value: 0 to 100' });
+    brain.setManualSoc(v);
+    return withSoc(sim.status());
   });
 
   /** A knock on the truck box's vibration sensor (parked-motion alert path). */
