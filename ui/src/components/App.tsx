@@ -18,6 +18,8 @@ import { LogsPanel } from '../ops/OpsSettings.tsx';
 import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
+import { Rail, type RailEntry } from './Rail.tsx';
+import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -32,7 +34,7 @@ const ICONS: Record<string, string> = {
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const PALETTE = 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zM7.5 12a1 1 0 1 0 0-.01M10 8a1 1 0 1 0 0-.01M14 8a1 1 0 1 0 0-.01';
-const MORE = 'M5 12h.01M12 12h.01M19 12h.01M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0';
+const MIC = 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3';
 const SIM_ICON = 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7 15h10';
 const LOGS ='M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7';
 const Ico = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
@@ -44,6 +46,10 @@ function useClock() {
   const [t, setT] = useState(new Date());
   useEffect(() => { const id = setInterval(() => setT(new Date()), 1000); return () => clearInterval(id); }, []);
   return t;
+}
+
+function storage(): Storage | null {
+  try { return localStorage; } catch { return null; }
 }
 
 function viewFromHash(layout: Layout) {
@@ -64,7 +70,11 @@ export function App() {
   const [driverOpen, setDriverOpen] = useState(false);
   const [netOpen, setNetOpen] = useState(false);
   const [logs, setLogs] = useState<null | 'mileage' | 'maintenance'>(null);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  // Rail order: the active driver's (on the brain); a local draft while a save is in flight.
+  const [cache] = useState(() => loadCache(storage()));
+  const [draft, setDraft] = useState<CachedOrder | null>(null);
+  const pending = useRef<{ t: number; d: CachedOrder } | null>(null);
   const simAvailable = useSimAvailable();
   const [simOpen, setSimOpenRaw] = useState(() => { try { return localStorage.getItem('slate.simPanel') === '1'; } catch { return false; } });
   const setSimOpen = (on: boolean) => { setSimOpenRaw(on); try { if (on) localStorage.setItem('slate.simPanel', '1'); else localStorage.removeItem('slate.simPanel'); } catch { /* private window */ } };
@@ -98,6 +108,40 @@ export function App() {
   useEffect(() => { paintTheme(shown.current!); carplay.setNight(!isLight(shown.current!.colors.bg)); }, [shown.current]);
 
   const cur = layout.views.find((v) => v.id === view) ?? layout.views[0];
+
+  // Every screen and tool has an icon on the rail; there is no "More".
+  const closePanels = () => { setDriverOpen(false); setPicker(false); };
+  const entries: RailEntry[] = [
+    ...layout.views.map((v): RailEntry => ({ id: v.id, label: v.label, icon: <Ico d={ICONS[v.id] ?? ICONS.drive} />, href: `#${v.id}`, current: v.id === cur.id, onTap: () => go(v.id) })),
+    { id: '@wopr', label: 'WOPR voice', icon: <Ico d={MIC} />, cls: 'voice', live: <WoprButton />, holdToEdit: false },
+    { id: '@driver', label: s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver', icon: <DriverBadge d={s?.driver ?? null} size={30} />, pressed: driverOpen, current: driverOpen, onTap: () => { setDriverOpen(!driverOpen); setPicker(false); } },
+    { id: '@theme', parkOnly: true, label: 'Theme', icon: <Ico d={PALETTE} />, pressed: picker, current: picker, onTap: () => { setPicker(!picker); setDriverOpen(false); } },
+    { id: '@logs', parkOnly: true, label: 'Mileage & maintenance', icon: <Ico d={LOGS} />, pressed: !!logs, current: !!logs, onTap: () => { closePanels(); setLogs(logs ? null : 'mileage'); } },
+    ...(simAvailable ? [{ id: '@sim', parkOnly: true, label: 'Test panel (SIM)', icon: <Ico d={SIM_ICON} />, pressed: simOpen, current: simOpen, onTap: () => { closePanels(); setSimOpen(!simOpen); } }] : []),
+    { id: '@settings', parkOnly: true, label: 'Settings', icon: <Ico d={GEAR} />, href: '/settings' },
+  ];
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  const order = mergeOrder(pickOrder({ driver: driver?.id ?? null, driverOrder: driver?.railOrder ?? null, draft, cache }), entries.map((e) => e.id));
+  const persist = (d: CachedOrder) => {
+    saveCache(storage(), d);
+    const send = (x: CachedOrder) => {
+      putDriver(x.driver, { railOrder: x.order })
+        .then(() => setDraft((cur) => (cur === x ? null : cur)))
+        .catch((e: Error) => { toast(`Icon order not saved: ${e.message}`); setDraft((cur) => (cur === x ? null : cur)); });
+    };
+    // Dragging reorders on every slot crossed: save once it settles. Another driver's pending save goes now.
+    const p = pending.current;
+    if (p) { clearTimeout(p.t); if (p.d.driver !== d.driver) send(p.d); }
+    pending.current = { d, t: window.setTimeout(() => { pending.current = null; send(d); }, 700) };
+  };
+  const reorder = (next: string[]) => { if (!driver) return; const d = { driver: driver.id, order: next }; setDraft(d); persist(d); };
+  const resetOrder = () => { if (!driver) return; const d = { driver: driver.id, order: null }; setDraft(d); persist(d); };
+  // A driver change: their own order, and out of edit mode.
+  useEffect(() => {
+    setEditing(false);
+    if (driver) saveCache(storage(), { driver: driver.id, order: driver.railOrder ?? null });
+  }, [driver?.id]);
+  useEffect(() => { if (driver && !draft) saveCache(storage(), { driver: driver.id, order: driver.railOrder ?? null }); }, [driver?.railOrder]);
   const cols = Math.max(1, ...cur.widgets.map((w) => w.col + w.w - 1));
   const rows = Math.max(1, ...cur.widgets.map((w) => w.row + w.h - 1));
 
@@ -105,6 +149,9 @@ export function App() {
     <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
       <header class="strip">
         <span class="brand">{PROJECT.shortName}</span>
+        {editing
+          ? <span class="rail-edit"><b>Arrange icons</b><button type="button" class="btn sm" onClick={resetOrder}>Reset</button><button type="button" class="btn sm primary" onClick={() => setEditing(false)}>Done</button></span>
+          : <h1 class="screen-title">{cur.label}</h1>}
         <span class="pill" title={link.connected ? 'Connected to the brain' : 'Reconnecting to the brain…'}><span class={`dot ${link.connected ? 'ok' : 'bad'}`} />{link.connected ? 'Brain' : 'Reconnecting'}</span>
         <span class="pill hide-sm" title={s?.truckbox ? 'Truck box online' : 'Truck box offline: relays and sensors unavailable'}><span class={`dot ${s?.truckbox ? 'ok' : 'warn'}`} />Truck box {s?.truckbox ? 'online' : 'offline'}</span>
         <span class="pill hide-sm" title={s?.gps?.fix ? 'GPS fix' : 'No GPS fix'}><span class={`dot ${s?.gps?.fix ? 'ok' : 'warn'}`} />GPS</span>
@@ -115,16 +162,7 @@ export function App() {
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
       </header>
 
-      <nav class="rail" aria-label="Views">
-        {layout.views.map((v) => (
-          <a href={`#${v.id}`} aria-current={v.id === cur.id ? 'page' : undefined} onClick={(e) => { e.preventDefault(); go(v.id); }}>
-            <Ico d={ICONS[v.id] ?? ICONS.drive} />{v.label}
-          </a>
-        ))}
-        <WoprButton />
-        <button type="button" aria-expanded={driverOpen} title={s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver'} onClick={() => { setDriverOpen(!driverOpen); setPicker(false); }}><DriverBadge d={s?.driver ?? null} size={30} />{s?.driver?.name ?? 'Driver'}</button>
-        <button type="button" aria-expanded={moreOpen} aria-haspopup="menu" onClick={() => { setMoreOpen(!moreOpen); setDriverOpen(false); setPicker(false); }}><Ico d={MORE} />More</button>
-      </nav>
+      <Rail entries={order.map((id) => byId.get(id)!)} editing={editing} onEdit={setEditing} onReorder={reorder} locked={!!s?.drive?.lockout.bigTargets} />
 
       <main class="stage">
         <div class="grid" style={{ '--cols': cols, '--rows': rows } as Record<string, number>}>
@@ -145,15 +183,6 @@ export function App() {
       <TabletHello />
       {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
-      {moreOpen && (
-        <div class="card picker more-menu" role="menu" aria-label="More">
-          <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setPicker(true); }}><Ico d={PALETTE} />Theme</button>
-          <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setLogs('mileage'); }}><Ico d={LOGS} />Mileage &amp; maintenance</button>
-          {simAvailable && <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setSimOpen(true); }}><Ico d={SIM_ICON} />Test panel (SIM)</button>}
-          <a href="/settings" role="menuitem"><Ico d={GEAR} />Settings</a>
-          <button type="button" class="tag" onClick={() => setMoreOpen(false)}>Close</button>
-        </div>
-      )}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <PeakBanner s={s} />
       <ChargePrompt />
