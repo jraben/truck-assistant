@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><title>Logo preview</title>
+<style>body{background:#0d1114;color:#e8eef2;font:16px system-ui;padding:24px}
+.row{display:flex;gap:32px;align-items:end;margin:24px 0}.row img{display:block}
+h2{margin:0 0 8px;font-weight:600}.light{background:#e8eef2;padding:12px;border-radius:12px}</style>
+<h1>Name &amp; logo concepts (open next to the SVGs)</h1>
+<script>
+for (const n of ['caliche','binnacle','tailgate']) document.write(`<h2>${n}</h2><div class="row">
+<img src="logo-${n}.svg" width="192"><img src="logo-${n}.svg" width="96"><img src="logo-${n}.svg" width="48"><img src="logo-${n}.svg" width="24">
+<div class="light"><img src="logo-${n}.svg" width="48"></div></div>`);
+</script>

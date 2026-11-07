@@ -1,14 +1,15 @@
 {
-  "name": "Slate Cockpit",
-  "short_name": "Cockpit",
+  "name": "Truck Assistant",
+  "short_name": "Truck Asst",
   "description": "The truck's dash: drive, CarPlay, media, home, cameras.",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
   "orientation": "landscape",
-  "background_color": "#0b0d10",
-  "theme_color": "#0b0d10",
+  "background_color": "#0d1114",
+  "theme_color": "#0d1114",
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ]
 }

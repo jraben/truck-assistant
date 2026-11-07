@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 512" role="img" aria-label="Truck Assistant">
+  <!-- Lockup with the 08 voice truck (Jeff's cab, bed as a sound wave) + TRUCK / ASSISTANT wordmark; use 08 alone below ~96 px -->
+  <rect width="1280" height="512" rx="104" fill="#0d1114"/>
+  <defs><clipPath id="cab7b"><rect x="214" y="0" width="230" height="200"/></clipPath></defs>
+  <g transform="translate(238 256) scale(1.12) translate(-220 -108)"><g clip-path="url(#cab7b)">
+    <path d="M20 90 L214 90 L216 40 Q217 31 226 30 L288 30 Q296 30 300 36 L338 90 L404 96 Q418 98 420 106 L422 150 Q422 160 412 160 L398 160 L392 118 Q389 112 383 112 L321 112 Q315 112 312 118 L306 160 L148 160 L148 160 L142 118 Q139 112 133 112 L71 112 Q65 112 62 118 L56 160 L24 160 Q18 160 18 152 L18 94 Q18 90 20 90 Z" fill="#b5272d"/>
+    <path d="M216.6 44 L216 40 Q217 31 226 30 L288 30 Q296 30 300 36 L305.5 44 Z" fill="#e4e5e0"/>
+    <path d="M228 50 L284 50 Q290 50 293 55 L316 86 L228 86 Z" fill="#1c1d1f"/>
+    <path d="M226 92 L226 152" stroke="#1c1d1f" stroke-width="3"/>
+    <path d="M318 84 L330 80 L334 92 L322 94 Z" fill="#1c1d1f"/>
+    
+    <path d="M409 100 Q418 101 419 108 L420 128 L408 128 Z" fill="#1c1d1f"/><circle cx="414" cy="114" r="7" fill="#f0a21a"/>
+    <path d="M402 136 L424 136 Q428 136 428 141 L428 156 Q428 162 422 162 L398 162 Z" fill="#1c1d1f"/>
+    
+    <circle cx="352" cy="153" r="34" fill="#262c31"/><circle cx="352" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="352" cy="153" r="6" fill="#e4e5e0"/><circle cx="102" cy="153" r="34" fill="#262c31"/><circle cx="102" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="102" cy="153" r="6" fill="#e4e5e0"/></g><g stroke="#4fc3d9" stroke-width="22" stroke-linecap="round"><path d="M50 118 V146"/><path d="M92 70 V146"/><path d="M134 50 V146"/><path d="M176 86 V146"/></g><circle cx="102" cy="153" r="34" fill="#262c31"/><circle cx="102" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="102" cy="153" r="6" fill="#e4e5e0"/></g>
+  <rect x="470" y="120" width="10" height="272" rx="5" fill="#2a343c"/>
+  <text x="530" y="250" font-family="'Saira Semi Condensed','Arial Narrow',Arial,sans-serif" font-weight="700" font-size="150" fill="#b5272d" letter-spacing="4">TRUCK</text>
+  <text x="534" y="370" font-family="'Saira Semi Condensed','Arial Narrow',Arial,sans-serif" font-weight="600" font-size="96" fill="#e4e5e0" letter-spacing="14">ASSISTANT</text>
+</svg>

@@ -3,6 +3,7 @@
 // leaves the brain: the cockpit plays /api/media/plex/track/<key> and the
 // brain relays the file (Range requests included, so seeking works).
 import type { MediaSettings } from './settings.ts';
+import { PROJECT_NAME } from '../project.ts';
 
 import type { PlexItem, PlexSection } from './types.ts';
 export type { PlexItem, PlexSection } from './types.ts';
@@ -53,7 +54,7 @@ export class PlexService {
   }
 
   headers(): Record<string, string> {
-    return { accept: 'application/json', 'x-plex-token': this.cfg().token, 'x-plex-product': 'Slate Cockpit', 'x-plex-client-identifier': this.clientId() };
+    return { accept: 'application/json', 'x-plex-token': this.cfg().token, 'x-plex-product': PROJECT_NAME, 'x-plex-client-identifier': this.clientId() };
   }
 
   async raw(p: string, init: RequestInit = {}, timeoutMs = 10_000): Promise<Response> {

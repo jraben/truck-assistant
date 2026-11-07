@@ -1,4 +1,6 @@
-# Slate Cockpit
+<img src="ui/public/logo-lockup.svg" alt="Truck Assistant" width="480">
+
+# Truck Assistant
 
 A DIY touchscreen dash for the Slate truck, which ships with no screen, no radio
 and no modem. The goal is CarPlay (Waze, music), charging and trip info,

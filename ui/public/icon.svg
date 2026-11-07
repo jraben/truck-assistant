@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#0b0d10"/><path d="M96 312a160 160 0 1 1 320 0" fill="none" stroke="#49b6d0" stroke-width="36" stroke-linecap="round"/><path d="M256 312l88-110" stroke="#e8edf2" stroke-width="30" stroke-linecap="round"/><circle cx="256" cy="312" r="22" fill="#e8edf2"/><text x="256" y="430" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="72" letter-spacing="10" fill="#e8edf2">SLATE</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Truck Assistant">
+  <!-- Voice: Jeff's cab, the bed replaced by a sound wave -->
+  <rect width="512" height="512" rx="104" fill="#0d1114"/><defs><clipPath id="cab"><rect x="214" y="0" width="230" height="200"/></clipPath></defs><g transform="translate(256 262) scale(1.1) translate(-220 -108)"><g clip-path="url(#cab)">
+    <path d="M20 90 L214 90 L216 40 Q217 31 226 30 L288 30 Q296 30 300 36 L338 90 L404 96 Q418 98 420 106 L422 150 Q422 160 412 160 L398 160 L392 118 Q389 112 383 112 L321 112 Q315 112 312 118 L306 160 L148 160 L148 160 L142 118 Q139 112 133 112 L71 112 Q65 112 62 118 L56 160 L24 160 Q18 160 18 152 L18 94 Q18 90 20 90 Z" fill="#b5272d"/>
+    <path d="M216.6 44 L216 40 Q217 31 226 30 L288 30 Q296 30 300 36 L305.5 44 Z" fill="#e4e5e0"/>
+    <path d="M228 50 L284 50 Q290 50 293 55 L316 86 L228 86 Z" fill="#1c1d1f"/>
+    <path d="M226 92 L226 152" stroke="#1c1d1f" stroke-width="3"/>
+    <path d="M318 84 L330 80 L334 92 L322 94 Z" fill="#1c1d1f"/>
+    
+    <path d="M409 100 Q418 101 419 108 L420 128 L408 128 Z" fill="#1c1d1f"/><circle cx="414" cy="114" r="7" fill="#f0a21a"/>
+    <path d="M402 136 L424 136 Q428 136 428 141 L428 156 Q428 162 422 162 L398 162 Z" fill="#1c1d1f"/>
+    
+    <circle cx="352" cy="153" r="34" fill="#262c31"/><circle cx="352" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="352" cy="153" r="6" fill="#e4e5e0"/><circle cx="102" cy="153" r="34" fill="#262c31"/><circle cx="102" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="102" cy="153" r="6" fill="#e4e5e0"/></g><g stroke="#4fc3d9" stroke-width="22" stroke-linecap="round"><path d="M50 118 V146"/><path d="M92 70 V146"/><path d="M134 50 V146"/><path d="M176 86 V146"/></g><circle cx="102" cy="153" r="34" fill="#262c31"/><circle cx="102" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="102" cy="153" r="6" fill="#e4e5e0"/></g>
+</svg>

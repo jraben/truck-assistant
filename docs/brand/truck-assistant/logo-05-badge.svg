@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Truck Assistant">
+  <!-- Badge: hexagon emblem around Jeff's build -->
+  <rect width="512" height="512" rx="104" fill="#0d1114"/><path d="M256 44 L440 150 V362 L256 468 L72 362 V150 Z" fill="none" stroke="#4fc3d9" stroke-width="36" stroke-linejoin="round"/><g transform="translate(256 262) scale(0.72) translate(-220 -108)">
+    <path d="M20 90 L214 90 L216 40 Q217 31 226 30 L288 30 Q296 30 300 36 L338 90 L404 96 Q418 98 420 106 L422 150 Q422 160 412 160 L398 160 L392 118 Q389 112 383 112 L321 112 Q315 112 312 118 L306 160 L148 160 L148 160 L142 118 Q139 112 133 112 L71 112 Q65 112 62 118 L56 160 L24 160 Q18 160 18 152 L18 94 Q18 90 20 90 Z" fill="#b5272d"/>
+    <path d="M216.6 44 L216 40 Q217 31 226 30 L288 30 Q296 30 300 36 L305.5 44 Z" fill="#e4e5e0"/>
+    <path d="M228 50 L284 50 Q290 50 293 55 L316 86 L228 86 Z" fill="#1c1d1f"/>
+    <path d="M226 92 L226 152" stroke="#1c1d1f" stroke-width="3"/>
+    <path d="M318 84 L330 80 L334 92 L322 94 Z" fill="#1c1d1f"/>
+    <path d="M16 82 L214 82 L214 93 L16 93 Z" fill="#1c1d1f"/>
+    <path d="M409 100 Q418 101 419 108 L420 128 L408 128 Z" fill="#1c1d1f"/><circle cx="414" cy="114" r="7" fill="#f0a21a"/>
+    <path d="M402 136 L424 136 Q428 136 428 141 L428 156 Q428 162 422 162 L398 162 Z" fill="#1c1d1f"/>
+    <path d="M12 140 L30 140 L30 162 L16 162 Q12 162 12 158 Z" fill="#1c1d1f"/>
+    <circle cx="352" cy="153" r="34" fill="#262c31"/><circle cx="352" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="352" cy="153" r="6" fill="#e4e5e0"/><circle cx="102" cy="153" r="34" fill="#262c31"/><circle cx="102" cy="153" r="20" fill="none" stroke="#e4e5e0" stroke-width="9"/><circle cx="102" cy="153" r="6" fill="#e4e5e0"/></g>
+</svg>

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { IcyParser, parseStreamTitle, splitStreamTitle } from '../src/media/icy.ts';
 import { kjefPreset, mapStation, mapStations, mbPerHour } from '../src/media/radio.ts';
-import { codeFromUrl, mapPlayback, pkcePair, REFRESH_EARLY_MS, SpotifyApi, SpotifyError, SpotifyTokens, tokenFrom } from '../src/media/spotify.ts';
+import { codeFromUrl, mapPlayback, mapPlaylists, pkcePair, REFRESH_EARLY_MS, SpotifyApi, SpotifyError, SpotifyTokens, tokenFrom } from '../src/media/spotify.ts';
 import { parseRtlPower, pickSeek, rtlFmArgs, strongChannels } from '../src/media/fm.ts';
 import { parseRange, safeJoin, trackInfo } from '../src/media/local.ts';
 import { mapPlexItem, mapPlexList } from '../src/media/plex.ts';
@@ -120,6 +120,15 @@ describe('Spotify tokens', () => {
     expect('error' in codeFromUrl('not a url')).toBe(true);
     expect(mapPlayback(null)).toBeNull();
     expect(new SpotifyError('x', 409).status).toBe(409);
+  });
+
+  it('counts playlist songs from the 2026 "items" field, or the deprecated "tracks"', () => {
+    const [a, b, c] = mapPlaylists({ items: [
+      { id: 'a', uri: 'spotify:playlist:a', name: 'New', items: { total: 12 } },
+      { id: 'b', uri: 'spotify:playlist:b', name: 'Old', tracks: { total: 7 } },
+      { id: 'c', uri: 'spotify:playlist:c', name: 'None' },
+    ] });
+    expect([a.tracks, b.tracks, c.tracks]).toEqual([12, 7, null]);
   });
 });
 
