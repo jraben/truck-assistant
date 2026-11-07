@@ -19,6 +19,7 @@ import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
+import { RelayDots } from './RelayDots.tsx';
 import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
 
 const ICONS: Record<string, string> = {
@@ -112,7 +113,7 @@ export function App() {
   // Every screen and tool has an icon on the rail; there is no "More".
   const closePanels = () => { setDriverOpen(false); setPicker(false); };
   const entries: RailEntry[] = [
-    ...layout.views.map((v): RailEntry => ({ id: v.id, label: v.label, icon: <Ico d={ICONS[v.id] ?? ICONS.drive} />, href: `#${v.id}`, current: v.id === cur.id, onTap: () => go(v.id) })),
+    ...layout.views.map((v): RailEntry => ({ id: v.id, label: v.label, icon: v.id === 'control' ? <RelayDots relays={s?.relays} online={!!s?.truckbox} /> : <Ico d={ICONS[v.id] ?? ICONS.drive} />, href: `#${v.id}`, current: v.id === cur.id, onTap: () => go(v.id) })),
     { id: '@wopr', label: 'WOPR voice', icon: <Ico d={MIC} />, cls: 'voice', live: <WoprButton />, holdToEdit: false },
     { id: '@driver', label: s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver', icon: <DriverBadge d={s?.driver ?? null} size={30} />, pressed: driverOpen, current: driverOpen, onTap: () => { setDriverOpen(!driverOpen); setPicker(false); } },
     { id: '@theme', parkOnly: true, label: 'Theme', icon: <Ico d={PALETTE} />, pressed: picker, current: picker, onTap: () => { setPicker(!picker); setDriverOpen(false); } },

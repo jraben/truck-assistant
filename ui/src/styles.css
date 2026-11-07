@@ -351,3 +351,10 @@ table.tou td { padding: 4px; vertical-align: middle; }
 input[type="date"] { min-height: 48px; padding: 8px 12px; border-radius: calc(10px * var(--r)); border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); width: 100%; }
 @media (max-width: 820px) { .dprompt { left: 16px; top: 140px; } }
 .item.row { display: flex; align-items: center; }
+
+/* Control's rail icon: six live relay dots (components/RelayDots.tsx). */
+.rail svg.relaydots { width: 30px; height: 30px; }
+.rail svg.relaydots .rd { stroke: currentColor; stroke-width: 1.5; fill: none; transition: fill .2s, stroke .2s; }
+/* Lit: bright green with a pale ring, so it reads on the teal "current screen" highlight too. */
+.rail svg.relaydots .rd.on { fill: #39d97f; stroke: #eafff1; stroke-width: 1.2; filter: drop-shadow(0 0 2px #39d97f); }
+.rail svg.relaydots .rd.unknown { opacity: .35; }
