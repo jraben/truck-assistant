@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Truck Assistant">
+  <!-- Front view of Jeff's build: flat face, round amber lamps on dark plates, Clean Slate roof; typing dots in the windshield -->
+  <rect width="512" height="512" rx="104" fill="#0d1114"/>
+  <path d="M160 168 L176 112 Q180 100 194 100 H318 Q332 100 336 112 L352 168 Z" fill="#b5272d"/>
+  <path d="M174 118 L176 112 Q180 100 194 100 H318 Q332 100 336 112 L338 118 Z" fill="#e4e5e0"/>
+  <path d="M184 128 H328 L348 214 H164 Z" fill="#1c1d1f"/>
+  <path d="M152 214 L160 168 H352 L360 214 Z" fill="#b5272d"/>
+  <g fill="#4fc3d9"><circle cx="210" cy="176" r="18"/><circle cx="256" cy="176" r="18"/><circle cx="302" cy="176" r="18"/></g>
+  <path d="M120 178 H152 L148 206 H120 Z M392 178 H360 L364 206 H392 Z" fill="#2a343c"/>
+  <rect x="80" y="212" width="352" height="124" rx="14" fill="#b5272d"/>
+  <rect x="100" y="230" width="84" height="84" rx="12" fill="#1c1d1f"/><circle cx="142" cy="272" r="28" fill="#f0a21a"/>
+  <rect x="328" y="230" width="84" height="84" rx="12" fill="#1c1d1f"/><circle cx="370" cy="272" r="28" fill="#f0a21a"/>
+  <rect x="204" y="258" width="104" height="28" rx="8" fill="#1c1d1f"/>
+  <rect x="68" y="330" width="376" height="44" rx="12" fill="#2a343c"/>
+  <rect x="92" y="372" width="76" height="62" rx="14" fill="#262c31"/><rect x="344" y="372" width="76" height="62" rx="14" fill="#262c31"/>
+</svg>

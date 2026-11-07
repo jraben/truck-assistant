@@ -212,7 +212,7 @@ Delivery window is Q2 2027.
 
 ---
 
-Slate Cockpit is an independent DIY project. It is **not affiliated with,
+Truck Assistant is an independent DIY project. It is **not affiliated with,
 endorsed by or supported by Slate Auto**. Product names belong to their
 owners. Links point to makers' pages for reference only. They are not
 endorsements, and none is an affiliate link.

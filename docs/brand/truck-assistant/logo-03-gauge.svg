@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Truck Assistant">
+  <!-- Gauge: dash dial with a Toolbox Red needle and Clean Slate hub over a road line -->
+  <rect width="512" height="512" rx="104" fill="#0d1114"/><path d="M88 340 A168 168 0 0 1 424 340" fill="none" stroke="#4fc3d9" stroke-width="44" stroke-linecap="round"/><path d="M256 340 L372 214" stroke="#b5272d" stroke-width="32" stroke-linecap="round"/><circle cx="256" cy="340" r="36" fill="#e4e5e0"/><path d="M146 412 H366" stroke="#e4e5e0" stroke-width="28" stroke-linecap="round"/>
+</svg>

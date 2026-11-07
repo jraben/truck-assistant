@@ -137,7 +137,13 @@ describe('backups', () => {
     expect(entries.map((e) => e.name).sort()).toEqual(['clips/index.json', 'cockpit.db', 'settings.json']);
     expect(entries.find((e) => e.name === 'settings.json')!.data.toString()).not.toContain('SECRET');
     // tamper -> refused
-    const tar = gunzipSync(gz); tar[600] ^= 1;
+    // flip a byte inside settings.json's data (found via its 512-aligned tar header), not a fixed offset that
+    // shifts with the manifest's length (e.g. when PROJECT_NAME changes)
+    const tar = gunzipSync(gz);
+    let hdr = -1;
+    for (let i = tar.indexOf('settings.json'); i >= 0; i = tar.indexOf('settings.json', i + 1)) if (i % 512 === 0) { hdr = i; break; }
+    expect(hdr).toBeGreaterThanOrEqual(0);
+    tar[hdr + 512 + 2] ^= 1;
     expect(() => openBackup(gzipSync(tar))).toThrow();
     // change the live db, then restore the backup
     db.exec("UPDATE kv SET v = '\"after\"' WHERE k = 'marker'");

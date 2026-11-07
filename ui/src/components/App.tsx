@@ -148,7 +148,7 @@ export function App() {
   return (
     <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
       <header class="strip">
-        <span class="brand">{PROJECT.shortName}</span>
+        <span class="brand"><img class="brand-mark" src="/icon.svg" alt="" /><span class="brand-name">{PROJECT.shortName}</span></span>
         {editing
           ? <span class="rail-edit"><b>Arrange icons</b><button type="button" class="btn sm" onClick={resetOrder}>Reset</button><button type="button" class="btn sm primary" onClick={() => setEditing(false)}>Done</button></span>
           : <h1 class="screen-title">{cur.label}</h1>}
