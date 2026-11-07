@@ -203,14 +203,17 @@ export function validateDriverDrive(v: unknown, where = 'drive'): DriverDrive {
   };
 }
 
-/** The Drive view's widgets before Track A (the old default). */
-const LEGACY_DRIVE = JSON.stringify(['speed', 'soc', 'nowPlaying', 'nextCharger', 'trip', 'cabin', 'aux12v', 'tilt']);
+/** The Drive view's widgets before Track A: the first default, then the one with Now playing. */
+const LEGACY_DRIVE = [
+  ['speed', 'soc', 'nextCharger', 'trip', 'cabin', 'aux12v', 'tilt'],
+  ['speed', 'soc', 'nowPlaying', 'nextCharger', 'trip', 'cabin', 'aux12v', 'tilt'],
+].map((t) => JSON.stringify(t));
 export const DRIVE_VIEW = { id: 'drive', label: 'Drive', widgets: [{ type: 'drive', col: 1, row: 1, w: 12, h: 2 }] };
 
-/** A layout whose Drive view is still the old default gets the new Drive screen; a customised one is left alone. */
+/** A layout whose Drive view is still an old default gets the new Drive screen; a customised one is left alone. */
 export function migrateDriveLayout(l: Layout): Layout {
   const i = l.views.findIndex((v) => v.id === 'drive');
-  if (i < 0 || JSON.stringify(l.views[i].widgets.map((w) => w.type)) !== LEGACY_DRIVE) return l;
+  if (i < 0 || !LEGACY_DRIVE.includes(JSON.stringify(l.views[i].widgets.map((w) => w.type)))) return l;
   const views = l.views.slice();
   views[i] = { ...structuredClone(DRIVE_VIEW), label: l.views[i].label };
   return { ...l, views };
