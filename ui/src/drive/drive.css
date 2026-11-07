@@ -202,9 +202,9 @@
 
 /* ---- at speed / hot ------------------------------------------------------------------ */
 .app.at-speed { --hit: 72px; }
-/* at speed: theme and settings leave the rail, the rest grow to fill it */
-.app.at-speed .rail > :nth-last-child(-n+2) { display: none; }
-.app.at-speed .rail a, .app.at-speed .rail button { flex: 1 1 auto; font-size: 14px; }
+/* at speed: the parked-only tools (theme, logs, test panel, settings) leave the rail, the rest grow to fill it */
+.app.at-speed .rail > .park-only { display: none; }
+.app.at-speed .rail > .slot { max-height: none; }
 .app.at-speed .rail svg { width: 30px; height: 30px; }
 .app.at-speed .btn { min-height: 60px; }
 .app.calm *, .app.calm *::before, .app.calm *::after { transition: none !important; animation: none !important; }
