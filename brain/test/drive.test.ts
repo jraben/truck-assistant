@@ -293,6 +293,12 @@ describe('drive layout migration', () => {
     expect(migrateDriveLayout(custom)).toEqual(custom);
     expect(DEFAULT_LAYOUT.views[0].widgets.map((w) => w.type)).toEqual(['drive']);
   });
+  it('also moves the first default (before Now playing joined it)', () => {
+    const first = { views: [{ id: 'drive', label: 'Drive', widgets: [['speed', 1, 4, 2], ['soc', 5, 3, 2], ['nextCharger', 8, 5, 1], ['trip', 8, 2, 1], ['cabin', 10, 1, 1], ['aux12v', 11, 1, 1], ['tilt', 12, 1, 1]].map(([type, col, w, h], i) => ({ type: type as string, col: col as number, row: i < 3 ? 1 : 2, w: w as number, h: h as number })) }] };
+    expect(migrateDriveLayout(first).views[0].widgets.map((w) => w.type)).toEqual(['drive']);
+    const s = loadSettings(migrateSettings({ drivers: [{ id: 'jeff', name: 'Jeff', color: '#4fc3d9', layout: first }] }));
+    expect(s.drivers[0].layout.views[0].widgets.map((w) => w.type)).toEqual(['drive']);
+  });
   it('an old settings file gets truck, drive and per-driver drive defaults', () => {
     const s = loadSettings(migrateSettings({ drivers: [{ id: 'jeff', name: 'Jeff', color: '#4fc3d9', layout: legacy }] }));
     expect(s.truck.colors.lampPlates).toBe('synthwave');
