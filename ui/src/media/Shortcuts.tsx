@@ -8,6 +8,7 @@ import { player, playerStore } from './player.ts';
 import { mediaStatusStore, refreshMediaStatus, type MaskedMediaSettings, type PlexItem, type RadioStation, type SpotifyPlaylist } from './status.ts';
 import { fmName, presetTrack, type FmPreset } from './FmTab.tsx';
 import type { Track } from './player.ts';
+import { KIND_ART } from './sources.ts';
 
 type Tile = { key: string; kind: 'AM/FM' | 'Radio' | 'Spotify' | 'Plex'; title: string; sub: string; art: string | null; play: () => void | Promise<void>; on: boolean };
 
@@ -61,7 +62,7 @@ export function ShortcutsTab({ stationTrack, plexTrack }: { stationTrack: (s: Ra
   if (!tiles.length) {
     return (
       <div class="mpane">
-        <div class="dimtxt">Nothing saved yet. Shortcuts collects your AM/FM presets, radio favourites (☆), Spotify playlists and Plex playlists here.</div>
+        <div class="dimtxt">Nothing saved yet. This row collects your AM/FM presets, radio favourites (☆), Spotify playlists and Plex playlists here.</div>
       </div>
     );
   }
@@ -71,7 +72,7 @@ export function ShortcutsTab({ stationTrack, plexTrack }: { stationTrack: (s: Ra
       <div class="mgrid">
         {tiles.map((t) => (
           <button type="button" class={`mtile ${t.on ? 'sel' : ''}`} disabled={busy === t.key} onClick={() => void tap(t)} aria-pressed={t.on}>
-            {t.art ? <img src={t.art} alt="" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} /> : <span class="noart">{t.kind === 'AM/FM' ? '📻' : t.kind === 'Radio' ? '📡' : '♪'}</span>}
+            <img src={t.art ?? KIND_ART[t.kind]} alt="" loading="lazy" onError={(e) => { const i = e.target as HTMLImageElement; if (i.src !== new URL(KIND_ART[t.kind], location.href).href) i.src = KIND_ART[t.kind]; }} />
             <b class="ellip">{t.title}</b>
             <span class="dimtxt ellip">{t.kind} · {t.sub}</span>
           </button>

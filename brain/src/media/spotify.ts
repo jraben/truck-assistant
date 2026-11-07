@@ -148,11 +148,14 @@ export function mapDevice(d: Record<string, unknown>): SpotifyDevice {
   return { id: String(d.id ?? ''), name: String(d.name ?? ''), type: String(d.type ?? ''), active: d.is_active === true, volume: typeof d.volume_percent === 'number' ? d.volume_percent : null };
 }
 
+/** Song count: Spotify renamed playlist "tracks" to "items" in February 2026 (tracks is deprecated); read either. */
+const count = (p: Record<string, any>): number | null => (typeof p.items?.total === 'number' ? p.items.total : typeof p.tracks?.total === 'number' ? p.tracks.total : null); // eslint-disable-line @typescript-eslint/no-explicit-any
+
 export function mapPlaylists(j: unknown): SpotifyPlaylist[] {
   const items = (j as { items?: unknown[] } | null)?.items;
   if (!Array.isArray(items)) return [];
   return items.filter((p): p is Record<string, any> => !!p && typeof p === 'object') // eslint-disable-line @typescript-eslint/no-explicit-any
-    .map((p) => ({ id: String(p.id), uri: String(p.uri), name: String(p.name ?? 'Playlist'), tracks: typeof p.tracks?.total === 'number' ? p.tracks.total : null, image: p.images?.[0]?.url ?? null, owner: p.owner?.display_name ?? null }));
+    .map((p) => ({ id: String(p.id), uri: String(p.uri), name: String(p.name ?? 'Playlist'), tracks: count(p), image: p.images?.[0]?.url ?? null, owner: p.owner?.display_name ?? null }));
 }
 
 /** Web API calls for one driver. 401 once = refresh and retry. */
