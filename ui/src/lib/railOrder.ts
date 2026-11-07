@@ -1,25 +1,28 @@
-// The left rail's icon order, rearranged by press-and-hold and saved per browser.
+// The left rail's icon order, rearranged by press-and-hold and saved per driver.
 
 export const RAIL_ORDER_KEY = 'slate.railOrder';
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+export type CachedOrder = { driver: string; order: string[] | null };
 
-/** The saved order, or null when there is none (or it is unreadable). */
-export function loadOrder(store: KV | null | undefined): string[] | null {
+// The order lives on the brain, per driver (Driver.railOrder). This browser keeps
+// only a copy of the last driver's order so the first paint, before settings
+// arrive, already looks right. It is never the source of truth.
+
+/** The cached order, or null when there is none (or it is unreadable). */
+export function loadCache(store: KV | null | undefined): CachedOrder | null {
   try {
     const raw = store?.getItem(RAIL_ORDER_KEY);
     if (!raw) return null;
-    const v: unknown = JSON.parse(raw);
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : null;
+    const v = JSON.parse(raw) as Partial<CachedOrder> | null;
+    if (!v || typeof v.driver !== 'string') return null;
+    const order = Array.isArray(v.order) ? v.order.filter((x): x is string => typeof x === 'string') : null;
+    return { driver: v.driver, order };
   } catch { return null; }
 }
 
-export function saveOrder(store: KV | null | undefined, order: string[]): void {
-  try { store?.setItem(RAIL_ORDER_KEY, JSON.stringify(order)); } catch { /* private window or full storage */ }
-}
-
-export function clearOrder(store: KV | null | undefined): void {
-  try { store?.removeItem(RAIL_ORDER_KEY); } catch { /* private window */ }
+export function saveCache(store: KV | null | undefined, c: CachedOrder): void {
+  try { store?.setItem(RAIL_ORDER_KEY, JSON.stringify(c)); } catch { /* private window or full storage */ }
 }
 
 /**
@@ -42,4 +45,15 @@ export function moveItem<T>(order: readonly T[], from: number, to: number): T[] 
   const [x] = out.splice(from, 1);
   out.splice(to, 0, x);
   return out;
+}
+
+/**
+ * Which saved order the rail uses: an edit not yet confirmed by the brain (for
+ * this driver only), else the active driver's own order, else (settings not
+ * loaded yet) the cached copy. null means the default order.
+ */
+export function pickOrder(o: { driver: string | null; driverOrder: string[] | null; draft: CachedOrder | null; cache: CachedOrder | null }): string[] | null {
+  if (o.driver === null) return o.cache?.order ?? null;
+  if (o.draft && o.draft.driver === o.driver) return o.draft.order;
+  return o.driverOrder;
 }

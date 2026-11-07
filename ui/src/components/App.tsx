@@ -19,7 +19,7 @@ import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
-import { clearOrder, loadOrder, mergeOrder, saveOrder } from '../lib/railOrder.ts';
+import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -71,7 +71,10 @@ export function App() {
   const [netOpen, setNetOpen] = useState(false);
   const [logs, setLogs] = useState<null | 'mileage' | 'maintenance'>(null);
   const [editing, setEditing] = useState(false);
-  const [savedOrder, setSavedOrder] = useState(() => loadOrder(storage()));
+  // Rail order: the active driver's (on the brain); a local draft while a save is in flight.
+  const [cache] = useState(() => loadCache(storage()));
+  const [draft, setDraft] = useState<CachedOrder | null>(null);
+  const pending = useRef<{ t: number; d: CachedOrder } | null>(null);
   const simAvailable = useSimAvailable();
   const [simOpen, setSimOpenRaw] = useState(() => { try { return localStorage.getItem('slate.simPanel') === '1'; } catch { return false; } });
   const setSimOpen = (on: boolean) => { setSimOpenRaw(on); try { if (on) localStorage.setItem('slate.simPanel', '1'); else localStorage.removeItem('slate.simPanel'); } catch { /* private window */ } };
@@ -118,9 +121,27 @@ export function App() {
     { id: '@settings', parkOnly: true, label: 'Settings', icon: <Ico d={GEAR} />, href: '/settings' },
   ];
   const byId = new Map(entries.map((e) => [e.id, e]));
-  const order = mergeOrder(savedOrder, entries.map((e) => e.id));
-  const reorder = (next: string[]) => { setSavedOrder(next); saveOrder(storage(), next); };
-  const resetOrder = () => { setSavedOrder(null); clearOrder(storage()); };
+  const order = mergeOrder(pickOrder({ driver: driver?.id ?? null, driverOrder: driver?.railOrder ?? null, draft, cache }), entries.map((e) => e.id));
+  const persist = (d: CachedOrder) => {
+    saveCache(storage(), d);
+    const send = (x: CachedOrder) => {
+      putDriver(x.driver, { railOrder: x.order })
+        .then(() => setDraft((cur) => (cur === x ? null : cur)))
+        .catch((e: Error) => { toast(`Icon order not saved: ${e.message}`); setDraft((cur) => (cur === x ? null : cur)); });
+    };
+    // Dragging reorders on every slot crossed: save once it settles. Another driver's pending save goes now.
+    const p = pending.current;
+    if (p) { clearTimeout(p.t); if (p.d.driver !== d.driver) send(p.d); }
+    pending.current = { d, t: window.setTimeout(() => { pending.current = null; send(d); }, 700) };
+  };
+  const reorder = (next: string[]) => { if (!driver) return; const d = { driver: driver.id, order: next }; setDraft(d); persist(d); };
+  const resetOrder = () => { if (!driver) return; const d = { driver: driver.id, order: null }; setDraft(d); persist(d); };
+  // A driver change: their own order, and out of edit mode.
+  useEffect(() => {
+    setEditing(false);
+    if (driver) saveCache(storage(), { driver: driver.id, order: driver.railOrder ?? null });
+  }, [driver?.id]);
+  useEffect(() => { if (driver && !draft) saveCache(storage(), { driver: driver.id, order: driver.railOrder ?? null }); }, [driver?.railOrder]);
   const cols = Math.max(1, ...cur.widgets.map((w) => w.col + w.w - 1));
   const rows = Math.max(1, ...cur.widgets.map((w) => w.row + w.h - 1));
 

@@ -82,6 +82,52 @@ describe('driver profiles', () => {
   });
 });
 
+describe('rail order per driver', () => {
+  it('a new driver has none (the default order)', () => {
+    expect(newDriver('jeff', 'Jeff').railOrder).toBeNull();
+    expect(defaultSettings().drivers.every((d) => d.railOrder === null)).toBe(true);
+  });
+
+  it('each driver keeps its own order, and it survives a reload', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'slate-rail-'));
+    const store = new SettingsStore(dir);
+    store.updateDriver('jeff', { railOrder: ['home', 'drive', '@settings'] });
+    store.updateDriver('sam', { railOrder: ['cams', '@wopr'] });
+    const again = new SettingsStore(dir);
+    const by = (id: string) => again.get().drivers.find((d) => d.id === id)!.railOrder;
+    expect(by('jeff')).toEqual(['home', 'drive', '@settings']);
+    expect(by('sam')).toEqual(['cams', '@wopr']);
+    expect(by('jordan')).toBeNull();
+    // other edits leave it alone; null resets it
+    again.updateDriver('jeff', { name: 'Jeff R' });
+    expect(by('jeff')).toEqual(['home', 'drive', '@settings']);
+    again.updateDriver('jeff', { railOrder: null });
+    expect(by('jeff')).toBeNull();
+  });
+
+  it('drops unknown, malformed and repeated ids; refuses a non-list', () => {
+    const d = mergeDriver(newDriver('jeff', 'Jeff'), { railOrder: ['home', 'nope', 7, '@hack', 'home', 'drive', '@sim', null] });
+    expect(d.railOrder).toEqual(['home', 'drive', '@sim']);
+    expect(mergeDriver(d, { railOrder: ['gone', 'also-gone'] }).railOrder).toBeNull();
+    expect(() => mergeDriver(d, { railOrder: 'home,drive' })).toThrow(/railOrder/);
+  });
+
+  it('ids follow the own layout views of the driver', () => {
+    const one = { views: [{ id: 'drive', label: 'Drive', widgets: [{ type: 'speed', col: 1, row: 1, w: 12, h: 2 }] }, { id: 'camp', label: 'Camp', widgets: [{ type: 'speed', col: 1, row: 1, w: 12, h: 2 }] }] };
+    const d = mergeDriver(newDriver('jeff', 'Jeff'), { layout: one, railOrder: ['camp', 'charge', 'drive'] });
+    expect(d.railOrder).toEqual(['camp', 'drive']);
+  });
+
+  it('a settings file from before rail orders loads with none', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'slate-rail-old-'));
+    const store = new SettingsStore(dir);
+    const raw = JSON.parse(JSON.stringify(store.get()));
+    for (const d of raw.drivers) delete d.railOrder;
+    writeFileSync(path.join(dir, 'settings.json'), JSON.stringify(raw));
+    expect(new SettingsStore(dir).get().drivers.every((d) => d.railOrder === null)).toBe(true);
+  });
+});
+
 /** settings.json exactly as the brain wrote it before driver profiles. */
 const OLD_FILE = {
   truckId: 'slate',

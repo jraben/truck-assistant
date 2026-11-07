@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { validateRailOrder } from './rail.ts';
 import type { ChargingPrefs, CompareVehicle, Driver, Layout, PayoffGoal, Settings, WifiNet } from './types.ts';
 import { DEFAULT_LAYOUT, migrateChargeLayout } from './layout.ts';
 import { defaultAlertOn } from './charges/peak.ts';
@@ -42,6 +43,7 @@ export function newDriver(id: string, name: string, opts: Partial<Pick<Driver, '
     hotspot: null,
     btTetherMac: null,
     drive: defaultDriverDrive(),
+    railOrder: null,
   };
 }
 
@@ -343,6 +345,7 @@ export function validateDriver(d: unknown, idHint: string | number = '?'): Drive
     x.btTetherMac = x.btTetherMac.trim().replace(/-/g, ':').toUpperCase();
   }
   try { x.drive = validateDriverDrive(x.drive, `${where} drive`); } catch (e) { if (e instanceof DriveSettingsError) throw new SettingsError(e.message); throw e; }
+  try { x.railOrder = validateRailOrder(x.railOrder, x.layout); } catch (e) { throw new SettingsError(`${where}: ${(e as Error).message}`); }
   return x;
 }
 

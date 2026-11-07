@@ -199,6 +199,8 @@ export type Driver = {
   hotspot: WifiNet | null;
   btTetherMac: string | null;
   drive: DriverDrive;               // Track A: speedometer style, over-limit warning
+  /** The cockpit rail's icon order (ids from layout views and rail.ts RAIL_EXTRA_IDS); null = default. */
+  railOrder: string[] | null;
 };
 
 export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel';
