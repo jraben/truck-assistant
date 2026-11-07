@@ -5,6 +5,7 @@ import { stateStore, useStore } from '../lib/brain.ts';
 import { NowPlayingMiniAny } from '../media/nowplaying.tsx';
 import { carplay, carplayStore, nowPlayingStore, type CarPlayState } from '../carplay/controller.ts';
 import { fmtClock, livePosition, type NowPlaying } from '../carplay/media.ts';
+import { noDecoderReason } from '../carplay/video.ts';
 import { Card } from './common.tsx';
 import type { WP } from './drive.tsx';
 
@@ -30,8 +31,14 @@ function Overlay({ cp }: { cp: CarPlayState }) {
   const brainSim = useHealthSim();
   const now = useNow();
   const simButton = brainSim && !cp.sim ? <a class="btn" href={simHref()}>Run the simulator</a> : null;
-  if (!cp.webCodecs) {
-    return <div class="cpover"><h2>No video decoder</h2><p>This browser has no WebCodecs (VideoDecoder), so CarPlay's picture can't be shown. Chromium 94 or newer has it; the Pi kiosk does.</p></div>;
+  if (!cp.webCodecs && !cp.simVideo) {
+    return (
+      <div class="cpover">
+        <h2>No video decoder</h2>
+        <p>{noDecoderReason({ secure: isSecureContext, origin: location.origin })}</p>
+        <div class="row wrap">{simButton}</div>
+      </div>
+    );
   }
   switch (cp.status) {
     case 'no-webusb':
@@ -90,7 +97,8 @@ export function CarPlay(_: WP) {
       <div class="cpvideo" ref={ref} />
       <Overlay cp={cp} />
       <div class="cpchips">
-        {cp.sim && <span class="tag warn" title="Playing ui/public/carplay-sim/test.h264; touches show as dots">SIMULATOR</span>}
+        {cp.sim && <span class="tag warn" title={`Playing ui/public/carplay-sim/test.${cp.simVideo ? 'mp4' : 'h264'}; touches show as dots`}>SIMULATOR</span>}
+        {cp.simVideo && <span class="tag" title={cp.simVideo}>MP4 FALLBACK</span>}
         {cp.mic && <span class="tag accent">MIC</span>}
         {cp.micError && <span class="tag bad" title={cp.micError}>MIC ✕</span>}
         {cp.soundBlocked && <button class="tag accent" type="button" onClick={() => carplay.unlockSound()}>TAP FOR SOUND</button>}

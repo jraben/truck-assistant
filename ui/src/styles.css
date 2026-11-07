@@ -102,6 +102,7 @@ a { color: var(--accent); }
 .cphost { position: relative; border-radius: calc(14px * var(--r)); overflow: hidden; background: #000; border: 1px solid var(--line); min-height: 0; }
 .cpvideo { position: absolute; inset: 0; }
 .cpcanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+video.cpcanvas { object-fit: contain; background: #000; pointer-events: auto; }
 .cpover { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; padding: 24px;
   background: repeating-linear-gradient(135deg, var(--panel) 0 14px, var(--panel-2) 14px 28px); color: var(--fg); }
 .cpover h2 { font-family: var(--display); font-size: 40px; margin: 0; }

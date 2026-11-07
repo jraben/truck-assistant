@@ -5,6 +5,7 @@ import { codecFromSps, findNal, isKeyFrame, joinAnnexB, NAL, nalType, splitAcces
 import { dongleDpi, dongleSize, fitRect, mapTouch, mapTouchClamped, panelPpi } from '../src/carplay/geometry.ts';
 import { applyAudioCommand, gains, initialMix, NAV_DUCK, pcmFormat, roleFor, streamKey } from '../src/carplay/pcm.ts';
 import { brainMedia, emptyNowPlaying, livePosition, mergeMedia } from '../src/carplay/media.ts';
+import { noDecoderReason } from '../src/carplay/video.ts';
 import { AudioCommand } from '../src/carplay/vendor/node-carplay/modules/messages/readable.js';
 
 const u8 = (...b: number[]) => new Uint8Array(b);
@@ -187,5 +188,28 @@ describe('now playing', () => {
     const np = { ...emptyNowPlaying(), title: 'T', artist: 'A', album: null, art: 'data:image/png;base64,xx' };
     expect(brainMedia(np)).toEqual({ type: 'media', title: 'T', artist: 'A', album: null });
     expect(brainMedia(null)).toEqual({ type: 'media', title: null, artist: null, album: null });
+  });
+});
+
+describe('no WebCodecs (the tablet on http://<LAN IP>)', () => {
+  it('names the insecure origin as the reason, not a generic decoder error', () => {
+    const r = noDecoderReason({ secure: false, origin: 'http://192.168.1.20:3950' });
+    expect(r).toContain('http://192.168.1.20:3950');
+    expect(r).toMatch(/secure origin/);
+    expect(r).toMatch(/https or on localhost/);
+  });
+
+  it('blames the browser when the context is secure', () => {
+    expect(noDecoderReason({ secure: true, origin: 'http://localhost:3950' })).toMatch(/Chromium 94/);
+  });
+
+  it('ships the simulator clip as an MP4 too, for the <video> fallback', () => {
+    const mp4 = readFileSync(resolve(__dirname, '../public/carplay-sim/test.mp4'));
+    expect(mp4.subarray(4, 8).toString('latin1')).toBe('ftyp');
+    // faststart: the moov box (the index) comes before the media data, so playback starts at once.
+    const moov = mp4.indexOf('moov', 0, 'latin1'), mdat = mp4.indexOf('mdat', 0, 'latin1');
+    expect(moov).toBeGreaterThan(0);
+    expect(moov).toBeLessThan(mdat);
+    expect(mp4.indexOf('avc1', 0, 'latin1')).toBeGreaterThan(0);
   });
 });
