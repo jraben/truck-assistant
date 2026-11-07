@@ -90,9 +90,12 @@ function MailboxStatus() {
     void load();
   };
   return (
-    <button type="button" class="mailbox-btn" onClick={() => void collect()} title={has ? 'Tap once you’ve brought the mail in' : label}>
-      <Mailbox delivered={has} />
-      <span class={`dimtxt ${has ? 'okc' : coming ? 'warnc' : ''}`} style="font-size:13px;text-transform:uppercase;letter-spacing:.05em">{label}</span>
+    <button type="button" class={`mailbox-btn ${has ? 'has' : ''}`} disabled={!has} onClick={() => void collect()} title={has ? 'Tap once you’ve brought the mail in' : label}>
+      <Mailbox delivered={has} size={56} />
+      <span class="mailbox-txt">
+        <b class={has ? 'okc' : coming ? 'warnc' : ''}>{label}</b>
+        {has && <span class="dimtxt">Tap once it’s brought in</span>}
+      </span>
     </button>
   );
 }
@@ -120,26 +123,53 @@ export function GarageW() {
     setBusy(true);
     try { await act(entity, action); setTimeout(reload, 800); } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
-  if (err) return <div class="card"><span class="lbl">Garage</span><div class="err">{err}</div></div>;
-  if (!v) return <div class="card"><span class="lbl">Garage</span><div class="dimtxt">Asking Home Assistant…</div></div>;
-  if (!door) return <div class="card"><span class="lbl">Garage</span><div class="dimtxt">No garage door found in Home Assistant. Pick one in Settings › Home.</div></div>;
-  const obstructed = v.garage.obstruction?.state === 'on';
-  const isOpen = door.state === 'open' || door.state === 'opening';
-  return (
-    <div class="card garage-card">
-      <div class="row between"><span class="lbl">Garage</span><span class={`tag ${door.state === 'closed' ? '' : 'warn'}`}>{door.state.toUpperCase()}</span></div>
-      <div class="row" style="align-items:flex-end;gap:14px;justify-content:center">
-        <button type="button" class="garage-btn" disabled={busy} onClick={() => void press(door.entity, isOpen ? 'close' : 'open')} aria-label={isOpen ? 'Close the garage' : 'Open the garage'}>
-          <GarageDoor state={door.state} obstructed={obstructed} size={300} />
-        </button>
+  // Home Assistant not connected or not answering: one card across the whole
+  // screen says so (the tiles panel steps aside, see .ha-off), not two red errors.
+  if (err) {
+    const setup = /settings page/i.test(err);
+    return (
+      <div class="card home-off">
+        <div class="home-off-body">
+          <GarageDoor state="closed" size={150} />
+          <b>{setup ? 'Connect Home Assistant' : 'Home Assistant isn’t answering'}</b>
+          <span class="dimtxt">{setup ? 'Add its address and a long-lived access token in Settings to see the garage door and your house here.' : err}</span>
+          <div class="row wrap" style="justify-content:center">
+            {setup ? <a class="btn big primary" href="/settings#ha">Open settings</a> : <button class="btn big" type="button" onClick={reload}>Try again</button>}
+          </div>
+        </div>
         <MailboxStatus />
       </div>
-      {obstructed && <div class="banner bad">Something is blocking the door sensor.</div>}
-      <div class="row wrap">
-        <button class="btn big primary grow" type="button" disabled={busy} onClick={() => void press(door.entity, isOpen ? 'close' : 'open')}>{isOpen ? 'Close' : 'Open'}</button>
-        {(door.state === 'opening' || door.state === 'closing') && <button class="btn big" type="button" onClick={() => void press(door.entity, 'stop')}>Stop</button>}
-        {v.garage.light && <button class={`btn big ${v.garage.light.state === 'on' ? 'primary' : ''}`} type="button" onClick={() => void press(v.garage.light!.entity, 'toggle')}>💡 Light</button>}
+    );
+  }
+  if (!v) return <div class="card"><span class="lbl">Garage</span><div class="dimtxt">Asking Home Assistant…</div></div>;
+  if (!door) {
+    return (
+      <div class="card garage-card">
+        <span class="lbl">Garage</span>
+        <div class="home-off-body">
+          <span class="dimtxt">No garage door picked yet.</span>
+          <a class="btn big" href="/settings#ha">Pick one in Settings</a>
+        </div>
+        <MailboxStatus />
       </div>
+    );
+  }
+  const obstructed = v.garage.obstruction?.state === 'on';
+  const isOpen = door.state === 'open' || door.state === 'opening';
+  const moving = door.state === 'opening' || door.state === 'closing';
+  return (
+    <div class="card garage-card">
+      <div class="row between"><span class="lbl">Garage</span><span class={`tag ${door.state === 'closed' ? 'dim' : 'warn'}`}>{door.state}</span></div>
+      <button type="button" class="garage-btn" disabled={busy} onClick={() => void press(door.entity, isOpen ? 'close' : 'open')} aria-label={isOpen ? 'Close the garage' : 'Open the garage'}>
+        <GarageDoor state={door.state} obstructed={obstructed} />
+      </button>
+      {obstructed && <div class="banner bad">Something is blocking the door sensor.</div>}
+      <div class="garage-actions">
+        <button class="btn big primary" type="button" disabled={busy} onClick={() => void press(door.entity, isOpen ? 'close' : 'open')}>{isOpen ? 'Close' : 'Open'}</button>
+        {moving && <button class="btn big" type="button" onClick={() => void press(door.entity, 'stop')}>Stop</button>}
+        {v.garage.light && <button class={`btn big ${v.garage.light.state === 'on' ? 'primary' : ''}`} type="button" aria-pressed={v.garage.light.state === 'on'} onClick={() => void press(v.garage.light!.entity, 'toggle')}>💡 Light</button>}
+      </div>
+      <MailboxStatus />
     </div>
   );
 }
@@ -164,8 +194,8 @@ function TileBtn({ t, onDone, edit, onRemove }: { t: Tile; onDone: () => void; e
   return (
     <button type="button" class={`ha-tile ${on ? 'on' : ''} ${main || edit ? '' : 'ro'} ${edit ? 'edit' : ''}`} disabled={busy} onClick={() => void tap()}>
       <span class="ha-ico" aria-hidden="true">{edit ? '✕' : ICON[t.domain] ?? '•'}</span>
-      <b class="ellip">{t.name}</b>
-      <span class="dimtxt ellip">{value}</span>
+      <b class="ha-name">{t.name}</b>
+      <span class="dimtxt ellip num">{value}</span>
     </button>
   );
 }
@@ -180,8 +210,8 @@ export function HaPanelW() {
   const [hits, setHits] = useState<Tile[] | null>(null);
   const [dash, setDash] = useState('room-garage');
   const save = async (c: PanelConfig) => { try { await api('/api/ha/panel', { method: 'PUT', body: JSON.stringify(c) }); reload(); } catch (e) { toast((e as Error).message); } };
-  if (err) return <div class="card"><span class="lbl">Home Assistant</span><div class="err">{err}</div></div>;
-  if (!v) return <div class="card"><span class="lbl">Home Assistant</span><div class="dimtxt">Asking Home Assistant…</div></div>;
+  if (err) return <div class="ha-off" />;   // the garage card shows the one message, across the screen
+  if (!v) return <div class="card" />;
   const c = v.config;
   const cur = v.pages[Math.min(page, v.pages.length - 1)];
   const importDash = async () => {
@@ -198,13 +228,20 @@ export function HaPanelW() {
   const pageIdx = Math.min(page, c.pages.length - 1);
   return (
     <div class="card ha-panel">
-      <div class="row between wrap">
-        <div class="mtabs" role="tablist">
-          {v.pages.map((p, i) => <button type="button" role="tab" aria-selected={i === pageIdx} onClick={() => setPage(i)}>{p.title}</button>)}
-        </div>
-        <button class={`btn sm ${edit ? 'primary' : ''}`} type="button" onClick={() => { setEdit(!edit); setHits(null); }}>{edit ? 'Done' : 'Edit'}</button>
+      <div class="ha-head">
+        {v.pages.length > 1
+          ? <div class="mtabs" role="tablist">{v.pages.map((p, i) => <button type="button" role="tab" aria-selected={i === pageIdx} onClick={() => setPage(i)}>{p.title}</button>)}</div>
+          : <span class="lbl">{cur?.title ?? 'Home Assistant'}</span>}
+        {(v.pages.length > 0 || edit) && <button class={`btn ha-editbtn ${edit ? 'primary' : ''}`} type="button" onClick={() => { setEdit(!edit); setHits(null); }}>{edit ? 'Done' : 'Edit'}</button>}
       </div>
-      {!v.pages.length && !edit && <div class="dimtxt">No pages yet. Tap Edit to copy one of your Home Assistant dashboards (like the garage one) or pick devices.</div>}
+      {!v.pages.length && !edit && (
+        <div class="home-off-body">
+          <b>No tiles yet</b>
+          <span class="dimtxt">Copy one of your Home Assistant dashboards (like the garage one), or pick devices one by one.</span>
+          <button class="btn big primary" type="button" onClick={() => setEdit(true)}>Set up tiles</button>
+        </div>
+      )}
+      {cur && !cur.tiles.length && !edit && <div class="dimtxt">This page is empty. Tap Edit to add devices.</div>}
       {cur && (
         <div class="ha-grid">
           {cur.tiles.map((t) => <TileBtn t={t} onDone={reload} edit={edit} onRemove={() => void save({ ...c, pages: c.pages.map((p, i) => (i === pageIdx ? { ...p, entities: p.entities.filter((e) => e !== t.entity) } : p)) })} />)}
@@ -212,24 +249,27 @@ export function HaPanelW() {
       )}
       {edit && (
         <div class="ha-edit">
-          <form class="row wrap" onSubmit={(e) => { e.preventDefault(); void importDash(); }}>
-            <span class="lbl">Copy an HA dashboard</span>
-            <input class="minput" style="max-width:200px" value={dash} onInput={(e) => setDash((e.target as HTMLInputElement).value)} placeholder="room-garage" />
-            <button class="btn" type="submit">Copy</button>
-          </form>
+          {cur && <span class="dimtxt">Tap a tile to take it off {cur.title}.</span>}
           {cur && (
-            <form class="row wrap" onSubmit={(e) => { e.preventDefault(); if (q.trim()) void search(); }}>
+            <form class="ha-edit-row" onSubmit={(e) => { e.preventDefault(); if (q.trim()) void search(); }}>
               <span class="lbl">Add to {cur.title}</span>
-              <input class="minput grow" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} placeholder="Search devices, e.g. porch" />
+              <input class="minput" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} placeholder="Search devices, e.g. porch" />
               <button class="btn" type="submit">Search</button>
-              <button class="btn danger" type="button" onClick={() => { void save({ ...c, pages: c.pages.filter((_, i) => i !== pageIdx) }); setPage(0); }}>Remove page</button>
             </form>
           )}
-          {!cur && <button class="btn" type="button" onClick={() => void save({ ...c, pages: [...c.pages, { title: 'Home', dashboard: null, entities: [] }] })}>+ Empty page</button>}
-          {hits && <div class="row wrap">{hits.map((t) => <button type="button" class="btn sm" onClick={() => void save({ ...c, pages: c.pages.map((p, i) => (i === pageIdx ? { ...p, entities: [...new Set([...p.entities, t.entity])] } : p)) })}>+ {t.name}</button>)}</div>}
-          <div class="row wrap">
+          {hits && <div class="row wrap">{hits.length ? hits.map((t) => <button type="button" class="btn" onClick={() => void save({ ...c, pages: c.pages.map((p, i) => (i === pageIdx ? { ...p, entities: [...new Set([...p.entities, t.entity])] } : p)) })}>+ {t.name}</button>) : <span class="dimtxt">Nothing matches “{q.trim()}”.</span>}</div>}
+          <form class="ha-edit-row" onSubmit={(e) => { e.preventDefault(); void importDash(); }}>
+            <span class="lbl">New page from an HA dashboard</span>
+            <input class="minput" value={dash} onInput={(e) => setDash((e.target as HTMLInputElement).value)} placeholder="room-garage" />
+            <button class="btn" type="submit">Copy</button>
+          </form>
+          <div class="ha-edit-row">
             <span class="lbl">Garage prompt</span>
             <label class="check"><input type="checkbox" checked={c.garage.ask} onChange={(e) => void save({ ...c, garage: { ...c.garage, ask: (e.target as HTMLInputElement).checked } })} /> Offer Open when arriving, Close when leaving it open</label>
+          </div>
+          <div class="row wrap" style="justify-content:flex-end">
+            {!cur && <button class="btn" type="button" onClick={() => void save({ ...c, pages: [...c.pages, { title: 'Home', dashboard: null, entities: [] }] })}>+ Empty page</button>}
+            {cur && <button class="btn danger" type="button" onClick={() => { if (!confirm(`Remove the ${cur.title} page?`)) return; void save({ ...c, pages: c.pages.filter((_, i) => i !== pageIdx) }); setPage(0); }}>Remove {cur.title} page</button>}
           </div>
         </div>
       )}
