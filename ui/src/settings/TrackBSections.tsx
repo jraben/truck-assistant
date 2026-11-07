@@ -110,12 +110,12 @@ function SpotifySection({ m, put, settings, status, reload }: SP & { settings: S
   const drop = async (id: string) => { await api(`/api/spotify/auth/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => {}); reload(); };
   const sp = status?.spotify;
   return (
-    <Section id="spotify" title="Spotify" help={<>The truck becomes a Spotify Connect speaker ("{m.spotify.deviceName}", librespot on the Pi), and the Media view shows what's playing, skips, and plays your playlists on it. Playback control needs Spotify Premium.</>}>
+    <Section id="spotify" title="Spotify" help={<>The truck becomes a Spotify Connect speaker ("{m.spotify.deviceName}", librespot on the Pi), and the Media view shows what's playing, skips, and plays your playlists on it. Optional: without a Client ID, the Media view hands Spotify off to the phone (CarPlay) like Pandora. Since March 2026 Spotify only runs a developer app while its owner has <b>Spotify Premium</b>, and play/skip control needs Premium too; a free account can't use this. Creating the app costs nothing extra.</>}>
       <ol class="help" style="margin:0;padding-left:20px;display:grid;gap:4px">
-        <li>On developer.spotify.com/dashboard, create an app (free). Tick "Web API".</li>
+        <li>On developer.spotify.com/dashboard (signed in with your Premium account), create an app. Tick "Web API".</li>
         <li>Add this Redirect URI to the app: <code style="word-break:break-all">{red.uri}</code>{red.paste ? ' (Spotify only allows https, or http on 127.0.0.1)' : ''}.</li>
         <li>In the app's User Management, add the email of every Spotify account that will connect. An app in development mode serves at most <b>5 Spotify accounts</b>.</li>
-        <li>Paste its Client ID below, save, then press Connect for each driver.</li>
+        <li>Paste its Client ID below (it stays in the brain's data folder, never in a config file), save, then press Connect for each driver.</li>
       </ol>
       <div class="fields form">
         <label class="f"><span>Client ID</span><input type="text" autocomplete="off" value={cid} placeholder="32 characters from the app's settings" onInput={(e) => setCid((e.target as HTMLInputElement).value)} /></label>

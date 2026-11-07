@@ -24,3 +24,21 @@ describe('WOPR voice', () => {
     expect(blockedReason({ network: { link: 'home' } }, null)).toBeNull();
   });
 });
+
+describe('media sources', async () => {
+  const { SOURCES, isSourceId, phonePlaying, sourceById } = await import('../src/media/sources.ts');
+  it('has no CarPlay or Apple Music tile, and the three hand-off services', () => {
+    expect(SOURCES.map((s) => s.id)).toEqual(['spotify', 'pandora', 'ytmusic', 'amazon', 'plex', 'radio', 'fm', 'local']);
+    expect(isSourceId('carplay')).toBe(false);
+    expect(isSourceId('apple')).toBe(false);
+    for (const s of SOURCES) expect(s.art).toBeTruthy();
+  });
+  it('matches what the phone reports to the hand-off service playing it', () => {
+    const np = { app: 'Pandora', title: 'Song', artist: 'Band' };
+    expect(phonePlaying(sourceById('pandora')!.handOff, np)).toBe(np);
+    expect(phonePlaying(sourceById('amazon')!.handOff, np)).toBeNull();
+    expect(phonePlaying(sourceById('ytmusic')!.handOff, { app: 'YouTube Music', title: 'x', artist: null })).not.toBeNull();
+    expect(phonePlaying(sourceById('pandora')!.handOff, { app: 'Pandora', title: null, artist: null })).toBeNull();
+    expect(phonePlaying(sourceById('plex')!.handOff, np)).toBeNull();
+  });
+});
