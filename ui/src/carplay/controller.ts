@@ -12,8 +12,8 @@ import { dongleDpi, dongleSize, mapTouch, mapTouchClamped, type Size } from './g
 import { brainMedia, emptyNowPlaying, mergeMedia, type NowPlaying } from './media.ts';
 import { MicIn } from './mic.ts';
 import type { FromWorker, Status, ToWorker } from './protocol.ts';
-import { carplaySimWanted, SimSource } from './sim.ts';
-import { VideoSink, webCodecsSupported, type VideoStats } from './video.ts';
+import { carplaySimWanted, SimSource, SimVideo } from './sim.ts';
+import { noDecoderReason, VideoSink, webCodecsSupported, type VideoStats } from './video.ts';
 
 export type { Status } from './protocol.ts';
 
@@ -24,6 +24,8 @@ export type CarPlayState = {
   sim: boolean;
   video: VideoStats | null;
   webCodecs: boolean;
+  /** Why the simulator plays its MP4 instead of decoding H.264 (no WebCodecs, or it failed); null = WebCodecs. */
+  simVideo: string | null;
   requested: { width: number; height: number; fps: number; dpi: number } | null;
   accepted: { width: number; height: number; fps: number } | null;  // the dongle's Opened reply
   soundBlocked: boolean;
@@ -33,7 +35,7 @@ export type CarPlayState = {
 };
 
 export const carplayStore = store<CarPlayState>({
-  status: 'idle', reason: null, retryAt: null, sim: false, video: null, webCodecs: true,
+  status: 'idle', reason: null, retryAt: null, sim: false, video: null, webCodecs: true, simVideo: null,
   requested: null, accepted: null, soundBlocked: false, mic: false, micError: null, error: null,
 });
 /** Null when nothing is playing or CarPlay isn't connected. */
@@ -55,6 +57,7 @@ class CarPlayController {
   private worker: Worker | null = null;
   private sim: SimSource | null = null;
   private video: VideoSink | null = null;
+  private simVideo: SimVideo | null = null;
   private audio = new AudioOut();
   private mic: MicIn | null = null;
   private host: HTMLElement | null = null;
@@ -79,7 +82,14 @@ class CarPlayController {
       this.video = new VideoSink();
       this.video.onNeedKey = () => this.post({ type: 'frame' });
       this.video.onStats = (v) => { patch({ video: { ...v } }); if (v.width) this.clearNoVideo(); };
-      this.video.onError = (e) => { console.warn(`[carplay] ${e}`); patch({ error: e }); };
+      this.video.onError = (e) => {
+        console.warn(`[carplay] ${e}`);
+        // The simulator has a plan B for a decoder that won't take its clip; the dongle doesn't.
+        if (carplayStore.get().sim) this.useSimVideo(`WebCodecs couldn't decode the clip (${e}); playing the MP4 instead.`);
+        else patch({ error: e });
+      };
+    } else if (sim) {
+      this.useSimVideo(noDecoderReason({ secure: isSecureContext, origin: location.origin }) + ' The simulator plays its MP4 instead.');
     }
     this.size = lsGet<Size>(LS_SIZE);
 
@@ -204,6 +214,7 @@ class CarPlayController {
   private onPhoneGone() {
     this.clearNoVideo();
     this.video?.reset();
+    this.simVideo?.pause();
     this.audio.reset();
     this.nowPlaying = emptyNowPlaying();
     nowPlayingStore.set(null);
@@ -217,13 +228,32 @@ class CarPlayController {
     this.sim?.stop();
     this.sim = new SimSource({
       status: (s, reason) => patch({ status: s, reason: reason ?? null, retryAt: null }),
-      plugged: () => {},
+      plugged: () => this.simVideo?.play(),
       video: (au) => this.video?.push(au),
       skipped: () => this.video?.discontinuity(),
       media: (p) => this.onMedia(p),
     });
     void this.sim.start();
   }
+
+  /** Switch the simulator's picture to the MP4 <video> (once); the SimSource keeps driving status and now playing. */
+  private useSimVideo(reason: string) {
+    patch({ simVideo: reason, error: null });
+    if (this.simVideo) return;
+    console.warn(`[carplay sim] ${reason}`);
+    const host = this.host;
+    if (host) this.detach(host);
+    if (this.video) { this.video.onStats = () => {}; this.video.onError = () => {}; this.video.reset(); this.video = null; }
+    const sv = new SimVideo();
+    sv.onStats = (v) => patch({ video: { ...v, dropped: 0, codec: 'mp4' } });
+    sv.onError = (e) => { console.warn(`[carplay sim] ${e}`); patch({ error: e }); };
+    this.simVideo = sv;
+    if (host) this.attach(host);
+    if (carplayStore.get().status === 'connected') sv.play();
+  }
+
+  /** What shows the picture: the decoder's canvas, or the simulator's MP4. */
+  private surface(): HTMLElement | null { return this.simVideo?.el ?? this.video?.canvas ?? null; }
 
   // ---- now playing ------------------------------------------------------------
 
@@ -253,14 +283,14 @@ class CarPlayController {
   /** The CarPlay widget mounted: put the canvas in it and size the dongle to it. */
   attach(host: HTMLElement) {
     this.host = host;
-    if (this.video) {
-      host.appendChild(this.video.canvas);
-      const c = this.video.canvas;
+    const c = this.surface();
+    if (c) {
+      host.appendChild(c);
       c.onpointerdown = (e) => this.onPointer(e, TouchAction.Down);
       c.onpointermove = (e) => this.onPointer(e, TouchAction.Move);
       c.onpointerup = (e) => this.onPointer(e, TouchAction.Up);
       c.onpointercancel = (e) => this.onPointer(e, TouchAction.Up);
-      this.video.shown();
+      this.video?.shown();
     }
     if (carplayStore.get().sim) {
       this.dots = document.createElement('div');
@@ -273,7 +303,7 @@ class CarPlayController {
   detach(host: HTMLElement) {
     if (this.host !== host) return;
     if (this.pointerDown !== null) this.endTouch();
-    this.video?.canvas.remove();
+    this.surface()?.remove();
     this.dots?.remove(); this.dots = null;
     this.host = null;
   }
@@ -302,7 +332,7 @@ class CarPlayController {
   private onPointer(e: PointerEvent, action: number) {
     if (!e.isPrimary) return;                                 // single-touch
     if (stateStore.get()?.reverse === true) return;           // camera takeover
-    const c = e.currentTarget as HTMLCanvasElement;
+    const c = e.currentTarget as HTMLElement;
     const rect = c.getBoundingClientRect();
     const px = e.clientX - rect.left, py = e.clientY - rect.top;
     const el = { w: rect.width, h: rect.height };

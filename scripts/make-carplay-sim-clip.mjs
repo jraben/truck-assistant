@@ -4,6 +4,8 @@
 //   node scripts/make-carplay-sim-clip.mjs
 // Encoded the way the dongle sends CarPlay: no B-frames, a keyframe every
 // second, an AUD before each frame (the simulator splits frames on it).
+// Also writes test.mp4, the same frames remuxed, for browsers without WebCodecs
+// (an http:// LAN origin isn't a secure context, so VideoDecoder is missing).
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -37,4 +39,11 @@ const args = [
 ];
 const r = spawnSync('ffmpeg', args, { stdio: 'inherit' });
 if (r.status !== 0) { console.error('ffmpeg failed', r.error ?? r.status); process.exitCode = 1; }
-else console.log(`${out}: ${(statSync(out).size / 1024).toFixed(0)} KiB`);
+else {
+  console.log(`${out}: ${(statSync(out).size / 1024).toFixed(0)} KiB`);
+  const mp4 = out.replace(/\.h264$/, '.mp4');
+  const m = spawnSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-framerate', String(FPS), '-i', out,
+    '-c:v', 'copy', '-bsf:v', 'h264_metadata=aud=remove', '-movflags', '+faststart', mp4], { stdio: 'inherit' });
+  if (m.status !== 0) { console.error('ffmpeg (mp4) failed', m.error ?? m.status); process.exitCode = 1; }
+  else console.log(`${mp4}: ${(statSync(mp4).size / 1024).toFixed(0)} KiB`);
+}

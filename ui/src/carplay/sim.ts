@@ -4,6 +4,8 @@
 import { splitAccessUnits } from './h264.ts';
 
 export const SIM_CLIP_URL = '/carplay-sim/test.h264';
+/** The same clip remuxed to MP4, for a browser without WebCodecs (see SimVideo). */
+export const SIM_MP4_URL = '/carplay-sim/test.mp4';
 
 /** The test panel's switch: remembered in this browser, so no ?carplaySim=1 is needed. */
 const LS_SIM = 'slate.carplaySim';
@@ -113,6 +115,47 @@ export class SimSource {
     for (const t of this.timers) { clearTimeout(t); clearInterval(t); }
     this.timers = [];
   }
+}
+
+/**
+ * The simulator's picture when WebCodecs can't decode it: the same clip as an
+ * MP4 in a muted, looping <video>. Typical case: the test tablet opens the
+ * cockpit at http://<LAN IP>, which isn't a secure context, so VideoDecoder
+ * doesn't exist. The dongle path has no such fallback (its stream is live H.264).
+ */
+export class SimVideo {
+  readonly el: HTMLVideoElement;
+  onStats: (s: { width: number; height: number; fps: number }) => void = () => {};
+  onError: (msg: string) => void = () => {};
+  private frames = 0;
+  private playing = false;
+
+  constructor() {
+    const v = document.createElement('video');
+    v.className = 'cpcanvas cpvideo-el';
+    v.muted = true; v.defaultMuted = true; v.setAttribute('muted', '');
+    v.loop = true; v.playsInline = true; v.setAttribute('playsinline', '');
+    v.controls = false; v.disablePictureInPicture = true; v.preload = 'auto';
+    v.addEventListener('loadedmetadata', () => this.report(0));
+    v.addEventListener('error', () => this.onError(`simulator MP4 (${SIM_MP4_URL}): ${v.error?.message || `media error ${v.error?.code ?? '?'}`}`));
+    v.src = SIM_MP4_URL;
+    this.el = v;
+    const countFrame = () => { this.frames++; v.requestVideoFrameCallback(countFrame); };
+    if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(countFrame);
+    setInterval(() => { this.report(this.frames || (this.playing && !v.paused ? 30 : 0)); this.frames = 0; }, 1000);
+  }
+
+  private report(fps: number) {
+    const v = this.el;
+    if (v.videoWidth) this.onStats({ width: v.videoWidth, height: v.videoHeight, fps });
+  }
+
+  play() {
+    this.playing = true;
+    this.el.play().catch((e: Error) => { if (e.name !== 'AbortError') this.onError(`simulator MP4: ${e.message}`); });
+  }
+
+  pause() { this.playing = false; this.el.pause(); }
 }
 
 /** A generated album cover (base64 PNG, no data: prefix), like the dongle's AlbumCover packets. */

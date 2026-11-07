@@ -12,6 +12,19 @@ const KEY_REQUEST_MS = 1000;
 
 export const webCodecsSupported = () => typeof VideoDecoder !== 'undefined' && typeof EncodedVideoChunk !== 'undefined';
 
+/**
+ * Why there is no VideoDecoder, in words for the CarPlay overlay. WebCodecs is
+ * [SecureContext]: on a plain http:// LAN address (a tablet in a kiosk browser
+ * opening http://192.168.x.x) it simply isn't there, however new the browser.
+ */
+export function noDecoderReason(env: { secure: boolean; origin: string }): string {
+  if (!env.secure) {
+    return `WebCodecs (VideoDecoder) only exists on a secure origin, and ${env.origin} is plain http. ` +
+      'Open the cockpit over https or on localhost to decode CarPlay video.';
+  }
+  return "This browser has no WebCodecs (VideoDecoder), so CarPlay's picture can't be shown. Chromium 94 or newer has it; the Pi kiosk does.";
+}
+
 export type VideoStats = { width: number; height: number; fps: number; dropped: number; codec: string | null };
 
 export class VideoSink {
