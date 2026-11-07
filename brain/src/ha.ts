@@ -10,7 +10,7 @@ export const tripEndedTopic = (id: string) => `${id}/brain/trip/ended`;
 export const goalTopic = (id: string) => `${id}/brain/goal`;
 
 export function discoveryConfigs(id: string, version: string): Discovery[] {
-  const device = { identifiers: [`${id}_cockpit`], name: 'Slate Truck', manufacturer: 'Slate Cockpit (DIY)', model: 'Pi brain', sw_version: version };
+  const device = { identifiers: [`${id}_cockpit`], name: 'Slate Truck', manufacturer: 'Truck Assistant (DIY)', model: 'Pi brain', sw_version: version };
   const common = { availability_topic: statusTopic(id), payload_available: 'online', payload_not_available: 'offline', device };
   const sensor = (obj: string, name: string, extra: Record<string, unknown>): Discovery => ({
     topic: `homeassistant/sensor/${id}/${obj}/config`,

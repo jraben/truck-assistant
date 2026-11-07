@@ -1,4 +1,4 @@
-/* Slate Cockpit: the prototype's visual language (prototype/index.html).
+/* Truck Assistant: the prototype's visual language (prototype/index.html).
    Dark-first; data-theme="day" flips to high-contrast light. */
 :root {
   --bg: #0d1114; --panel: #151b20; --panel-2: #1c242b; --line: #2a343c;
@@ -32,7 +32,10 @@ a { color: var(--accent); }
 /* status strip */
 .strip { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 0 16px; min-width: 0;
   border-bottom: 1px solid var(--line); background: var(--panel); font-family: var(--mono); font-size: 14px; color: var(--dim); }
-.strip .brand { font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: .14em; color: var(--fg); }
+.strip .brand { display: inline-flex; align-items: center; gap: 10px; flex: none; white-space: nowrap; font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: .14em; color: var(--fg); }
+.strip .brand-mark { width: 32px; height: 32px; border-radius: 7px; display: block; }
+/* Tight strips (tablet portrait, phones): the mark alone. */
+@media (max-width: 1100px) { .strip .brand-name { display: none; } }
 /* The current screen's name: the rail is icons only. */
 .strip .screen-title { margin: 0; font-family: var(--display); font-weight: 600; font-size: 22px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); white-space: nowrap; flex: none; }
 .strip .rail-edit { display: inline-flex; align-items: center; gap: 10px; flex: none; font-family: var(--display); font-size: 18px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg); }

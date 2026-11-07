@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Caliche">
+  <!-- Caliche: chalk-white desert mesa under an amber sun, on the dash's dark background -->
+  <rect width="512" height="512" rx="104" fill="#0d1114"/>
+  <circle cx="330" cy="196" r="96" fill="#f2b33d"/>
+  <path d="M44 384 L132 384 L174 236 L338 236 L376 304 L468 304 L468 384 Z" fill="#e8eef2"/>
+  <rect x="44" y="408" width="424" height="40" rx="20" fill="#4fc3d9"/>
+</svg>

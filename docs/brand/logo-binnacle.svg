@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Binnacle">
+  <!-- Binnacle: the hooded housing that holds the instruments; a hood arc over a dial and needle -->
+  <rect width="512" height="512" rx="104" fill="#0d1114"/>
+  <path d="M68 300 A188 188 0 0 1 444 300" fill="none" stroke="#4fc3d9" stroke-width="56" stroke-linecap="round"/>
+  <circle cx="256" cy="312" r="124" fill="#151b20" stroke="#e8eef2" stroke-width="26"/>
+  <path d="M256 210 L284 312 L256 414 L228 312 Z" fill="#e8eef2"/>
+  <path d="M256 210 L284 312 L228 312 Z" fill="#f2b33d"/>
+  <circle cx="256" cy="312" r="16" fill="#0d1114"/>
+</svg>

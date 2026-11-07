@@ -1,4 +1,4 @@
-// Slate Cockpit brain: entry point.
+// Truck Assistant brain: entry point.
 import { Brain } from './brain.ts';
 import { config } from './config.ts';
 import { openDb } from './db.ts';

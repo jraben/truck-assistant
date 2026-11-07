@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 512" role="img" aria-label="Truck Assistant">
+  <!-- Lockup: glyph + two-line wordmark; use the glyph alone below ~96 px -->
+  <rect width="1280" height="512" rx="104" fill="#0d1114"/>
+  <g transform="translate(40 40) scale(.84)"><path d="M60 324 V246 H232 L240 150 Q242 140 252 140 H316 Q324 140 328 146 L376 230 L440 240 Q452 242 452 254 V324" fill="none" stroke="#b5272d" stroke-width="40" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M244 160 H318" stroke="#e4e5e0" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="150" cy="372" r="34" fill="none" stroke="#e4e5e0" stroke-width="20"/><circle cx="370" cy="372" r="34" fill="none" stroke="#e4e5e0" stroke-width="20"/></g>
+  <rect x="470" y="120" width="10" height="272" rx="5" fill="#2a343c"/>
+  <text x="530" y="250" font-family="'Saira Semi Condensed','Arial Narrow',Arial,sans-serif" font-weight="700" font-size="150" fill="#b5272d" letter-spacing="4">TRUCK</text>
+  <text x="534" y="370" font-family="'Saira Semi Condensed','Arial Narrow',Arial,sans-serif" font-weight="600" font-size="96" fill="#e4e5e0" letter-spacing="14">ASSISTANT</text>
+</svg>
