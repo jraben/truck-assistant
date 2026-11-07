@@ -39,6 +39,11 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    **"Insecure origins treated as secure"**, enable it, and enter the brain's
    address (both, comma-separated:
    `http://10.42.0.1:8080,http://192.168.1.20:3950`). Relaunch Chrome.
+   Without the flag (or in another browser, such as Fully Kiosk) the page has
+   no WebCodecs: the CarPlay simulator still plays, from an MP4 (an "MP4
+   FALLBACK" chip says so), but the real dongle can't be reached. Fully Kiosk
+   runs on Android System WebView, which has no WebUSB at all, so CarPlay
+   needs Chrome.
 4. **Open the cockpit** at that address, sign in once if asked, then Chrome
    menu › **Add to Home screen › Install**. It runs full screen from its own
    icon, with no address bar. Use that icon from now on.
