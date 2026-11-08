@@ -1,5 +1,5 @@
 // The Drive screen (docs/drive-v2.md §1): three fixed zones on the 1920x720 bar.
-// Left = speed, centre = range and battery, right = 2-3 context cards.
+// Left = speed, centre = the truck with its range and battery, right = 1-2 context cards.
 // One number dominates each zone; zones are split by space and a hairline,
 // never boxes in boxes. Every colour is a theme token.
 import { useState } from 'preact/hooks';
@@ -14,6 +14,7 @@ import { overLimit, pickCards, showTruckPhoto } from './logic.ts';
 import { WIcon } from './icons.tsx';
 import { Speedo, SPEEDO_LABELS } from './Speedo.tsx';
 import { TiltPair } from './Tilt.tsx';
+import { TruckRear, TruckSide } from './TruckArt.tsx';
 import { openWeather } from './weatherStore.ts';
 import { GoalDriveCard } from '../components/goal.tsx';
 import { useGoal } from '../lib/data.ts';
@@ -69,31 +70,89 @@ async function setMode(m: 'auto' | 'city' | 'highway') {
   try { await api('/api/drive/range-mode', { method: 'POST', body: JSON.stringify({ mode: m }) }); } catch (e) { toast(`Not changed: ${(e as Error).message}`); }
 }
 
-function EnergyZone({ s, go }: { s: State | null; go: WP['go'] }) {
+/** The pack, seen through the body between the wheel flares, filled to the charge level (TruckSide coordinates). */
+function Pack({ soc, tone, charging }: { soc: number | null; tone: string; charging: boolean }) {
+  const x = 158, y = 120, w = 140, h = 30;
+  const fill = soc === null ? 0 : Math.max(0, Math.min(100, soc)) / 100;
+  return (
+    <g class={`pack ${tone} ${charging ? 'charging' : ''}`}>
+      <rect class="pack-case" x={x} y={y} width={w} height={h} rx="5" />
+      <rect class="pack-fill" x={x + 3} y={y + 3} width={(w - 6) * fill} height={h - 6} rx="3" />
+      {[1, 2, 3, 4, 5, 6].map((i) => <path class="pack-cell" d={`M${x + (w / 7) * i} ${y + 4} V${y + h - 4}`} />)}
+      {charging && <rect class="pack-flow" x={x + 3} y={y + 3} width={(w - 6) * fill} height={h - 6} rx="3" />}
+    </g>
+  );
+}
+
+/** Amber past the driver's warning angle, red past the danger angle. */
+const tiltTone = (v: number | null, lim: { warnDeg: number; dangerDeg: number } | undefined) =>
+  v === null || !lim ? '' : Math.abs(v) >= lim.dangerDeg ? 'danger' : Math.abs(v) >= lim.warnDeg ? 'warn' : '';
+
+/**
+ * The centre: the truck itself, large, with its pack glowing to the charge
+ * level (Taycan / EQS style). Range above, charge over it. The side view pitches
+ * and a small rear view rolls, each over a level line with its angle, so there
+ * is no separate tilt card unless it warns.
+ */
+function HeroZone({ s, go }: { s: State | null; go: WP['go'] }) {
+  const { settings } = useActiveDriver();
+  const truck = truckOf(settings);
   const d = s?.drive ?? null;
   const soc = s?.soc ?? null;
   const mode = d?.mode ?? 'city';
   const other = mode === 'city' ? 'highway' : 'city';
   const cur = d ? d.range.current : s?.rangeMi ?? null;
   const tone = soc === null ? '' : soc < 15 ? 'bad' : soc < 30 ? 'warn' : 'ok';
+  const cp = s?.chargePeak ?? null;
+  const charging = cp?.charging === true;
+  const tilt = s?.tilt ?? null;
+  const p = tilt ? Math.max(-30, Math.min(30, tilt.pitch)) : 0;
+  const r = tilt ? Math.max(-30, Math.min(30, tilt.roll)) : 0;
+  const bed = Object.values(s?.relays ?? {}).find((r) => /bed light/i.test(r.name))?.on === true;
+  const deg = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(1)}°`;
   const w = d?.weather;
   return (
-    <section class="dz dz-energy" aria-label="Range and battery">
-      <div class="lbl">Range · {MODE_LABEL[mode]}{d?.override === 'auto' && d.avgMph2min !== null ? <span class="dimmable"> · {Math.round(d.avgMph2min)} mph avg</span> : null}</div>
-      <div class="hero num"><V v={cur === null ? null : String(cur)} why={soc === null ? whySoc(s) : 'Not known'} /><small>mi</small></div>
-      <div class="otherrange dimmable num">{MODE_LABEL[other]} <b>{d?.range[other] ?? '—'}</b> mi</div>
-      <div class="seg" role="group" aria-label="Range mode">
-        {(['auto', 'city', 'highway'] as const).map((m) => <button type="button" aria-pressed={(d?.override ?? 'auto') === m} onClick={() => void setMode(m)}>{m === 'auto' ? 'Auto' : m === 'city' ? 'City' : 'Hwy'}</button>)}
+    <section class="dz dz-hero" aria-label="Range and battery">
+      <div class="herotop">
+        <div>
+          <div class="lbl">Range · {MODE_LABEL[mode]}{d?.override === 'auto' && d.avgMph2min !== null ? <span class="dimmable"> · {Math.round(d.avgMph2min)} mph avg</span> : null}</div>
+          <div class="hero num"><V v={cur === null ? null : String(cur)} why={soc === null ? whySoc(s) : 'Not known'} /><small>mi</small></div>
+        </div>
+        <div class="heroside">
+          <div class="seg quiet" role="group" aria-label="Range mode">
+            {(['auto', 'city', 'highway'] as const).map((m) => <button type="button" aria-pressed={(d?.override ?? 'auto') === m} onClick={() => void setMode(m)}>{m === 'auto' ? 'Auto' : m === 'city' ? 'City' : 'Hwy'}</button>)}
+          </div>
+          <div class="otherrange dimmable num">{MODE_LABEL[other]} <b>{d?.range[other] ?? '—'}</b> mi</div>
+        </div>
       </div>
-      <button type="button" class="socline" onClick={() => go('charge')} title={soc === null ? whySoc(s) : 'Tap to set the charge level'}>
-        <span class={`socbar ${tone}`}><i style={{ width: `${soc ?? 0}%` }} /></span>
-        <span class="num socpct"><V v={soc === null ? null : `${Math.round(soc)}%`} why={whySoc(s)} /></span>
-        <span class={`tag ${s?.socSource === 'estimate' ? 'warn' : s?.socSource ? 'ok' : 'dim'}`}>{socLabel(s?.socSource ?? null)}</span>
+      <button type="button" class="herotruck" onClick={() => go('charge')} title={soc === null ? whySoc(s) : 'Charging and the charge level'}>
+        <span class={`herostage ${tilt ? '' : 'unknown'}`}>
+          <span class="heroview side">
+            <i class="herolevel" aria-hidden="true" />
+            <span class="herotilt" style={{ transform: `rotate(${-p}deg)` }}>
+              <TruckSide t={truck} id="hero-side" bedLightsOn={bed}><Pack soc={soc} tone={tone} charging={charging} /></TruckSide>
+            </span>
+            <span class={`tiltread ${tiltTone(tilt?.pitch ?? null, d?.tilt)}`} title={tilt ? 'Nose up is +' : whyTruck(s, 'tilt')}><span class="lbl">Pitch</span><b class="num">{tilt ? deg(tilt.pitch) : '—'}</b></span>
+          </span>
+          <span class="heroview rear">
+            <i class="herolevel" aria-hidden="true" />
+            <span class="herotilt" style={{ transform: `rotate(${r}deg)` }}><TruckRear t={truck} id="hero-rear" /></span>
+            <span class={`tiltread ${tiltTone(tilt?.roll ?? null, d?.tilt)}`} title={tilt ? 'Right side down is +' : whyTruck(s, 'tilt')}><span class="lbl">Roll</span><b class="num">{tilt ? deg(tilt.roll) : '—'}</b></span>
+          </span>
+        </span>
+        <span class={`socchip ${tone}`}>
+          {charging && <span class="bolt" aria-hidden="true">⚡</span>}
+          <b class="num"><V v={soc === null ? null : `${Math.round(soc)}%`} why={whySoc(s)} /></b>
+          {charging && cp?.powerKw != null && <span class="num">{cp.powerKw.toFixed(1)} kW</span>}
+          <span class={`tag ${s?.socSource === 'estimate' ? 'warn' : s?.socSource ? 'ok' : 'dim'}`}>{socLabel(s?.socSource ?? null)}</span>
+        </span>
       </button>
-      <button type="button" class="templine dimmable" onClick={openWeather}>
-        {w ? <><WIcon icon={w.icon} day={w.isDay} size={26} /><span>Outside <b class="num">{w.tempF ?? '—'}°</b></span></> : <span>Outside <V v={null} why={d?.weatherWhy ?? 'No weather yet'} /></span>}
+      <div class="herofoot dimmable">
+        <button type="button" onClick={openWeather}>
+          {w ? <><WIcon icon={w.icon} day={w.isDay} size={22} /><span>Outside <b class="num">{w.tempF ?? '—'}°</b></span></> : <span>Outside <V v={null} why={d?.weatherWhy ?? 'No weather yet'} /></span>}
+        </button>
         <span>Cabin <b class="num"><V v={s?.cabinTempF?.toFixed(0)} why={whyTruck(s, 'cabin temperature')} />°</b></span>
-      </button>
+      </div>
     </section>
   );
 }
@@ -204,7 +263,7 @@ export function DriveScreen({ s, go }: WP) {
       <Banners s={s} />
       <div class="zones">
         <SpeedZone s={s} />
-        <EnergyZone s={s} go={go} />
+        <HeroZone s={s} go={go} />
         <Cards s={s} go={go} />
       </div>
     </div>

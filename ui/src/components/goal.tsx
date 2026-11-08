@@ -73,7 +73,7 @@ export function GoalDriveCard({ go }: { go: WP['go'] }) {
         <span class="lbl">Truck payoff · gas savings</span>
         <span class="cbig num">{usd0(g.saved)}<small> {g.pct.toFixed(0)}%</small></span>
         <Bar pct={g.pct} />
-        <span class="dimtxt ellip" style="font-size:14px">{g.startDate ? projectionText(g) : 'Counting starts with the first real drive'}</span>
+        <span class="dimtxt" style="font-size:14px;line-height:1.3">{g.startDate ? projectionText(g) : 'Counting starts with the first real drive'}</span>
       </span>
     </button>
   );
