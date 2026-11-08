@@ -15,6 +15,7 @@ export const maskSecret = (k: string | undefined) => (k ? MASK.repeat(4) + k.sli
 export const newToken = () => randomBytes(18).toString('base64url');
 
 import { ALERT_KINDS, ALERT_META } from './alertMeta.ts';
+import { demoFootage } from '../cams/go2rtc.ts';
 export { ALERT_KINDS, ALERT_META };
 
 const defaultRule = (k: AlertKind): AlertRule => ({ enabled: k !== 'geofence', threshold: ALERT_META[k].threshold, holdSec: ALERT_META[k].holdSec, cooldownMin: ALERT_META[k].cooldownMin });
@@ -31,13 +32,16 @@ export function camera(id: string, name: string, role: CameraConfig['role'], sou
 /** On a desk (SIM=1): five test patterns (the truck's four cameras plus the 360 kit), front and rear recorded. On a Pi: the capture stick and one UVC cam. */
 export function defaultCameras(sim: boolean): CameraConfig[] {
   if (sim) {
-    return [
+    const cams = [
       camera('rear', 'Rear', 'rear', 'test', { width: 640, height: 360, fps: 15, record: true }),
       camera('front', 'Front', 'front', 'test', { width: 640, height: 360, fps: 15, record: true }),
       camera('hitch', 'Hitch', 'hitch', 'test', { width: 640, height: 360, fps: 15, guides: true }),
       camera('bed', 'Bed', 'bed', 'test', { width: 640, height: 360, fps: 15 }),
       camera('surround', '360°', '360', 'test', { width: 640, height: 360, fps: 15 }),
     ];
+    // With demo footage, show only the cameras that have a clip (no test patterns on a recording).
+    const withClip = process.env.DEMO_FOOTAGE ? cams.filter((c) => demoFootage(c)) : [];
+    return withClip.length ? withClip : cams;
   }
   return [
     // The 360 kit's stitched output (or the Slate's own backup camera through a splitter) on a composite/AHD stick.

@@ -4,11 +4,11 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import type { CameraConfig } from '../remote/types.ts';
-import { testPattern } from './go2rtc.ts';
+import { testInput } from './go2rtc.ts';
 
 /** Input args for reading a camera directly (no go2rtc). */
 export function inputArgs(c: CameraConfig, index: number): string[] {
-  if (c.source === 'test') return ['-re', '-f', 'lavfi', '-i', testPattern(c, index)];
+  if (c.source === 'test') return testInput(c, index);
   if (c.source === 'rtsp') return ['-rtsp_transport', 'tcp', '-i', c.url!];
   return ['-f', 'v4l2', ...(c.inputFormat !== 'auto' ? ['-input_format', c.inputFormat] : []), '-video_size', `${c.width}x${c.height}`, '-framerate', String(c.fps), '-i', c.device!];
 }

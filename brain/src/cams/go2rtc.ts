@@ -4,7 +4,8 @@
 // (/api/cams/ws) and its player scripts (/go2rtc/*), so the remote token covers
 // them. WebRTC media goes straight to go2rtc's ICE port (LAN / Tailscale).
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import type { CameraConfig } from '../remote/types.ts';
 
 export type Go2rtcPorts = { api: string; rtsp: string; webrtc: string };
@@ -17,12 +18,29 @@ export function testPattern(c: CameraConfig, index: number): string {
   return `testsrc=size=${c.width}x${c.height}:rate=${c.fps},hue=h=${hue}`;
 }
 
+/**
+ * Demo footage: with DEMO_FOOTAGE set to a folder, a "test" camera plays
+ * <folder>/<camera id>.mp4 on a loop instead of the pattern (stock clips for
+ * screen recordings; the clips live in that folder, never in the repo).
+ */
+export function demoFootage(c: CameraConfig, dir = process.env.DEMO_FOOTAGE): string | null {
+  if (!dir) return null;
+  const f = path.join(dir, `${c.id}.mp4`);
+  return existsSync(f) ? f : null;
+}
+
+/** ffmpeg input args for a "test" camera: its demo clip on a loop, else the pattern. */
+export function testInput(c: CameraConfig, index: number): string[] {
+  const f = demoFootage(c);
+  return f ? ['-re', '-stream_loop', '-1', '-i', f] : ['-re', '-f', 'lavfi', '-i', testPattern(c, index)];
+}
+
 /** One go2rtc stream source for a camera. Pure. */
 export function streamSource(c: CameraConfig, index: number): string {
   if (c.source === 'rtsp') return c.url!;
   if (c.source === 'test') {
     // exec: go2rtc starts ffmpeg on demand and reads its RTSP output; -re keeps it at real time.
-    return `exec:ffmpeg -hide_banner -loglevel error -re -f lavfi -i ${testPattern(c, index)} -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g ${c.fps * 2} -f rtsp {output}`;
+    return `exec:ffmpeg -hide_banner -loglevel error ${testInput(c, index).join(' ')} -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g ${c.fps * 2} -f rtsp {output}`;
   }
   // USB webcam or composite/AHD capture stick (both UVC): read it with ffmpeg, encode H.264
   // (#hardware: the Pi 4's v4l2m2m encoder if there is one; the Pi 5 has none and uses x264).

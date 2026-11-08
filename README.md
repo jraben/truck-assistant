@@ -48,7 +48,10 @@ Built for Jeff's truck first, published for other Slate owners later.
   (`brain/src/demo/seed.ts`); a folder with anything in it is never touched, so
   never point it at a real truck's data. The top bar names a neighbourhood or
   freeway, not an address; the setup wizard is skipped; the test panel stays off
-  the rail unless the page is opened with `?panel`.
+  the rail unless the page is opened with `?panel`. `DEMO_FOOTAGE=<folder>`
+  makes each sim camera loop `<folder>/<camera id>.mp4` (front, rear, hitch,
+  bed, surround) instead of the test pattern, and hides the ones with no clip.
+  Keep stock clips in that folder, never in the repo.
 - **Truck payoff goal (2026-11-05):** "pay off the truck with gas savings",
   tracked for good in a day-by-day SQLite ledger (closed months frozen;
   Recalculate on /settings). Charge view card, a Drive card when parked,
