@@ -291,9 +291,15 @@ export function SettingsApp() {
         <p class="help">Charging within 150 m of home is priced from your home rate below.</p>
       </Section>
 
-      <Section title="Relay names" help="The six upfit relays in the truck box.">
+      <Section title="Relay names & power" help="The six upfit relays in the truck box, and what each load draws when on (from its label or manual). Nothing measures current, so the Control screen's watts are these numbers.">
         <div class="fields form">
-          {RELAYS.map((id, i) => <label class="f"><span>Relay {i + 1}</span><input type="text" value={draft.relays[id]} onInput={(e) => set('relays', { ...draft.relays, [id]: (e.target as HTMLInputElement).value })} /></label>)}
+          {RELAYS.map((id, i) => (
+            <div class="row" style="gap:10px;align-items:flex-end">
+              <label class="f grow"><span>Relay {i + 1}</span><input type="text" value={draft.relays[id]} onInput={(e) => set('relays', { ...draft.relays, [id]: (e.target as HTMLInputElement).value })} /></label>
+              <label class="f" style="width:120px"><span>Watts</span><input type="number" min={0} max={3000} step={1} value={draft.relayWatts?.[id] ?? 0} onInput={(e) => set('relayWatts', { ...draft.relayWatts, [id]: Number((e.target as HTMLInputElement).value) || 0 })} /></label>
+            </div>
+          ))}
+          <label class="f" style="width:200px"><span>Dash tablet watts (while charging)</span><input type="number" min={0} max={100} step={1} value={draft.tabletWatts ?? 12} onInput={(e) => set('tabletWatts', Number((e.target as HTMLInputElement).value) || 0)} /></label>
         </div>
       </Section>
 

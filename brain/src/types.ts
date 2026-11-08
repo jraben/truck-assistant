@@ -21,7 +21,8 @@ export type State = {
   aux12v: number | null;
   tilt: { pitch: number; roll: number } | null;
   tpms: Record<Wheel, { psi: number | null; tempF: number | null }> | null;
-  relays: Record<string, { name: string; on: boolean | null }>;
+  /** watts: what the load draws when on, as set in Settings (no current sensor: an estimate). */
+  relays: Record<string, { name: string; on: boolean | null; watts: number }>;
   fiveSwitch: (boolean | null)[];
   trip: { id: number; startedAt: string; miles: number } | null;
   truckbox: boolean;
@@ -106,6 +107,10 @@ export type Settings = {
   packKwh: number;
   efficiencyMiPerKwh: number;
   relays: Record<string, string>;
+  /** Rated draw of each relay's load in watts (Control screen estimate; nothing measures it). */
+  relayWatts: Record<string, number>;
+  /** The dash tablet's draw from the truck while it charges, watts (estimate). */
+  tabletWatts: number;
   keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string };
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {

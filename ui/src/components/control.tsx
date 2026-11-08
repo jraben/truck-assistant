@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
-import { send, toast } from '../lib/brain.ts';
+import { send, settingsStore, toast, useStore } from '../lib/brain.ts';
+import { powerSummary, useTabletPower } from '../lib/power.ts';
 import { Card, V, whyTruck } from './common.tsx';
 import type { WP } from './drive.tsx';
 import { inverterReadout, isInverter } from '../lib/inverter.ts';
@@ -27,8 +28,14 @@ export function Relays({ s }: WP) {
   };
 
   const ids = Object.keys(s?.relays ?? {}).sort();
+  const tablet = useTabletPower();
+  const tabletWatts = useStore(settingsStore)?.tabletWatts ?? 12;
+  const pw = powerSummary(s?.relays, tablet, tabletWatts);
   return (
-    <Card label="Upfit relays" right={<span class={`tag ${online ? 'ok' : 'warn'}`}>{online ? 'TRUCK BOX ONLINE' : 'TRUCK BOX OFFLINE'}</span>}>
+    <Card label="Upfit relays" right={<span class="row" style="gap:10px">
+      <span class="powertotal num" title="Estimated from the watts set for each load in Settings (nothing in the truck box measures current)">≈ {pw.total} W · {pw.amps} A</span>
+      <span class={`tag ${online ? 'ok' : 'warn'}`}>{online ? 'TRUCK BOX ONLINE' : 'TRUCK BOX OFFLINE'}</span>
+    </span>}>
       {!online && <div class="banner">Truck box offline. Relay states are unknown and switching is disabled until it reconnects.</div>}
       <div class="tiles">
         {ids.map((id, i) => {
@@ -41,10 +48,20 @@ export function Relays({ s }: WP) {
                 <div class="name">{r.name}</div>
                 <div class="state">{p ? (p.on ? 'TURNING ON…' : 'TURNING OFF…') : r.on === null ? <V v={null} why={whyTruck(s, 'this relay')} /> : r.on ? 'ON' : 'OFF'}</div>
               </span>
+              <span class={`watts num ${r.on ? '' : 'idle'}`} title="Estimate: the watts set for this load in Settings">{r.on ? `≈ ${pw.byRelay[id]} W` : `${r.watts ?? 0} W when on`}</span>
               {isInverter(r.name) && <InverterCharge s={s} />}
             </button>
           );
         })}
+        <div class="tile tablet" aria-label="Dash tablet">
+          <span class="tag">TABLET</span>
+          <span>
+            <div class="name">Dash tablet</div>
+            <div class="state">{tablet.charging === null ? 'BATTERY UNKNOWN' : tablet.charging ? `CHARGING · ${tablet.level}%` : `ON BATTERY · ${tablet.level}%`}</div>
+          </span>
+          <span class="watts num" title={tablet.charging === false ? 'On its own battery: no draw on the truck' : 'Estimate: the tablet watts set in Settings'}>{tablet.charging === false ? '0 W from the truck' : `≈ ${pw.tablet} W`}</span>
+          {tablet.level !== null && <span class="invbar" role="meter" aria-label="Tablet battery" aria-valuemin={0} aria-valuemax={100} aria-valuenow={tablet.level}><span style={{ width: `${tablet.level}%` }} /></span>}
+        </div>
       </div>
     </Card>
   );

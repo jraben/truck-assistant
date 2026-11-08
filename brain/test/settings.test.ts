@@ -204,7 +204,7 @@ describe('migration from flat settings', () => {
 describe('truck box topics', () => {
   const blank = (): State => ({
     ts: '', speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null, ignition: null, reverse: null,
-    cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: { relay_1: { name: 'Bed lights', on: null } }, fiveSwitch: [null, null, null, null, null], trip: null, truckbox: false, nowPlaying: null,
+    cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: { relay_1: { name: 'Bed lights', on: null, watts: 36 } }, fiveSwitch: [null, null, null, null, null], trip: null, truckbox: false, nowPlaying: null,
     driver: null, driverSuggestion: null, place: null, network: null as unknown as State['network'], drive: null, chargePeak: null,
   });
   it('parses ESPHome topics and derives gear R from reverse', () => {
@@ -226,5 +226,19 @@ describe('truck box topics', () => {
   });
   it('NaN from ESPHome is null', () => {
     expect(parseTruckbox('sensor/cabin_temp/state', 'nan')).toEqual({ cabinTempF: null });
+  });
+});
+
+describe('relay and tablet watts (Control screen estimates)', () => {
+  it('defaults when missing, rounds, and refuses nonsense', () => {
+    const s = loadSettings({});
+    expect(s.relayWatts.relay_4).toBe(360);
+    expect(s.tabletWatts).toBe(12);
+    const t = loadSettings({ relayWatts: { relay_1: 40.4, relay_9: 5 }, tabletWatts: 15 });
+    expect(t.relayWatts.relay_1).toBe(40);
+    expect(t.relayWatts).not.toHaveProperty('relay_9');
+    expect(t.relayWatts.relay_2).toBe(120);
+    expect(() => loadSettings({ relayWatts: { relay_1: -5 } })).toThrow();
+    expect(() => loadSettings({ tabletWatts: 500 })).toThrow();
   });
 });

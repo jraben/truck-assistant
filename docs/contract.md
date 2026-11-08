@@ -40,6 +40,12 @@ ESPHome's own topic layout, so it works with HA discovery unchanged.
 Relay names (default, editable in settings): 1 Bed lights, 2 Light bar,
 3 Rock lights, 4 Air compressor, 5 Bed fridge, 6 Inverter.
 
+Relay power (settings `relayWatts`, default 36/120/48/360/45/60 W, and
+`tabletWatts`, 12 W): what each load draws when on. Nothing measures current,
+so the Control screen's per-load watts and its total (W and A at 12 V) are
+these numbers, labelled as estimates. State carries each relay's `watts`. The
+dash tablet counts only while it charges (the browser's Battery API says so).
+
 ## MQTT: brain (`slate/brain/…`)
 
 | Topic | Payload |

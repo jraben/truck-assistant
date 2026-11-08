@@ -74,6 +74,9 @@ export function defaultSettings(): Settings {
       relay_1: 'Bed lights', relay_2: 'Light bar', relay_3: 'Rock lights',
       relay_4: 'Air compressor', relay_5: 'Bed fridge', relay_6: 'Inverter',
     },
+    // Typical draws for those loads; the owner sets their own on /settings.
+    relayWatts: { relay_1: 36, relay_2: 120, relay_3: 48, relay_4: 360, relay_5: 45, relay_6: 60 },
+    tabletWatts: 12,
     keys: {},
     homeAssistant: { bridge: true, url: null },
     homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0, demandPerKw: null },
@@ -358,6 +361,17 @@ export function validate(s: Settings): Settings {
     const v = s.relays[id];
     s.relays[id] = typeof v === 'string' && v.trim() ? v.trim().slice(0, 40) : defaultSettings().relays[id];
   }
+  if (!isObj(s.relayWatts)) s.relayWatts = { ...defaultSettings().relayWatts };
+  for (const id of RELAY_IDS) {
+    const w = s.relayWatts[id];
+    if (w === undefined || w === null) { s.relayWatts[id] = defaultSettings().relayWatts[id]; continue; }
+    num(w, `relayWatts.${id}`, 0, 3000);
+    s.relayWatts[id] = Math.round(w);
+  }
+  for (const k of Object.keys(s.relayWatts)) if (!(RELAY_IDS as readonly string[]).includes(k)) delete s.relayWatts[k];
+  if (s.tabletWatts === undefined || s.tabletWatts === null) s.tabletWatts = defaultSettings().tabletWatts;
+  num(s.tabletWatts, 'tabletWatts', 0, 100);
+  s.tabletWatts = Math.round(s.tabletWatts);
   const ha = s.homeAssistant;
   if (!isObj(ha) || typeof ha.bridge !== 'boolean') throw new SettingsError('homeAssistant.bridge must be true or false');
   const ent = ha.homeChargerEnergyEntity as string | null | undefined;

@@ -132,7 +132,7 @@ export class Brain extends EventEmitter {
       ts: new Date().toISOString(),
       speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null,
       ignition: null, reverse: null, cabinTempF: null, aux12v: null, tilt: null, tpms: null,
-      relays: Object.fromEntries(RELAY_IDS.map((id) => [id, { name: st.relays[id], on: null }])),
+      relays: Object.fromEntries(RELAY_IDS.map((id) => [id, { name: st.relays[id], on: null, watts: st.relayWatts[id] }])),
       fiveSwitch: [null, null, null, null, null],
       trip: null, truckbox: false, nowPlaying: null,
       driver: null, driverSuggestion: null, place: null,
@@ -667,7 +667,7 @@ export class Brain extends EventEmitter {
   }
 
   private onSettings(next: Settings, prev: Settings) {
-    for (const id of RELAY_IDS) this.s.relays[id].name = next.relays[id];
+    for (const id of RELAY_IDS) { this.s.relays[id].name = next.relays[id]; this.s.relays[id].watts = next.relayWatts[id]; }
     if (next.truckId !== prev.truckId && this.mqtt) {
       this.mqtt.publish(statusTopic(prev.truckId), 'offline', { retain: true });
       console.warn('[mqtt] truck id changed; restart the brain so the last-will topic follows it');
