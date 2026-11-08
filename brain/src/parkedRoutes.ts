@@ -10,6 +10,10 @@ import { PlexError, type PlexService } from './media/plex.ts';
 import { PlexVideo } from './media/plexVideo.ts';
 import type { RemoteService } from './remote/service.ts';
 import { Tablet } from './tablet.ts';
+import { config } from './config.ts';
+
+/** DEMO=1 hides the owner's own sites from the app list. */
+const PERSONAL_APPS = new Set(['jeffgames']);
 
 export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remote: RemoteService, plex: PlexService) {
   const parked = new Parked();
@@ -37,7 +41,7 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   app.addHook('onClose', async () => clearInterval(timer));
 
   // ---- apps, games, karaoke --------------------------------------------------
-  app.get('/api/parked/apps', async (req) => ({ apps: parked.apps(isAndroid(req)), ...parked.status(), moving: moving() }));
+  app.get('/api/parked/apps', async (req) => ({ apps: parked.apps(isAndroid(req)).filter((a) => !config.demo || !PERSONAL_APPS.has(a.id)), ...parked.status(), moving: moving() }));
   app.post('/api/parked/launch', async (req, reply) => {
     const b = (req.body ?? {}) as { id?: unknown; q?: unknown };
     try {

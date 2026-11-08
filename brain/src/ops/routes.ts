@@ -115,7 +115,8 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
     // ---- setup wizard --------------------------------------------------------------
     const setupState = () => {
       const s = ops.store.get().setup;
-      return { ...s, stepsList: SETUP_STEPS, passwordSet: !!ops.store.get().auth.passwordHash, apInitialPassword: ops.initialApPassword() };
+      // DEMO=1: a screen recording never opens on the first-run wizard.
+      return { ...s, ...(config.demo ? { done: true } : {}), stepsList: SETUP_STEPS, passwordSet: !!ops.store.get().auth.passwordHash, apInitialPassword: ops.initialApPassword() };
     };
     r.get('/api/setup', async () => setupState());
     r.put('/api/setup', async (req, reply) => {

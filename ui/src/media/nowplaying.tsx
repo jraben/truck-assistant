@@ -2,7 +2,7 @@
 // (CarPlay, the Media view's player, Spotify on the truck) for the words, and
 // the art each source keeps in the UI. The Drive card, the CarPlay strip and
 // the Media view all show this; Home Assistant gets the same words over MQTT.
-import { useEffect } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useStore, type State } from '../lib/brain.ts';
 import { carplayStore, nowPlayingStore } from '../carplay/controller.ts';
 import { Card } from '../components/common.tsx';
@@ -35,6 +35,23 @@ function why(s: State | null, cpStatus: string) {
   return 'Nothing playing: pick a source in Media';
 }
 
+const mmss = (ms: number) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+/** Where Spotify is in the song: its last report, run forward by the clock while it plays. */
+export function SpotifyProgress() {
+  const p = useStore(mediaStatusStore)?.spotify.playback ?? null;
+  const base = useMemo(() => ({ at: Date.now(), pos: p?.positionMs ?? 0 }), [p?.positionMs, p?.title, p?.playing]);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { if (!p?.playing) return; const id = window.setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, [p?.playing]);
+  if (!p?.durationMs || p.positionMs === null) return null;
+  const pos = Math.min(p.durationMs, base.pos + (p.playing ? Math.max(0, now - base.at) : 0));
+  return (
+    <div class="np-progress" role="progressbar" aria-valuemin={0} aria-valuemax={p.durationMs} aria-valuenow={pos}>
+      <span class="num">{mmss(pos)}</span><i><b style={{ width: `${(pos / p.durationMs) * 100}%` }} /></i><span class="num">{mmss(p.durationMs)}</span>
+    </div>
+  );
+}
+
 /** Drive view media widget ("nowPlaying"): any source; tap opens the Media view. */
 export function NowPlayingAny({ s, go }: WP) {
   const np = useAnyNowPlaying(s);
@@ -54,6 +71,7 @@ export function NowPlayingAny({ s, go }: WP) {
           </span>
         </button>
       ) : <div class="dimtxt">{p.current && p.error ? p.error : why(s, cp.status)}</div>}
+      {np?.source === 'spotify' && <SpotifyProgress />}
       {(ours || (p.current && !np)) && <PlayerControls />}
     </Card>
   );

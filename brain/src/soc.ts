@@ -55,12 +55,13 @@ export class SocModel {
   }
 
   /** Decay by driven miles. A CAN reading is never overridden by the model. */
-  addMiles(miles: number, effMiPerKwh: number, packKwh: number, now = new Date()) {
-    if (this.value === null || this.source === 'can' || !(miles > 0)) return;
+  addMiles(miles: number, effMiPerKwh: number, packKwh: number, now = new Date(), opts: { canFollows?: boolean } = {}) {
+    // canFollows (DEMO): the simulated truck has no CAN bus, so its "CAN" reading follows the miles instead.
+    if (this.value === null || (this.source === 'can' && !opts.canFollows) || !(miles > 0)) return;
     const next = socAfterMiles(this.value, miles, effMiPerKwh, packKwh);
     if (next === this.value) return;
     this.value = next;
-    this.source = 'estimate';
+    if (!(opts.canFollows && this.source === 'can')) this.source = 'estimate';
     this.updatedAt = now.toISOString();
   }
 

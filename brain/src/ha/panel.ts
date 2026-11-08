@@ -21,6 +21,8 @@ export type PanelConfig = { garage: GarageConfig; pages: HaPage[] };
 export type Tile = {
   entity: string; domain: string; name: string; state: string; unit: string | null;
   deviceClass: string | null; actions: string[]; brightness: number | null;
+  /** A thermostat's line: "Cooling to 76°". Only climate tiles carry one. */
+  detail?: string;
 };
 
 const KEY = 'haPanel';
@@ -82,7 +84,17 @@ export function tileFor(s: HaState): Tile {
     deviceClass: typeof a.device_class === 'string' ? a.device_class : null,
     actions: DOMAIN_ACTIONS[domain] ?? [],
     brightness: typeof a.brightness === 'number' ? Math.round((a.brightness / 255) * 100) : null,
+    ...(domain === 'climate' ? { detail: climateLine(s.state, a) } : {}),
   };
+}
+
+/** "Cooling to 76°", "Heat to 68°", "Off". Pure. */
+export function climateLine(state: string, a: Record<string, unknown>): string {
+  const action = typeof a.hvac_action === 'string' && a.hvac_action !== 'idle' && a.hvac_action !== 'off' ? a.hvac_action : null;
+  const word = (action ?? state).replace(/_/g, ' ');
+  const cap = word.charAt(0).toUpperCase() + word.slice(1);
+  const t = typeof a.temperature === 'number' ? a.temperature : null;
+  return state === 'off' || t === null ? cap : `${cap} to ${Math.round(t)}°`;
 }
 
 /** The HA service for a tile action. Pure. null = not allowed for that domain. */

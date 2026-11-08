@@ -29,6 +29,7 @@ import { NetManager, pickBackend, SimBackend, UnavailableBackend } from './netwo
 import { DriveService } from './drive/service.ts';
 import { GoalService } from './goal/service.ts';
 import { goalLine } from './goal/ledger.ts';
+import { demoArea } from './demo/area.ts';
 import type { CompareVehicle, Driver, Health, NowPlaying, Settings, State, Stop } from './types.ts';
 
 /** Ignore GPS jumps faster than this between fixes (multipath, cold start). */
@@ -170,8 +171,10 @@ export class Brain extends EventEmitter {
     this.mqtt?.setSubscriptions(this.subscriptions(st));
     if (config.sim) {
       console.log(`[sim] simulated truck around Phoenix${config.simSpeedup > 1 ? ` at ${config.simSpeedup}x` : ''}`);
-      if (this.soc.value === null) this.soc.setManual(78);
-      this.sim = new SimTruck((sub, p) => this.onTruckbox(sub, p), (f) => this.onFix(f), config.simSpeedup);
+      // DEMO: the charge level reads like the truck's own (CAN), not a number typed in.
+      if (config.demo) this.soc.setCan(this.soc.value ?? 74);
+      else if (this.soc.value === null) this.soc.setManual(78);
+      this.sim = new SimTruck((sub, p) => this.onTruckbox(sub, p), (f) => this.onFix(f), config.simSpeedup, { demo: config.demo });
       this.sim.start();
     } else {
       this.gpsd = new GpsdClient(config.gpsdHost, config.gpsdPort, (f) => this.onFix(f));
@@ -411,7 +414,7 @@ export class Brain extends EventEmitter {
 
   private addMiles(mi: number) {
     const st = this.settings.get();
-    this.soc.addMiles(mi, this.drive.efficiencyNow() || st.efficiencyMiPerKwh, st.packKwh);
+    this.soc.addMiles(mi, this.drive.efficiencyNow() || st.efficiencyMiPerKwh, st.packKwh, new Date(), { canFollows: config.demo });
     this.drive.onMiles(mi, this.s.trip?.id ?? null);
     if (this.s.trip) {
       this.s.trip.miles = Math.round((this.s.trip.miles + mi) * 1000) / 1000;
@@ -485,7 +488,7 @@ export class Brain extends EventEmitter {
     if (reached || (this.simChargeOwed >= 2 && plug.targetPct - (soc + this.simChargeOwed) >= 2)) {
       const next = Math.min(plug.targetPct, soc + this.simChargeOwed);
       this.simChargeOwed = 0;
-      this.setManualSoc(next);
+      if (config.demo) { this.soc.setCan(next); this.saveSoc(true); this.changed(); } else this.setManualSoc(next);
       if (next >= plug.targetPct) this.sim!.unplug();
     }
   }
@@ -612,6 +615,8 @@ export class Brain extends EventEmitter {
       network: { ...this.net.status, bytesThisMonth: { ...this.net.status.bytesThisMonth } },
       drive: this.drive.state(),
       chargePeak: this.s.chargePeak ? { ...this.s.chargePeak } : null,
+      // DEMO: a neighbourhood for the top bar, never an address.
+      area: config.demo ? demoArea(this.s.gps?.fix ? this.s.gps : null, this.s.speedMph, this.s.gps?.headingDeg ?? null) : null,
     };
   }
 

@@ -29,9 +29,18 @@ export function isSimBrain(): Promise<boolean> {
   return simKnown;
 }
 
+/** A DEMO brain (a screen recording) keeps the panel off the rail unless the page was opened with ?panel. */
+export function isDemoBrain(): Promise<boolean> {
+  demoKnown ??= fetch('/api/sim').then((r) => (r.ok ? r.json() : null)).then((j: { demo?: boolean } | null) => !!j?.demo).catch(() => false);
+  return demoKnown;
+}
+let demoKnown: Promise<boolean> | undefined;
+
 export function useSimAvailable(): boolean {
   const [ok, setOk] = useState(false);
-  useEffect(() => { void isSimBrain().then(setOk); }, []);
+  useEffect(() => {
+    void Promise.all([isSimBrain(), isDemoBrain()]).then(([sim, demo]) => setOk(sim && (!demo || new URLSearchParams(location.search).has('panel'))));
+  }, []);
   return ok;
 }
 
