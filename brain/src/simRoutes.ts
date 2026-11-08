@@ -5,6 +5,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { Brain } from './brain.ts';
 import type { RemoteService } from './remote/service.ts';
 import { defaultCameras } from './remote/store.ts';
+import { config } from './config.ts';
 import { SimError, type ChargeKind, type SimControl, type SimStatus } from './sim.ts';
 
 export function registerSim(app: FastifyInstance, brain: Brain, remote: RemoteService) {
@@ -19,7 +20,7 @@ export function registerSim(app: FastifyInstance, brain: Brain, remote: RemoteSe
 
   app.get('/api/sim', async (_req, reply) => {
     const sim = brain.simTruck;
-    return sim ? withSoc(sim.status()) : off(reply);
+    return sim ? { ...withSoc(sim.status()), demo: config.demo } : off(reply);
   });
 
   app.post('/api/sim', async (req, reply) => {

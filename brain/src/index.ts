@@ -1,4 +1,5 @@
 // Truck Assistant brain: entry point.
+import './demo/boot.ts'; // first: DEMO=1 closes the outbound doors before anything else loads
 import { Brain } from './brain.ts';
 import { config } from './config.ts';
 import { openDb } from './db.ts';
@@ -9,9 +10,16 @@ import { registerRemote } from './remote/routes.ts';
 import { applyPendingRestore } from './ops/backup.ts';
 import { registerParked } from './parkedRoutes.ts';
 import { registerSim } from './simRoutes.ts';
+import { seedDemo } from './demo/seed.ts';
 
 async function main() {
-  console.log(`[brain] v${config.version}, data in ${config.dataDir}${config.sim ? ', SIM=1' : ''}`);
+  console.log(`[brain] v${config.version}, data in ${config.dataDir}${config.demo ? ', DEMO=1' : config.sim ? ', SIM=1' : ''}`);
+  if (config.demo) {
+    const seeded = seedDemo(config.dataDir);
+    console.log(seeded
+      ? `[demo] seeded ${config.dataDir}: ${seeded.trips} trips (${seeded.miles} mi) and ${seeded.charges} charge sessions since ${seeded.firstDay}`
+      : `[demo] ${config.dataDir} already has data: not seeding`);
+  }
   applyPendingRestore(config.dataDir); // a restore staged from /settings, before anything opens the files
   const db = openDb(config.dataDir, { sim: config.sim });
   const settings = new SettingsStore(config.dataDir);

@@ -28,6 +28,8 @@ export class SpotifyService {
   private online: () => boolean;
   private report: (np: NowPlaying | null) => void;
   private sim: boolean;
+  /** DEMO=1: the invented Spotify behind the gate plays on an invented speaker that is always up. */
+  private demo: boolean;
   private auths = new Map<string, { verifier: string; redirectUri: string; driver: string; at: number }>();
   private child: ChildProcess | null = null;
   private childState: SpotifyStatus['librespot'] = 'off';
@@ -39,8 +41,8 @@ export class SpotifyService {
   private lastMsg: string | null = null;
   private stopping = false;
 
-  constructor(o: { media: MediaSettingsStore; driver: () => string; online: () => boolean; report: (np: NowPlaying | null) => void; sim: boolean }) {
-    this.media = o.media; this.driver = o.driver; this.online = o.online; this.report = o.report; this.sim = o.sim;
+  constructor(o: { media: MediaSettingsStore; driver: () => string; online: () => boolean; report: (np: NowPlaying | null) => void; sim: boolean; demo?: boolean }) {
+    this.media = o.media; this.driver = o.driver; this.online = o.online; this.report = o.report; this.sim = o.sim; this.demo = !!o.demo;
     this.tokens = new SpotifyTokens({
       clientId: () => this.media.get().spotify.clientId,
       load: (d) => this.media.get().spotify.tokens[d] ?? null,
@@ -68,7 +70,7 @@ export class SpotifyService {
 
   private syncLibrespot(restart = false) {
     const s = this.media.get().spotify;
-    if (this.sim) { this.childState = 'sim'; return; }
+    if (this.sim) { this.childState = this.demo ? 'running' : 'sim'; return; }
     const bin = findLibrespot();
     if (!bin) { this.childState = 'not-installed'; return; }
     if (!s.connect) { this.child?.kill('SIGTERM'); this.child = null; this.childState = 'off'; return; }

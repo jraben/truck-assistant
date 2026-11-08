@@ -8,7 +8,7 @@ import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import type { WP } from '../components/drive.tsx';
 import './home.css';
 
-type Tile = { entity: string; domain: string; name: string; state: string; unit: string | null; deviceClass: string | null; actions: string[]; brightness: number | null };
+type Tile = { entity: string; domain: string; name: string; state: string; unit: string | null; deviceClass: string | null; actions: string[]; brightness: number | null; detail?: string };
 type GarageConfig = { cover: string | null; light: string | null; obstruction: string | null; ask: boolean; nearM: number };
 type PanelConfig = { garage: GarageConfig; pages: { title: string; dashboard: string | null; entities: string[] }[] };
 type PanelView = { config: PanelConfig; home: { lat: number; lon: number; radiusM: number } | null; garage: { door: Tile | null; light: Tile | null; obstruction: Tile | null }; pages: { title: string; dashboard: string | null; tiles: Tile[] }[] };
@@ -190,7 +190,7 @@ function TileBtn({ t, onDone, edit, onRemove }: { t: Tile; onDone: () => void; e
     setBusy(true);
     try { await act(t.entity, action); setTimeout(onDone, 700); } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
-  const value = t.domain === 'sensor' ? `${t.state}${t.unit ? ` ${t.unit}` : ''}` : t.brightness !== null && on ? `${t.state} · ${t.brightness}%` : t.state;
+  const value = t.detail ? t.detail : t.domain === 'sensor' ? `${t.state}${t.unit ? ` ${t.unit}` : ''}` : t.brightness !== null && on ? `${t.state} · ${t.brightness}%` : t.state;
   return (
     <button type="button" class={`ha-tile ${on ? 'on' : ''} ${main || edit ? '' : 'ro'} ${edit ? 'edit' : ''}`} disabled={busy} onClick={() => void tap()}>
       <span class="ha-ico" aria-hidden="true">{edit ? '✕' : ICON[t.domain] ?? '•'}</span>
@@ -199,7 +199,7 @@ function TileBtn({ t, onDone, edit, onRemove }: { t: Tile; onDone: () => void; e
     </button>
   );
 }
-const ICON: Record<string, string> = { light: '💡', switch: '⏻', fan: '🌀', cover: '🚪', lock: '🔒', scene: '🎬', script: '▶', button: '◉', input_button: '◉', input_boolean: '⏻', sensor: '🌡', binary_sensor: '◐', media_player: '♪', climate: '❄' };
+const ICON: Record<string, string> = { camera: '📷', light: '💡', switch: '⏻', fan: '🌀', cover: '🚪', lock: '🔒', scene: '🎬', script: '▶', button: '◉', input_button: '◉', input_boolean: '⏻', sensor: '🌡', binary_sensor: '◐', media_player: '♪', climate: '❄' };
 
 /** Home Assistant tiles, a tab per page. */
 export function HaPanelW() {

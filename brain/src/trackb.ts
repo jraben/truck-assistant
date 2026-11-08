@@ -43,7 +43,7 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
   const online = () => brain.getState().network?.link !== 'offline';
   const driverId = () => brain.activeDriver().id;
   const radio = new RadioService(config.version, () => media.get());
-  const spotify = new SpotifyService({ media, driver: driverId, online, report: (np) => hub.report('brain:spotify', np), sim: config.sim });
+  const spotify = new SpotifyService({ media, driver: driverId, online, report: (np) => hub.report('brain:spotify', np), sim: config.sim, demo: config.demo });
   const plex = new PlexService(() => media.get(), () => `slate-cockpit-${brain.settings.get().truckId}`);
   const local = new LocalService(() => media.get().local.folder ?? path.join(config.dataDir, 'music'));
   const fm = new FmService(config.sim, () => media.get());
@@ -97,7 +97,7 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
 
   // ---- internet radio --------------------------------------------------------------
   const favs = () => media.get().radio.favourites[driverId()] ?? [];
-  app.get('/api/media/radio/presets', async () => radio.presets());
+  app.get('/api/media/radio/presets', async () => (config.demo ? [] : radio.presets())); // DEMO: no owner's station
   app.get<{ Querystring: { q?: string; tag?: string; country?: string } }>('/api/media/radio/search', async (req, reply) => {
     if (!online()) return reply.code(503).send({ error: 'Offline: station search needs the internet.' });
     try { return await radio.search({ name: q(req.query.q), tag: q(req.query.tag), country: q(req.query.country) }); }

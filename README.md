@@ -36,6 +36,19 @@ Built for Jeff's truck first, published for other Slate owners later.
   `?carplaySim=1` (or the test panel's CarPlay switch) plays a test clip
   through the same path. Pi setup and
   dongle notes: `deploy/pi/README.md`.
+- **Demo mode (screen recordings):** build the UI, then in `brain/`:
+  `DEMO=1 PORT=8096 DATA_DIR=<an empty folder> node --disable-warning=ExperimentalWarning src/index.ts`
+  and open http://localhost:8096 at 1920x720. Implies
+  `SIM=1`. Every real integration is closed at start-up (`brain/src/demo/gate.ts`:
+  fetch, WebSocket, raw sockets and commands like ssh/nmcli; only loopback and
+  public weather/speed-limit/radio-directory hosts pass), and an invented house,
+  calendar, mailbox, playlist and charger list answer in their place
+  (`brain/src/demo/backend.ts`). An **empty** `DATA_DIR` is seeded with three
+  weeks of invented trips, charges and logs for drivers Alex and Sam
+  (`brain/src/demo/seed.ts`); a folder with anything in it is never touched, so
+  never point it at a real truck's data. The top bar names a neighbourhood or
+  freeway, not an address; the setup wizard is skipped; the test panel stays off
+  the rail unless the page is opened with `?panel`.
 - **Truck payoff goal (2026-11-05):** "pay off the truck with gas savings",
   tracked for good in a day-by-day SQLite ledger (closed months frozen;
   Recalculate on /settings). Charge view card, a Drive card when parked,

@@ -32,6 +32,8 @@ export type State = {
   network: NetworkStatus;
   drive: DriveState | null;         // Track A: range modes, weather, limits, lockout, heat, brightness
   chargePeak: ChargePeak | null;    // charging during on-peak (null until the brain has looked)
+  /** DEMO=1 only: the neighbourhood or road for the top bar ("Arcadia, Phoenix"); null otherwise. */
+  area?: string | null;
 };
 
 export type NetworkStatus = {

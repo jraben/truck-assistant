@@ -112,13 +112,19 @@ export class SimTruck {
   private onFix: (f: GpsFix) => void;
   private speedup: number;
 
-  constructor(emit: (sub: string, payload: string) => void, onFix: (f: GpsFix) => void, speedup = 1) {
-    this.emit = emit; this.onFix = onFix; this.speedup = speedup;
+  /** DEMO=1: a lived-in truck: the bed fridge running and all four tires where they should be. */
+  private demo: boolean;
+
+  constructor(emit: (sub: string, payload: string) => void, onFix: (f: GpsFix) => void, speedup = 1, opts: { demo?: boolean } = {}) {
+    this.emit = emit; this.onFix = onFix; this.speedup = speedup; this.demo = !!opts.demo;
   }
 
   start() {
     this.emit('status', 'online');
-    for (let i = 1; i <= 6; i++) { this.relays[`relay_${i}`] = false; this.emit(`switch/relay_${i}/state`, 'OFF'); }
+    for (let i = 1; i <= 6; i++) {
+      const on = this.demo && i === 5; // DEMO: the bed fridge stays on
+      this.relays[`relay_${i}`] = on; this.emit(`switch/relay_${i}/state`, on ? 'ON' : 'OFF');
+    }
     this.ctl.switches.forEach((on, i) => this.emit(`binary_sensor/five_switch_${i + 1}/state`, on ? 'ON' : 'OFF'));
     this.emit('binary_sensor/ignition/state', 'OFF');
     this.emit('binary_sensor/reverse/state', 'OFF');
@@ -262,7 +268,7 @@ export class SimTruck {
     if (s % 10 < dt || this.ctl.lowTire !== this.lastLowTire) {
       this.lastLowTire = this.ctl.lowTire;
       const warm = driving ? 6 : 0;
-      ([['fl', 38], ['fr', 38], ['rl', 40], ['rr', 33]] as const).forEach(([w, psi]) => {
+      ([['fl', 38], ['fr', 38], ['rl', 40], ['rr', this.demo ? 40 : 33]] as const).forEach(([w, psi]) => {
         const p = this.ctl.lowTire === w ? 22 : psi + warm / 6 + 0.3 * Math.sin(s / 60);
         this.emit(`sensor/tpms_${w}_psi/state`, p.toFixed(1));
         this.emit(`sensor/tpms_${w}_temp/state`, (82 + warm + Math.sin(s / 90)).toFixed(0));

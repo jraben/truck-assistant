@@ -35,7 +35,14 @@ export class WoprService {
   private dismissedStop: number | null = null;
   private lastStopId: number | null = null;
   private gateBusy = false;
-  private onChange = () => this.watchPlace();
+  private wasOnline = false;
+  private onChange = () => {
+    this.watchPlace();
+    // Back online (home Wi-Fi or a hotspot found): fetch the calendar now rather than at the next poll.
+    const on = this.online();
+    if (on && !this.wasOnline && this.configured()) void this.refreshNext();
+    this.wasOnline = on;
+  };
 
   constructor(brain: BrainView, media: MediaSettingsStore) {
     this.brain = brain;
