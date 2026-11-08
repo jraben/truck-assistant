@@ -7,6 +7,10 @@ and no modem. The goal is CarPlay (Waze, music), charging and trip info,
 Home Assistant, cameras and aux-switch control on one large, clean screen.
 Built for Jeff's truck first, published for other Slate owners later.
 
+[![A 30-second demo: drive screen, media, switches, 360° cameras, charging, the house and trips](docs/media/demo-poster.jpg)](docs/media/truck-assistant-demo.mp4)
+
+*30-second desk demo ([watch the video](docs/media/truck-assistant-demo.mp4)): a simulated truck, invented data and stock camera footage.*
+
 > **Not affiliated with Slate Auto.** This is an independent DIY project; it
 > is not made, endorsed or supported by Slate Auto. MIT licensed (`LICENSE`).
 > The public name is undecided: it is one constant in `brain/src/project.ts`.
@@ -163,7 +167,7 @@ A parked Phoenix dash gets hot enough to warp PLA in an afternoon. See
 
 A copy runs on the NAS at **http://192.168.1.20:3950** (LAN only; port 3950 is
 not forwarded and must not be). It uses the image GitHub builds on every push
-to main (`ghcr.io/jraben/slate-cockpit`) and `deploy/nas/docker-compose.yml`,
+to main (`ghcr.io/jraben/truck-assistant`, named after the repo) and `deploy/nas/docker-compose.yml`,
 copied to `~/slate-cockpit/` on the NAS. With no truck, `SIM=1` drives a
 simulated one, and **More › Test panel (SIM)** drives it by hand: gear,
 ignition, speed, which leg of the route, plugging in to charge (home 7.2 kW at
@@ -176,6 +180,7 @@ camera live, and the CarPlay simulator on or off. The panel's routes
 cd ~/slate-cockpit && sudo -n /usr/local/bin/docker-compose pull && sudo -n /usr/local/bin/docker-compose up -d
 ```
 
-Data lives in the `slate-cockpit_slate-data` Docker volume. The compose file
+The folder, compose project and container keep their older `slate-cockpit`
+name so the data volume carries over. Data lives in the `slate-cockpit_slate-data` Docker volume. The compose file
 uses the built-in bridge network because the NAS has no free address pools for
 a new one.

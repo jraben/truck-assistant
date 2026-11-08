@@ -11,7 +11,7 @@ name: slate-cockpit
 
 services:
   slate-cockpit:
-    image: ghcr.io/jraben/slate-cockpit:${SLATE_IMAGE_TAG:-latest}
+    image: ghcr.io/jraben/truck-assistant:${SLATE_IMAGE_TAG:-latest}
     container_name: slate-cockpit
     restart: unless-stopped
     # Docker's default address pools are used up on the NAS (one network per
