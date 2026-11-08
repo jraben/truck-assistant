@@ -2,6 +2,7 @@
 // draws only with theme tokens. Needles move by CSS transform transitions, so
 // prefers-reduced-motion (and the heat "calm" mode) turn the motion off.
 import type { SpeedoStyle } from '../../../brain/src/drive/types.ts';
+import { RingSpeedo } from './RingSpeedo.tsx';
 
 export type SpeedoProps = { mph: number | null; limit: number | null; over: boolean; why: string };
 
@@ -159,10 +160,11 @@ function Ribbon({ mph, limit, over, why }: SpeedoProps) {
   );
 }
 
-export const SPEEDO_LABELS: Record<SpeedoStyle, string> = { digital: 'Digital', sweep: 'Sweep', 'fifty-seven': "'57", ribbon: 'Ribbon', minimal: 'Minimal' };
+export const SPEEDO_LABELS: Record<SpeedoStyle, string> = { digital: 'Digital', ring: 'Power ring', sweep: 'Sweep', 'fifty-seven': "'57", ribbon: 'Ribbon', minimal: 'Minimal' };
 
 export function Speedo({ style, ...p }: SpeedoProps & { style: SpeedoStyle }) {
   switch (style) {
+    case 'ring': return <RingSpeedo {...p} sign={<LimitSign limit={p.limit} over={p.over} size={0.72} />} />;
     case 'sweep': return <Sweep {...p} />;
     case 'fifty-seven': return <FiftySeven {...p} />;
     case 'ribbon': return <Ribbon {...p} />;

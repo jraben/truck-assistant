@@ -4,7 +4,7 @@
 export type RangeMode = 'city' | 'highway';
 export type RangeOverride = 'auto' | RangeMode;
 
-export const SPEEDO_STYLES = ['digital', 'sweep', 'fifty-seven', 'ribbon', 'minimal'] as const;
+export const SPEEDO_STYLES = ['digital', 'ring', 'sweep', 'fifty-seven', 'ribbon', 'minimal'] as const;
 export type SpeedoStyle = (typeof SPEEDO_STYLES)[number];
 
 /** The owner's photo of the truck: DATA_DIR/<file>, set only through /api/vehicle/photo. */

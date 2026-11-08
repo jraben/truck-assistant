@@ -283,3 +283,56 @@
 .herofoot > * { display: inline-flex; align-items: center; gap: 8px; }
 .herofoot button { min-height: 48px; color: inherit; }
 .herofoot b { color: var(--fg); font-family: var(--display); font-weight: 600; font-size: 22px; }
+
+/* ---- power ring (RingSpeedo.tsx) ---------------------------------------------------------- */
+.sp-ringwrap { position: relative; display: grid; place-items: center; }
+.sp-ring { width: 100%; height: 100%; max-height: 100%; overflow: visible; }
+.sp-ring .r-track { fill: none; stroke: var(--line); stroke-width: 12; }
+.sp-ring .r-tick { stroke: var(--dim); stroke-width: 3; stroke-linecap: round; }
+.sp-ring .r-out, .sp-ring .r-regen { fill: none; stroke-width: 14; stroke-linecap: round; transition: d .9s cubic-bezier(.25, .6, .3, 1), opacity .3s; }
+.sp-ring .r-out { stroke: var(--accent); filter: drop-shadow(0 0 calc(10px * var(--glow)) var(--accent)); }
+.sp-ring .r-regen { stroke: var(--ok); }
+.sp-ring .off { opacity: 0; }
+.sp-ring .r-num { fill: var(--fg); font-family: var(--display); font-weight: 800; font-size: 132px; letter-spacing: -.03em;
+  paint-order: stroke; stroke: var(--bg); stroke-width: 14; stroke-linejoin: round; stroke-opacity: .8; }
+.sp-ring.over .r-num { fill: var(--warn); }
+.sp-ring .r-sub { fill: var(--dim); font-family: var(--body); font-weight: 600; font-size: 19px; letter-spacing: .06em;
+  paint-order: stroke; stroke: var(--bg); stroke-width: 8; stroke-linejoin: round; stroke-opacity: .8; }
+.sp-ringwrap .r-sign { position: absolute; right: 0; bottom: 0; }
+.sp-ring .scene { opacity: .6; }
+.sp-ring .k-a { fill: var(--accent); } .sp-ring .k-d { fill: var(--dim); } .sp-ring .k-l { fill: var(--line); }
+.sp-ring .k-f { fill: var(--fg); } .sp-ring .k-w { fill: var(--warn); } .sp-ring .k-o { fill: var(--ok); }
+.sp-ring .k-p { fill: var(--panel); } .sp-ring .k-bg { fill: var(--panel-2); }
+.sp-ring .s-a { stroke: var(--accent); } .sp-ring .s-d { stroke: var(--dim); } .sp-ring .s-l { stroke: var(--line); }
+.sp-ring .s-f { stroke: var(--fg); } .sp-ring .s-w { stroke: var(--warn); }
+.sp-ring .r-defcon { fill: var(--accent); font-family: var(--mono); font-size: 15px; font-weight: 600; letter-spacing: .3em; }
+.sp-ring .r-defcon.hot { fill: var(--warn); }
+.sp-ring .tw, .sp-ring .spin-slow, .sp-ring .spin-gear, .sp-ring .spin-gear-r, .sp-ring .bob, .sp-ring .swing, .sp-ring .fall, .sp-ring .bub, .sp-ring .blip, .sp-ring .drift {
+  transform-box: fill-box; transform-origin: center; }
+.sp-ring .tw { animation: rg-tw 3.2s ease-in-out infinite; }
+.sp-ring .spin-slow { animation: rg-spin 40s linear infinite; }
+.sp-ring .spin-radar { transform-box: view-box; transform-origin: 200px 200px; animation: rg-spin 4s linear infinite; }
+.sp-ring .spin-gear { animation: rg-spin calc(var(--mv) * 3) linear infinite; }
+.sp-ring .spin-gear-r { animation: rg-spin calc(var(--mv) * 1.5) linear infinite reverse; }
+.sp-ring .hz { animation: rg-hz var(--mv) cubic-bezier(.55, 0, 1, .45) infinite; }
+.sp-ring .dash { animation: rg-dash var(--mv) linear infinite; }
+.sp-ring .bob { animation: rg-bob 5s ease-in-out infinite; }
+.sp-ring .swing { animation: rg-swing 6s ease-in-out infinite; }
+.sp-ring .fall { animation: rg-fall 9s linear infinite; }
+.sp-ring .bub { animation: rg-bub 3.4s ease-out infinite; }
+.sp-ring .blip { animation: rg-blip 4s ease-out infinite; }
+.sp-ring .drift { animation: rg-drift 60s linear infinite; }
+.sp-ring .wave { animation: rg-wave 6s linear infinite; }
+.sp-ring.still .mov { animation-play-state: paused; }
+@keyframes rg-tw { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .25; transform: scale(.7); } }
+@keyframes rg-spin { to { transform: rotate(360deg); } }
+@keyframes rg-hz { from { transform: translateY(0); opacity: .15; } to { transform: translateY(80px); opacity: 1; } }
+@keyframes rg-dash { to { stroke-dashoffset: -22; } }
+@keyframes rg-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+@keyframes rg-swing { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes rg-fall { from { transform: translate(0, 0) rotate(0); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 1; } to { transform: translate(40px, 250px) rotate(540deg); opacity: 0; } }
+@keyframes rg-bub { from { transform: translateY(0) scale(.5); opacity: 0; } 25% { opacity: 1; } to { transform: translateY(-36px) scale(1.3); opacity: 0; } }
+@keyframes rg-blip { 0%, 60%, 100% { opacity: 0; } 8% { opacity: 1; } }
+@keyframes rg-drift { from { transform: translateX(-60px); } to { transform: translateX(300px); } }
+@keyframes rg-wave { to { transform: translateX(-80px); } }
+@media (prefers-reduced-motion: reduce) { .sp-ring *, .sp-ring .r-out, .sp-ring .r-regen { animation: none !important; transition: none !important; } }

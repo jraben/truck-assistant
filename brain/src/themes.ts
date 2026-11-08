@@ -18,7 +18,7 @@ export type Theme = {
   fonts: { display: string; body: string; mono: string };
   radius: number;                     // corner scale: 0 square .. 2 very round, 1 = default
   glow: number;                       // 0..1 accent glow on active controls, keep it subtle
-  speedo?: 'digital' | 'sweep' | 'fifty-seven' | 'ribbon' | 'minimal';  // Track A: the speedometer this theme pairs with (a driver's "auto")
+  speedo?: 'digital' | 'ring' | 'sweep' | 'fifty-seven' | 'ribbon' | 'minimal';  // Track A: the speedometer this theme pairs with (a driver's "auto")
 };
 
 export type ThemeSettings = {
@@ -120,7 +120,7 @@ export function validateTheme(t: unknown, i: number): Theme {
   if (!(radius >= 0 && radius <= 2)) throw new ThemeError(`${where}.radius must be 0 to 2`);
   if (!(glow >= 0 && glow <= 1)) throw new ThemeError(`${where}.glow must be 0 to 1`);
   const out: Theme = { id: x.id, name: x.name.trim().slice(0, 40), colors, fonts, radius, glow };
-  if (['digital', 'sweep', 'fifty-seven', 'ribbon', 'minimal'].includes(x.speedo)) out.speedo = x.speedo;
+  if (['digital', 'ring', 'sweep', 'fifty-seven', 'ribbon', 'minimal'].includes(x.speedo)) out.speedo = x.speedo;
   return out;
 }
 

@@ -16,7 +16,7 @@ export function speedoStyle(d: Driver | null): SpeedoStyle {
   if (pick !== 'auto') return pick;
   const id = document.documentElement.dataset.theme;
   const t = d ? allThemes(d.theme).find((x) => x.id === id) : undefined;
-  return t?.speedo ?? 'digital';
+  return t?.speedo ?? 'ring';
 }
 
 export { overLimit } from './logic.ts';

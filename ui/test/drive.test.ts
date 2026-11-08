@@ -51,3 +51,27 @@ describe('truck photo on the tilt card', () => {
     expect(showTruckPhoto(at(0, 'ok', true), true)).toBe(false);
   });
 });
+
+describe('power ring', () => {
+  it('estimates power out at cruise, more when speeding up, regen when slowing', async () => {
+    const { estimateDriveKw } = await import('../src/drive/logic.ts');
+    expect(estimateDriveKw(0, 0)).toBe(0);
+    const cruise = estimateDriveKw(45, 0);
+    expect(cruise).toBeGreaterThan(5); expect(cruise).toBeLessThan(25);
+    expect(estimateDriveKw(45, 1.5)).toBeGreaterThan(cruise + 30);
+    expect(estimateDriveKw(45, -2)).toBeLessThan(0);
+    expect(estimateDriveKw(70, 5)).toBe(150);
+    expect(estimateDriveKw(60, -9)).toBe(-60);
+  });
+  it('gives each preset theme its own scene and a custom theme the road', async () => {
+    const { ringMotif, motionSeconds } = await import('../src/drive/logic.ts');
+    const { PRESETS } = await import('../../brain/src/themes.ts');
+    const scenes = PRESETS.map((t) => ringMotif(t.id));
+    expect(new Set(scenes).size).toBe(PRESETS.length);
+    expect(scenes).not.toContain('road');
+    expect(ringMotif('my-own')).toBe('road');
+    expect(motionSeconds(0)).toBeNull();
+    expect(motionSeconds(45)).toBe(2);
+    expect(motionSeconds(90)!).toBeLessThan(motionSeconds(30)!);
+  });
+});

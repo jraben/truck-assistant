@@ -65,6 +65,14 @@ when a charge session ends.
 
 A setting per driver; each is a component fed the same speed/limit data:
 - **Digital** (current, cleaned up).
+- **Power ring** (the default since 2026-11-08): the speed inside a ring whose
+  arc shows power out (clockwise) and regen (anticlockwise). Until the CAN bus
+  reports motor kW the figure is an estimate from speed and acceleration, marked
+  with a "≈". Inside the ring is a small animated scene per theme (stars and
+  mesas for Night, sun and saguaros for Day, gears, a synthwave grid, a forest,
+  a tar pit, a WOPR radar, a sketch, 1950s starbursts; the road for a custom
+  theme), drawn in theme colours. The road, grid and gears move at the truck's
+  speed.
 - **Sweep**: modern analog arc with a needle and a lit trail.
 - **'57**: a 1950s-style horizontal fan speedometer, chrome bezel, cream
   face, red needle sweeping across a wide arc, period numerals. Original art
