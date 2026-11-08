@@ -1,5 +1,5 @@
-// The left rail: one icon per screen and tool, no labels (the current screen's
-// name is in the top bar). Press and hold an icon to rearrange, like a phone's
+// The left rail: one icon per screen and tool, each with a short word under it
+// (the current screen's name is also in the top bar). Press and hold an icon to rearrange, like a phone's
 // home screen: the icons wiggle, drag one to move it, tap outside or Done to finish.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -8,6 +8,8 @@ import { moveItem } from '../lib/railOrder.ts';
 export type RailEntry = {
   id: string;
   label: string;
+  /** The word under the icon when the label is too long for the rail (default: label). */
+  short?: string;
   icon: ComponentChildren;
   /** A link (views, Settings) when set; otherwise a button calling onTap. */
   href?: string;
@@ -160,8 +162,8 @@ export function Rail({ entries, editing, onEdit, onReorder, locked }: {
           <div key={x.id} class={`slot ${dragId === x.id ? 'lift' : ''} ${x.current ? 'on' : ''} ${x.parkOnly ? 'park-only' : ''}`} data-id={x.id}
             onPointerDown={(e) => down(e, x)}>
             {!editing && x.live ? x.live
-              : x.href ? <a href={x.href} draggable={false} {...common} onClick={(e) => { if (x.href!.startsWith('#')) { e.preventDefault(); x.onTap?.(); } }}>{x.icon}</a>
-              : <button type="button" {...common} aria-pressed={x.pressed} onClick={() => x.onTap?.()}>{x.icon}</button>}
+              : x.href ? <a href={x.href} draggable={false} {...common} onClick={(e) => { if (x.href!.startsWith('#')) { e.preventDefault(); x.onTap?.(); } }}>{x.icon}<span class="rl" aria-hidden="true">{x.short ?? x.label}</span></a>
+              : <button type="button" {...common} aria-pressed={x.pressed} onClick={() => x.onTap?.()}>{x.icon}<span class="rl" aria-hidden="true">{x.short ?? x.label}</span></button>}
           </div>
         );
       })}

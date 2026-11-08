@@ -4,6 +4,7 @@
 // short flat-faced nose with round lamps on plates, squared plastic wheel
 // flares and 17" steel wheels. Drawn at 2.3 px per inch. Colours come from
 // Settings.truck (the owner's build), the surrounding chrome from the theme.
+import type { ComponentChildren } from 'preact';
 import type { TruckLook } from '../../../brain/src/drive/types.ts';
 
 const mix = (a: string, b: string, pct: number) => `color-mix(in srgb, ${a} ${100 - pct}%, ${b})`;
@@ -57,7 +58,7 @@ function Wheel({ cx, cy, t }: { cx: number; cy: number; t: TruckLook }) {
 }
 
 /** Side view, nose to the right. viewBox 0 0 440 200, ground at y = 186. */
-export function TruckSide({ t, id = 'ts', bedLightsOn = false }: { t: TruckLook; id?: string; bedLightsOn?: boolean }) {
+export function TruckSide({ t, id = 'ts', bedLightsOn = false, children }: { t: TruckLook; id?: string; bedLightsOn?: boolean; children?: ComponentChildren }) {
   const c = t.colors;
   const RA = 102, FA = 352, WY = 153; // axles at 108.9 in apart
   const arch = (x: number) => `L${x + 46} 160 L${x + 40} 118 Q${x + 37} 112 ${x + 31} 112 L${x - 31} 112 Q${x - 37} 112 ${x - 40} 118 L${x - 46} 160`;
@@ -98,6 +99,7 @@ export function TruckSide({ t, id = 'ts', bedLightsOn = false }: { t: TruckLook;
       {t.accessories.hitch && <><rect x="2" y="152" width="14" height="9" rx="1" fill={mix(c.trim, INK, 45)} /><circle cx="7" cy="156.5" r="1.6" fill={c.roof} /></>}
       {flare(RA)}{flare(FA)}
       <Wheel cx={RA} cy={WY} t={t} /><Wheel cx={FA} cy={WY} t={t} />
+      {children}
     </svg>
   );
 }

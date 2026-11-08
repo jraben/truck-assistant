@@ -8,21 +8,21 @@ const st = (o: { locked?: boolean; tilt?: 'ok' | 'warn' | 'danger' | null; trip?
 } as unknown as State);
 
 describe('Drive screen context cards', () => {
-  it('parked: since charge, tilt, then media', () => {
-    expect(pickCards(st({}), true)).toEqual(['since', 'tilt', 'np']);
-    expect(pickCards(st({}), false)).toEqual(['since', 'tilt']);
+  it('parked: since charge, then media (the truck in the middle shows the tilt)', () => {
+    expect(pickCards(st({}), true)).toEqual(['since', 'np']);
+    expect(pickCards(st({}), false)).toEqual(['since']);
   });
-  it('moving: media, trip, since charge', () => {
-    expect(pickCards(st({ locked: true, trip: true }), true)).toEqual(['np', 'trip', 'since']);
-    expect(pickCards(st({ locked: true, trip: true }), false)).toEqual(['trip', 'since', 'tilt']);
+  it('moving: media, trip, since charge, two at most', () => {
+    expect(pickCards(st({ locked: true, trip: true }), true)).toEqual(['np', 'trip']);
+    expect(pickCards(st({ locked: true, trip: true }), false)).toEqual(['trip', 'since']);
   });
-  it('the payoff goal: parked only, after the others, never pushing one out', () => {
-    expect(pickCards(st({}), false, true)).toEqual(['since', 'tilt', 'goal']);
-    expect(pickCards(st({}), true, true)).toEqual(['since', 'tilt', 'np']);
-    expect(pickCards(st({ locked: true, trip: true }), false, true)).toEqual(['trip', 'since', 'tilt']);
+  it('the payoff goal: parked only, after the others', () => {
+    expect(pickCards(st({}), false, true)).toEqual(['since', 'goal']);
+    expect(pickCards(st({}), true, true)).toEqual(['since', 'np']);
+    expect(pickCards(st({ locked: true, trip: true }), false, true)).toEqual(['trip', 'since']);
   });
   it('a tilt warning goes first', () => {
-    expect(pickCards(st({ locked: true, trip: true, tilt: 'danger' }), true)).toEqual(['tilt', 'np', 'trip']);
+    expect(pickCards(st({ locked: true, trip: true, tilt: 'danger' }), true)).toEqual(['tilt', 'np']);
   });
 });
 

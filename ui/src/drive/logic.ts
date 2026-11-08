@@ -5,25 +5,24 @@ import type { State } from '../../../brain/src/types.ts';
 export type CardId = 'np' | 'since' | 'trip' | 'tilt' | 'goal';
 
 /**
- * Which context cards, in order (at most 3): tilt first when it warns; moving =
- * media, trip, since charge; parked = since charge, tilt, media, then the
- * truck-payoff goal (`goal`: there is one to show). The goal never shows while
- * moving and never pushes out a card that was there before.
+ * Which context cards, in order (at most 2; the truck in the middle already
+ * shows the tilt): tilt first only when it warns; moving = media, trip, since
+ * charge; parked = since charge, media, trip, then the truck-payoff goal
+ * (`goal`: there is one to show). The goal never shows while moving.
  */
 export function pickCards(s: State | null, playing: boolean, goal = false): CardId[] {
   const moving = !!s?.drive?.lockout.locked;
   const lvl = s?.drive?.tilt.level;
   const out: CardId[] = [];
   if (lvl === 'warn' || lvl === 'danger') out.push('tilt');
-  const rest: CardId[] = moving ? ['np', 'trip', 'since', 'tilt'] : ['since', 'tilt', 'np', 'trip', 'goal'];
+  const rest: CardId[] = moving ? ['np', 'trip', 'since'] : ['since', 'np', 'trip', 'goal'];
   for (const c of rest) {
-    if (out.includes(c)) continue;
     if (c === 'np' && !playing) continue;
     if (c === 'trip' && !s?.trip) continue;
     if (c === 'goal' && !goal) continue;
     out.push(c);
   }
-  return out.slice(0, 3);
+  return out.slice(0, 2);
 }
 
 /** Over the limit by more than the driver's tolerance, with their warning on. */

@@ -42,6 +42,16 @@ a { color: var(--accent); }
 .strip .sp { flex: 1; }
 .strip .clock { font-family: var(--display); font-size: 24px; font-weight: 600; color: var(--fg); }
 .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+/* The strip never cuts a word: when it runs out of room it drops whole items,
+   least useful first (App.tsx useStripFit sets data-fit 1..6). */
+.strip { overflow: hidden; }
+.strip > .pill, .strip > .wxstrip, .strip > .clock { flex: none; }
+.strip[data-fit] .pill.place { display: none; }
+.strip[data-fit="2"] .wxwind, .strip[data-fit="3"] .wxwind, .strip[data-fit="4"] .wxwind, .strip[data-fit="5"] .wxwind, .strip[data-fit="6"] .wxwind { display: none; }
+.strip[data-fit="3"] .brand-name, .strip[data-fit="4"] .brand-name, .strip[data-fit="5"] .brand-name, .strip[data-fit="6"] .brand-name { display: none; }
+.strip[data-fit="4"] .netpill .dimtxt, .strip[data-fit="5"] .netpill .dimtxt, .strip[data-fit="6"] .netpill .dimtxt { display: none; }
+.strip[data-fit="5"] .wxplace, .strip[data-fit="6"] .wxplace { display: none; }
+.strip[data-fit="6"] .pill.stat .ptxt { display: none; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
 .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
 .btn { min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: calc(10px * var(--r)); font-family: var(--mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg); background: var(--panel-2); display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
@@ -57,10 +67,15 @@ a { color: var(--accent); }
 /* Each icon shrinks to share the height, down to a still-tappable size; past that the rail scrolls. */
 .rail > .slot { display: flex; flex: 1 1 var(--hit); min-height: 42px; max-height: var(--hit); }
 .rail .slot > a, .rail .slot > button { flex: 1; min-width: 0; border-radius: calc(12px * var(--r)); display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 2px; padding: 2px 0;
   color: var(--dim); text-decoration: none; font-size: 0; -webkit-user-drag: none; }
+/* The word under each icon. */
+.rail .rl { display: block; max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--display); font-size: 12px; font-weight: 600; line-height: 1.1; letter-spacing: .02em; }
+.rail .slot > .voice { font-family: var(--display); font-size: 12px; font-weight: 600; line-height: 1.1; }
 .rail svg { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.rail [aria-current="page"] { background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--accent) calc(var(--glow) * 100%), transparent); }
-.rail [aria-pressed="true"] { background: var(--panel-2); color: var(--fg); }
+.rail [aria-current="page"], .rail .slot > [aria-current="page"] { background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--accent) calc(var(--glow) * 100%), transparent); }
+.rail [aria-pressed="true"], .rail .slot > [aria-pressed="true"] { background: var(--panel-2); color: var(--fg); }
 .rail .voice { border: 2px solid var(--accent); color: var(--accent); }
 /* Edit mode: the icons wiggle; the one held lifts and follows the finger's slot. */
 .rail.editing { touch-action: none; background: color-mix(in srgb, var(--accent) 6%, var(--panel)); }
@@ -157,6 +172,15 @@ video.cpcanvas { object-fit: contain; background: #000; pointer-events: auto; }
 .tile.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: 0 0 calc(22px * var(--glow)) color-mix(in srgb, var(--accent) calc(var(--glow) * 100%), transparent); }
 .tile.on .state, .tile.on .tag { color: var(--accent-ink); }
 .tile.pending { border-style: dashed; }
+/* Inverter tile: the truck battery it runs from. */
+.tile .invcharge { display: grid; gap: 6px; font-family: var(--mono); font-size: 13px; }
+.tile .invcharge b { font-family: var(--display); font-size: 22px; }
+.tile .invfacts { display: inline-flex; gap: 12px; white-space: nowrap; }
+.tile .invbar { display: block; height: 8px; border-radius: 4px; background: color-mix(in srgb, currentColor 18%, transparent); overflow: hidden; }
+.tile .invbar > span { display: block; height: 100%; background: var(--ok); border-radius: 4px; }
+.tile .invcharge.low b { color: var(--warn); }
+.tile .invcharge.low .invbar > span { background: var(--warn); }
+.tile.on .invbar > span { background: var(--accent-ink); }
 .banner { border-radius: calc(12px * var(--r)); padding: 12px 16px; border: 1px solid var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); font-weight: 500; }
 .banner.ok { border-color: var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); }
 .banner.bad { border-color: var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
@@ -260,10 +284,9 @@ textarea { min-height: 120px; font-family: var(--mono); font-size: 13px; resize:
 @media (min-width: 821px) and (max-aspect-ratio: 2/1) and (max-height: 900px) {
   :root { --rail: 76px; --strip: 50px; }
   .rail { gap: 3px; padding: 4px 6px; }
-  .rail svg { width: 26px; height: 26px; }
+  .rail svg { width: 24px; height: 24px; }
   .strip { gap: 10px; padding: 0 12px; }
   .strip .clock { font-size: 22px; white-space: nowrap; flex: none; }
-  .strip .pill { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
   .strip .wxstrip { flex: none; }
   .strip .wxstrip .wxhl { display: none; }
 }

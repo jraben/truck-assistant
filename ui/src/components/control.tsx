@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { send, toast } from '../lib/brain.ts';
 import { Card, V, whyTruck } from './common.tsx';
 import type { WP } from './drive.tsx';
+import { inverterReadout, isInverter } from '../lib/inverter.ts';
 
 export function Relays({ s }: WP) {
   const [pending, setPending] = useState<Record<string, { on: boolean; at: number }>>({});
@@ -40,11 +41,31 @@ export function Relays({ s }: WP) {
                 <div class="name">{r.name}</div>
                 <div class="state">{p ? (p.on ? 'TURNING ON…' : 'TURNING OFF…') : r.on === null ? <V v={null} why={whyTruck(s, 'this relay')} /> : r.on ? 'ON' : 'OFF'}</div>
               </span>
+              {isInverter(r.name) && <InverterCharge s={s} />}
             </button>
           );
         })}
       </div>
     </Card>
+  );
+}
+
+/** On the Inverter tile: the battery it is running from, as a bar, plus range and 12V. */
+function InverterCharge({ s }: { s: WP['s'] }) {
+  const r = inverterReadout(s);
+  return (
+    <span class={`invcharge ${r.low ? 'low' : ''}`} title="The inverter runs from the truck's battery">
+      <span class="row between num">
+        <b><V v={r.soc === null ? null : `${r.soc}%`} why={s ? 'No charge reading yet' : 'Not connected to the brain'} /></b>
+        <span class="invfacts">
+          {r.rangeMi !== null && <span>{r.rangeMi} mi</span>}
+          {r.volts !== null && <span title="12V battery">{r.volts.toFixed(1)} V</span>}
+        </span>
+      </span>
+      <span class="invbar" role="meter" aria-label="Truck battery" aria-valuemin={0} aria-valuemax={100} aria-valuenow={r.soc ?? undefined}>
+        <span style={{ width: `${r.soc ?? 0}%` }} />
+      </span>
+    </span>
   );
 }
 

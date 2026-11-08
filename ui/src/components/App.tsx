@@ -19,6 +19,7 @@ import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
+import { useStripFit } from '../lib/stripFit.ts';
 import { RelayDots } from './RelayDots.tsx';
 import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
 
@@ -72,6 +73,8 @@ export function App() {
   const [netOpen, setNetOpen] = useState(false);
   const [logs, setLogs] = useState<null | 'mileage' | 'maintenance'>(null);
   const [editing, setEditing] = useState(false);
+  const stripRef = useRef<HTMLElement>(null);
+  useStripFit(stripRef);
   // Rail order: the active driver's (on the brain); a local draft while a save is in flight.
   const [cache] = useState(() => loadCache(storage()));
   const [draft, setDraft] = useState<CachedOrder | null>(null);
@@ -114,11 +117,11 @@ export function App() {
   const closePanels = () => { setDriverOpen(false); setPicker(false); };
   const entries: RailEntry[] = [
     ...layout.views.map((v): RailEntry => ({ id: v.id, label: v.label, icon: v.id === 'control' ? <RelayDots relays={s?.relays} online={!!s?.truckbox} /> : <Ico d={ICONS[v.id] ?? ICONS.drive} />, href: `#${v.id}`, current: v.id === cur.id, onTap: () => go(v.id) })),
-    { id: '@wopr', label: 'WOPR voice', icon: <Ico d={MIC} />, cls: 'voice', live: <WoprButton />, holdToEdit: false },
-    { id: '@driver', label: s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver', icon: <DriverBadge d={s?.driver ?? null} size={30} />, pressed: driverOpen, current: driverOpen, onTap: () => { setDriverOpen(!driverOpen); setPicker(false); } },
+    { id: '@wopr', label: 'WOPR voice', short: 'WOPR', icon: <Ico d={MIC} />, cls: 'voice', live: <WoprButton />, holdToEdit: false },
+    { id: '@driver', label: s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver', short: s?.driver?.name ?? 'Driver', icon: <DriverBadge d={s?.driver ?? null} size={30} />, pressed: driverOpen, current: driverOpen, onTap: () => { setDriverOpen(!driverOpen); setPicker(false); } },
     { id: '@theme', parkOnly: true, label: 'Theme', icon: <Ico d={PALETTE} />, pressed: picker, current: picker, onTap: () => { setPicker(!picker); setDriverOpen(false); } },
-    { id: '@logs', parkOnly: true, label: 'Mileage & maintenance', icon: <Ico d={LOGS} />, pressed: !!logs, current: !!logs, onTap: () => { closePanels(); setLogs(logs ? null : 'mileage'); } },
-    ...(simAvailable ? [{ id: '@sim', parkOnly: true, label: 'Test panel (SIM)', icon: <Ico d={SIM_ICON} />, pressed: simOpen, current: simOpen, onTap: () => { closePanels(); setSimOpen(!simOpen); } }] : []),
+    { id: '@logs', parkOnly: true, label: 'Mileage & maintenance', short: 'Logs', icon: <Ico d={LOGS} />, pressed: !!logs, current: !!logs, onTap: () => { closePanels(); setLogs(logs ? null : 'mileage'); } },
+    ...(simAvailable ? [{ id: '@sim', parkOnly: true, label: 'Test panel (SIM)', short: 'Test', icon: <Ico d={SIM_ICON} />, pressed: simOpen, current: simOpen, onTap: () => { closePanels(); setSimOpen(!simOpen); } }] : []),
     { id: '@settings', parkOnly: true, label: 'Settings', icon: <Ico d={GEAR} />, href: '/settings' },
   ];
   const byId = new Map(entries.map((e) => [e.id, e]));
@@ -148,17 +151,17 @@ export function App() {
 
   return (
     <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
-      <header class="strip">
+      <header class="strip" ref={stripRef}>
         <span class="brand"><img class="brand-mark" src="/icon.svg" alt="" /><span class="brand-name">{PROJECT.shortName}</span></span>
         {editing
           ? <span class="rail-edit"><b>Arrange icons</b><button type="button" class="btn sm" onClick={resetOrder}>Reset</button><button type="button" class="btn sm primary" onClick={() => setEditing(false)}>Done</button></span>
           : <h1 class="screen-title">{cur.label}</h1>}
-        <span class="pill" title={link.connected ? 'Connected to the brain' : 'Reconnecting to the brain…'}><span class={`dot ${link.connected ? 'ok' : 'bad'}`} />{link.connected ? 'Brain' : 'Reconnecting'}</span>
-        <span class="pill hide-sm" title={s?.truckbox ? 'Truck box online' : 'Truck box offline: relays and sensors unavailable'}><span class={`dot ${s?.truckbox ? 'ok' : 'warn'}`} />Truck box {s?.truckbox ? 'online' : 'offline'}</span>
-        <span class="pill hide-sm" title={s?.gps?.fix ? 'GPS fix' : 'No GPS fix'}><span class={`dot ${s?.gps?.fix ? 'ok' : 'warn'}`} />GPS</span>
+        <span class="pill stat" title={link.connected ? 'Connected to the brain' : 'Reconnecting to the brain…'}><span class={`dot ${link.connected ? 'ok' : 'bad'}`} /><span class="ptxt">{link.connected ? 'Brain' : 'Reconnecting'}</span></span>
+        <span class="pill stat hide-sm" title={s?.truckbox ? 'Truck box online' : 'Truck box offline: relays and sensors unavailable'}><span class={`dot ${s?.truckbox ? 'ok' : 'warn'}`} /><span class="ptxt">Truck box {s?.truckbox ? 'online' : 'offline'}</span></span>
+        <span class="pill stat hide-sm" title={s?.gps?.fix ? 'GPS fix' : 'No GPS fix'}><span class={`dot ${s?.gps?.fix ? 'ok' : 'warn'}`} /><span class="ptxt">GPS</span></span>
         <NetPill s={s} open={netOpen} onClick={() => setNetOpen(!netOpen)} />
-        {s?.place && <span class="pill hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? s.area ?? 'Unnamed stop'}</span>}
-        {!s?.place && s?.area && <span class="pill hide-sm">{s.area}</span>}
+        {s?.place && <span class="pill place hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? s.area ?? 'Unnamed stop'}</span>}
+        {!s?.place && s?.area && <span class="pill place hide-sm">{s.area}</span>}
         <span class="sp" />
         <WeatherStrip s={s} />
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
