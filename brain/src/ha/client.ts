@@ -79,6 +79,21 @@ export class HaClient {
     return historyStates(body, entity);
   }
 
+  /** A camera's current still (HA's camera_proxy), as bytes. The token stays here; the tablet only ever sees the picture. */
+  async image(entity: string): Promise<{ type: string; body: Uint8Array }> {
+    const ha = this.getSettings().homeAssistant;
+    if (!ha.url || !ha.token) throw new HaError(NOT_CONFIGURED);
+    let res: Response;
+    try {
+      res = await fetch(`${ha.url}/api/camera_proxy/${encodeURIComponent(entity)}`, { headers: { authorization: `Bearer ${ha.token}` }, signal: AbortSignal.timeout(10_000) });
+    } catch (e) { throw new HaError(`Home Assistant not reachable (${(e as Error).name === 'TimeoutError' ? 'timed out' : (e as Error).message})`); }
+    if (res.status === 401 || res.status === 403) throw new HaError('Home Assistant refused the token', res.status);
+    if (res.status === 404) throw new HaError(`Home Assistant has no ${entity}`, 404);
+    if (!res.ok) throw new HaError(`${entity} gave no picture (Home Assistant answered ${res.status})`, 502);
+    this.lastOkAt = Date.now(); this.lastError = null;
+    return { type: res.headers.get('content-type') ?? 'image/jpeg', body: new Uint8Array(await res.arrayBuffer()) };
+  }
+
   /** POST /api/services/<domain>/<service>. For the Home screen; HaPanel decides what may be called. */
   async call(domain: string, service: string, data: Record<string, unknown>): Promise<void> {
     const ha = this.getSettings().homeAssistant;

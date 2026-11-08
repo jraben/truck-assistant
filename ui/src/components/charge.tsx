@@ -18,14 +18,16 @@ export function Chargers({ s }: WP) {
       {c.message && <div class={c.list.length ? 'dimtxt' : 'banner'} style="font-size:14px">{c.message}{/settings/.test(c.message) && <> <a href="/settings">Open settings</a></>}</div>}
       <div class="list">
         {c.list.slice(0, 12).map((ch) => (
-          <div class="item">
-            <div class="row">
-              <div class="grow">
-                <h4 class="ellip">{ch.name}</h4>
-                <div class="lbl ellip">{ch.network ?? 'Network unknown'} · {ch.distanceMi.toFixed(1)} mi · {ch.maxKw ? `${Math.round(ch.maxKw)} kW` : 'kW unknown'} · {ch.connectors.join('/') || 'plugs unknown'}</div>
-              </div>
+          <div class="item charger">
+            <div class="row" style="align-items:flex-start">
               <div class="score" title="Score 0-100 from your charging preferences">{ch.score}</div>
-              <button class="btn primary" type="button" onClick={() => setWaze(ch)}>Send to Waze</button>
+              <div class="grow">
+                <h4 class="clamp2">{ch.name}</h4>
+                <div class="chmeta num">{ch.distanceMi.toFixed(1)} mi · {ch.maxKw ? `${Math.round(ch.maxKw)} kW` : 'kW ?'} · {ch.connectors.join('/') || 'plugs ?'}<span class="dimtxt"> · {ch.network ?? 'Network unknown'}</span></div>
+              </div>
+              <button class="gobtn" type="button" onClick={() => setWaze(ch)} aria-label={`Send ${ch.name} to Waze`} title="Send to Waze">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z" /></svg>
+              </button>
             </div>
             <div class="reasons">{ch.reasons.map((r) => <span class={NEG.test(r) ? 'neg' : POS.test(r) ? 'pos' : ''}>{r}</span>)}</div>
           </div>

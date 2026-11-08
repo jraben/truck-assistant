@@ -65,7 +65,7 @@ export function NowPlayingAny({ s, go }: WP) {
         <button type="button" class="np" onClick={() => go(np.source === 'carplay' ? 'carplay' : 'media')}>
           {np.art ? <img src={np.art} alt="" /> : <span class="noart" aria-hidden="true">{np.source === 'radio' || np.source === 'fm' ? '📻' : '♪'}</span>}
           <span class="grow npt">
-            <b class="ellip">{np.title ?? '—'}</b>
+            <b class="clamp2">{np.title ?? "—"}</b>
             <span class="ellip dimtxt">{[np.artist, np.album].filter(Boolean).join(' · ')}</span>
             {np.app && <span class="lbl ellip">{np.app}</span>}
           </span>

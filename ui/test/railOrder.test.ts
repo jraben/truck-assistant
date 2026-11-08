@@ -100,3 +100,13 @@ describe('rail order: move', () => {
     expect(o).toEqual(['a', 'b', 'c', 'd']);
   });
 });
+
+describe('Home view: house cameras', () => {
+  it('a Home view saved before the cameras gets them above its tiles', () => {
+    const old = { views: [{ id: 'home', label: 'Home', widgets: [{ type: 'garage', col: 1, row: 1, w: 4, h: 2 }, { type: 'haPanel', col: 5, row: 1, w: 8, h: 2 }] }] };
+    const w = withHomeView(old).views[0].widgets;
+    expect(w).toContainEqual({ type: 'homeCams', col: 5, row: 1, w: 8, h: 1 });
+    expect(w).toContainEqual({ type: 'haPanel', col: 5, row: 2, w: 8, h: 1 });
+    expect(withHomeView(withHomeView(old))).toEqual(withHomeView(old));
+  });
+});

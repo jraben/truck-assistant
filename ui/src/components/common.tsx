@@ -30,7 +30,7 @@ export function whySoc(s: State | null): string {
 export function Card({ label, right, children, class: cls }: { label?: string; right?: ComponentChildren; children: ComponentChildren; class?: string }) {
   return (
     <div class={`card ${cls ?? ''}`}>
-      {(label || right) && <div class="row between"><span class="lbl">{label}</span>{right}</div>}
+      {(label || right) && <div class="row between cardhead"><h2 class="sect">{label}</h2>{right}</div>}
       {children}
     </div>
   );

@@ -84,7 +84,7 @@ export function CostSessions(_: WP) {
               <div class="grow ellip"><b>{s.stationName ?? (s.place === 'home' ? 'Home' : s.network ?? 'Charge')}</b> <span class="dimtxt">{fmtDateTime(s.startedAt)}</span></div>
               <span class="num" style="font-family:var(--display);font-size:22px;font-weight:600"><V v={money(s.cost)} why="Cost not entered yet" /></span>
             </div>
-            <div class="row wrap" style="gap:6px">
+            <div class="row wrap" style="gap:6px;min-width:0">
               <span class={`tag ${s.place === 'home' ? 'ok' : 'accent'}`}>{s.place}</span>
               {s.kwh !== null && <span class="tag dim">{s.kwh.toFixed(1)} kWh</span>}
               {s.startSoc !== null && s.endSoc !== null && <span class="tag dim">{Math.round(s.startSoc)}→{Math.round(s.endSoc)}%</span>}

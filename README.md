@@ -51,7 +51,10 @@ Built for Jeff's truck first, published for other Slate owners later.
   the rail unless the page is opened with `?panel`. `DEMO_FOOTAGE=<folder>`
   makes each sim camera loop `<folder>/<camera id>.mp4` (front, rear, hitch,
   bed, surround) instead of the test pattern, and hides the ones with no clip.
-  Keep stock clips in that folder, never in the repo.
+  The same folder feeds the demo house's cameras on the Home screen:
+  `home-<name>.jpg`, or a folder `home-<name>/` of numbered frames shown one a
+  second (front_lawn, garage, doorbell). Keep stock clips in that folder, never
+  in the repo.
 - **Truck payoff goal (2026-11-05):** "pay off the truck with gas savings",
   tracked for good in a day-by-day SQLite ledger (closed months frozen;
   Recalculate on /settings). Charge view card, a Drive card when parked,

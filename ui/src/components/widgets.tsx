@@ -27,7 +27,7 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   trips: Trips, cam: CamTile, cams: CamsView,
   drive: DriveScreen,
   ...TRACKB_WIDGETS, // media, nowPlaying (any source), nextAppointment
-  ...HOME_WIDGETS,   // garage, haPanel
+  ...HOME_WIDGETS,   // garage, haPanel, homeCams
   ...PARKED_WIDGETS, // parked: watch, games, karaoke, camp, pet, tow, lights
   maintenance: MaintWidget, mileage: MileageWidget,
 };

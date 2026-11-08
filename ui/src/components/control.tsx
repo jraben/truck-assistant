@@ -43,10 +43,10 @@ export function Relays({ s }: WP) {
           const p = pending[id];
           return (
             <button type="button" class={`tile ${r.on ? 'on' : ''} ${p ? 'pending' : ''}`} disabled={!online} aria-pressed={r.on === true} onClick={() => tap(id, r.on)}>
-              <span class="tag">RELAY {i + 1}</span>
+              <span class="tilehead"><LoadIcon name={r.name} /><span class="lbl">Relay {i + 1}</span></span>
               <span>
                 <div class="name">{r.name}</div>
-                <div class="state">{p ? (p.on ? 'TURNING ON…' : 'TURNING OFF…') : r.on === null ? <V v={null} why={whyTruck(s, 'this relay')} /> : r.on ? 'ON' : 'OFF'}</div>
+                <div class="state">{p ? (p.on ? 'Turning on…' : 'Turning off…') : r.on === null ? <V v={null} why={whyTruck(s, 'this relay')} /> : r.on ? 'On' : 'Off'}</div>
               </span>
               <span class={`watts num ${r.on ? '' : 'idle'}`} title="Estimate: the watts set for this load in Settings">{r.on ? `≈ ${pw.byRelay[id]} W` : `${r.watts ?? 0} W when on`}</span>
               {isInverter(r.name) && <InverterCharge s={s} />}
@@ -54,10 +54,10 @@ export function Relays({ s }: WP) {
           );
         })}
         <div class="tile tablet" aria-label="Dash tablet">
-          <span class="tag">TABLET</span>
+          <span class="tilehead"><LoadIcon name="tablet" /><span class="lbl">Dash</span></span>
           <span>
             <div class="name">Dash tablet</div>
-            <div class="state">{tablet.charging === null ? 'BATTERY UNKNOWN' : tablet.charging ? `CHARGING · ${tablet.level}%` : `ON BATTERY · ${tablet.level}%`}</div>
+            <div class="state">{tablet.charging === null ? 'Battery unknown' : tablet.charging ? `Charging · ${tablet.level}%` : `On battery · ${tablet.level}%`}</div>
           </span>
           <span class="watts num" title={tablet.charging === false ? 'On its own battery: no draw on the truck' : 'Estimate: the tablet watts set in Settings'}>{tablet.charging === false ? '0 W from the truck' : `≈ ${pw.tablet} W`}</span>
           {tablet.level !== null && <span class="invbar" role="meter" aria-label="Tablet battery" aria-valuemin={0} aria-valuemax={100} aria-valuenow={tablet.level}><span style={{ width: `${tablet.level}%` }} /></span>}
@@ -65,6 +65,20 @@ export function Relays({ s }: WP) {
       </div>
     </Card>
   );
+}
+
+/** A simple line icon for a load, picked from its (editable) name. */
+const LOAD_ICONS: [RegExp, string][] = [
+  [/light ?bar/i, 'M3 8h18v5H3zM6 16l-1 4M12 16v4M18 16l1 4'],
+  [/light|lamp/i, 'M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z'],
+  [/compress|air/i, 'M3 8h11a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7'],
+  [/fridge|cool|freez/i, 'M12 2v20M3.5 7l17 10M20.5 7l-17 10'],
+  [/inverter|outlet|120/i, 'M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4'],
+  [/tablet|screen/i, 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2'],
+];
+function LoadIcon({ name }: { name: string }) {
+  const d = LOAD_ICONS.find(([re]) => re.test(name))?.[1] ?? 'M12 2v10M5.6 6.6a8 8 0 1 0 12.8 0';
+  return <svg class="loadicon" viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
 }
 
 /** On the Inverter tile: the battery it is running from, as a bar, plus range and 12V. */

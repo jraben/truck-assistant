@@ -69,7 +69,7 @@ export function ShortcutsTab({ stationTrack, plexTrack }: { stationTrack: (s: Ra
   return (
     <div class="mpane">
       {p.error && <div class="banner bad">{p.error}</div>}
-      <div class="mgrid">
+      <div class="mgrid saved">
         {tiles.map((t) => (
           <button type="button" class={`mtile ${t.on ? 'sel' : ''}`} disabled={busy === t.key} onClick={() => void tap(t)} aria-pressed={t.on}>
             <img src={t.art ?? KIND_ART[t.kind]} alt="" loading="lazy" onError={(e) => { const i = e.target as HTMLImageElement; if (i.src !== new URL(KIND_ART[t.kind], location.href).href) i.src = KIND_ART[t.kind]; }} />

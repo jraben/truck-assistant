@@ -226,6 +226,13 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   app.get('/api/ha/panel', async (_req, reply) => { try { return await haPanel.view(); } catch (e) { return haFail(e, reply); } });
   app.put('/api/ha/panel', async (req, reply) => { try { return haPanel.save(req.body); } catch (e) { return haFail(e, reply); } });
   app.get('/api/ha/garage', async (_req, reply) => { try { return await haPanel.garage(); } catch (e) { return haFail(e, reply); } });
+  // A still from one of the Home screen's cameras (only those), through the brain so HA's token never reaches the tablet.
+  app.get<{ Querystring: { entity?: string } }>('/api/ha/camera', async (req, reply) => {
+    try {
+      const img = await haPanel.cameraImage(String(req.query.entity ?? ''));
+      return reply.header('cache-control', 'no-store').type(img.type).send(Buffer.from(img.body));
+    } catch (e) { return haFail(e, reply); }
+  });
   app.post('/api/ha/act', async (req, reply) => {
     const b = (req.body ?? {}) as { entity?: unknown; action?: unknown };
     if (typeof b.entity !== 'string' || typeof b.action !== 'string') return reply.code(400).send({ error: 'send {entity, action}' });

@@ -16,7 +16,13 @@ export type GarageConfig = {
   nearM: number;                 // "arriving" = inside this distance of home
 };
 export type HaPage = { title: string; dashboard: string | null; entities: string[] };
-export type PanelConfig = { garage: GarageConfig; pages: HaPage[] };
+/**
+ * cameras: the house cameras shown as live stills on the Home screen (front lawn,
+ * garage, doorbell), camera.* entities. Only these can be fetched through the brain.
+ * camerasPicked: set once the owner has saved a list, so an empty list stays empty
+ * instead of being guessed again.
+ */
+export type PanelConfig = { garage: GarageConfig; pages: HaPage[]; cameras: string[]; camerasPicked?: boolean };
 
 export type Tile = {
   entity: string; domain: string; name: string; state: string; unit: string | null;
@@ -42,7 +48,7 @@ export const DOMAIN_ACTIONS: Record<string, string[]> = {
 const ENTITY_RE = /^[a-z_]+\.[a-z0-9_]+$/;
 
 export function defaultPanel(): PanelConfig {
-  return { garage: { cover: null, light: null, obstruction: null, ask: true, nearM: 250 }, pages: [] };
+  return { garage: { cover: null, light: null, obstruction: null, ask: true, nearM: 250 }, pages: [], cameras: [] };
 }
 
 /** Check a PUT body. Pure. Throws on bad input. */
@@ -69,7 +75,24 @@ export function validPanel(b: unknown): PanelConfig {
       };
     });
   }
+  if (Array.isArray(x.cameras)) {
+    d.cameras = [...new Set(x.cameras.map((e, j) => ent(e, `camera ${j + 1}`)).filter((e): e is string => !!e))].slice(0, 6);
+    for (const c of d.cameras) if (!c.startsWith('camera.')) throw new HaError(`${c} isn't a camera (camera.* entities only)`, 400);
+    d.camerasPicked = true;
+  }
   return d;
+}
+
+/** House cameras by name, in the order the dash shows them: front lawn / yard, garage, doorbell / front door. Pure. */
+export function guessCameras(states: HaState[]): string[] {
+  const cams = states.filter((s) => s.entity_id.startsWith('camera.'));
+  const label = (s: HaState) => `${s.entity_id} ${String((s.attributes as Record<string, unknown>)?.friendly_name ?? '')}`.toLowerCase();
+  const out: string[] = [];
+  for (const re of [/lawn|front.?yard|driveway/, /garage/, /door.?bell|ring|front.?door|porch/]) {
+    const hit = cams.find((s) => re.test(label(s)) && !out.includes(s.entity_id));
+    if (hit) out.push(hit.entity_id);
+  }
+  return out;
 }
 
 /** A tile for one state. Pure. */
@@ -159,12 +182,18 @@ export class HaPanel {
       const g = guessGarage(states);
       if (g.cover) { c.garage = { ...c.garage, ...g }; kvSet(this.db, KEY, c); }
     }
+    c.cameras ??= [];
+    if (!c.camerasPicked && !c.cameras.length) {   // likewise the lawn, garage and doorbell cameras
+      const g = guessCameras(states);
+      if (g.length) { c.cameras = g; kvSet(this.db, KEY, c); }
+    }
     const home = byId.get('zone.home')?.attributes as { latitude?: number; longitude?: number; radius?: number } | undefined;
     const t = (id: string | null) => (id && byId.get(id) ? tileFor(byId.get(id)!) : null);
     return {
       config: c,
       home: home?.latitude !== undefined && home.longitude !== undefined ? { lat: home.latitude, lon: home.longitude, radiusM: home.radius ?? 100 } : null,
       garage: { door: t(c.garage.cover), light: t(c.garage.light), obstruction: t(c.garage.obstruction) },
+      cameras: c.cameras.map((e) => { const s = byId.get(e); return { entity: e, name: s ? String((s.attributes as Record<string, unknown>)?.friendly_name ?? e) : e, state: s?.state ?? 'missing' }; }),
       pages: c.pages.map((p) => ({ title: p.title, dashboard: p.dashboard, tiles: p.entities.map((e) => t(e) ?? { entity: e, domain: e.split('.')[0], name: e, state: 'missing', unit: null, deviceClass: null, actions: [], brightness: null }) })),
     };
   }
@@ -185,11 +214,17 @@ export class HaPanel {
     return { ok: true };
   }
 
+  /** One still from a Home-screen camera. Anything not on the list is refused, so the dash can't browse every camera HA has. */
+  async cameraImage(entity: string): Promise<{ type: string; body: Uint8Array }> {
+    if (!(this.config().cameras ?? []).includes(entity)) throw new HaError(`${entity} isn't on the Home screen: add it in Settings first`, 403);
+    return this.ha.image(entity);
+  }
+
   /** Entity picker for Settings. */
   async search(q: string) {
     const states = await this.ha.states();
     const n = q.toLowerCase();
-    return states.filter((s) => (DOMAIN_ACTIONS[s.entity_id.split('.')[0]] || s.entity_id.startsWith('sensor.') || s.entity_id.startsWith('binary_sensor.'))
+    return states.filter((s) => (DOMAIN_ACTIONS[s.entity_id.split('.')[0]] || s.entity_id.startsWith('sensor.') || s.entity_id.startsWith('binary_sensor.') || s.entity_id.startsWith('camera.'))
       && (s.entity_id.includes(n) || String((s.attributes as Record<string, unknown>)?.friendly_name ?? '').toLowerCase().includes(n))).slice(0, 40).map(tileFor);
   }
 
