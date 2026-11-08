@@ -9,6 +9,8 @@
 //   api.openchargemap.io            public chargers near Phoenix and Sedona
 //
 // Nothing here reaches a network: answers are built in memory.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { metersBetween } from '../geo.ts';
 import {
   coverArt, DEMO_CHARGERS, DEMO_DRIVERS, DEMO_HA_HOST, DEMO_PLAYLISTS, DEMO_TRACKS, DEMO_WOPR_HOST, place,
@@ -26,6 +28,26 @@ async function bodyJson(init: RequestInit | undefined): Promise<Record<string, u
 }
 
 // ---- the house (Home Assistant) ---------------------------------------------------
+
+/**
+ * A demo house camera's still: DEMO_FOOTAGE/home-<name>.jpg, or, when there is a
+ * folder DEMO_FOOTAGE/home-<name>/ of numbered frames, one frame a second so the
+ * still moves like a live snapshot. Stock pictures live in that folder, never in
+ * the repo; with none, the camera answers 404 and the tile says so.
+ */
+function demoCameraStill(entity: string, now: number): Response {
+  const dir = process.env.DEMO_FOOTAGE;
+  const name = entity.replace(/^camera\./, '');
+  if (!dir || !/^[a-z0-9_]+$/.test(name)) return notFound();
+  const folder = path.join(dir, `home-${name}`);
+  let file = path.join(dir, `home-${name}.jpg`);
+  if (existsSync(folder)) {
+    const frames = readdirSync(folder).filter((f) => f.endsWith('.jpg')).sort();
+    if (frames.length) file = path.join(folder, frames[Math.floor(now / 1000) % frames.length]);
+  }
+  if (!existsSync(file)) return notFound();
+  return new Response(new Uint8Array(readFileSync(file)), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+}
 
 type Ent = { state: string; attributes: Record<string, unknown>; changed: number };
 
@@ -45,6 +67,9 @@ export class DemoHouse {
     add('climate.thermostat', 'cool', { friendly_name: 'Thermostat', hvac_action: 'cooling', temperature: 76, current_temperature: 77, hvac_modes: ['off', 'cool', 'heat', 'auto'] });
     add('light.porch', 'on', { friendly_name: 'Porch light', brightness: 191 });
     add('camera.backyard', 'recording', { friendly_name: 'Backyard camera' });
+    add('camera.front_lawn', 'streaming', { friendly_name: 'Front lawn' });
+    add('camera.garage', 'streaming', { friendly_name: 'Garage' });
+    add('camera.doorbell', 'idle', { friendly_name: 'Doorbell' });
     add('light.patio', 'off', { friendly_name: 'Patio lights' });
     add('sensor.living_room_temperature', '75', { friendly_name: 'Living room', unit_of_measurement: '°F', device_class: 'temperature' });
     add('sensor.pool_temperature', '71', { friendly_name: 'Pool', unit_of_measurement: '°F', device_class: 'temperature' });
@@ -98,6 +123,7 @@ export class DemoHouse {
     if (p === '/api/states') return json(this.states());
     if (p.startsWith('/api/states/')) { const s = this.state(p.slice('/api/states/'.length)); return s ? json(s) : notFound(); }
     if (p.startsWith('/api/history/')) return json([]);
+    if (p.startsWith('/api/camera_proxy/')) return demoCameraStill(p.slice('/api/camera_proxy/'.length), this.clock());
     const svc = /^\/api\/services\/([a-z_]+)\/([a-z_]+)$/.exec(p);
     if (svc && method === 'POST') {
       const b = await bodyJson(init);

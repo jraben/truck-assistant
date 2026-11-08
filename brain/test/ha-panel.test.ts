@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { guessGarage, lovelaceEntities, serviceFor, tileFor, validPanel } from '../src/ha/panel.ts';
+import { guessCameras, guessGarage, lovelaceEntities, serviceFor, tileFor, validPanel } from '../src/ha/panel.ts';
 
 describe('Home screen (HA panel)', () => {
   it('finds the garage door, opener light and obstruction sensor', () => {
@@ -37,5 +37,22 @@ describe('Home screen (HA panel)', () => {
   });
   it('turns a state into a tile with a percent brightness', () => {
     expect(tileFor({ entity_id: 'light.garage_lights', state: 'on', attributes: { friendly_name: 'Garage Lights', brightness: 128 } })).toMatchObject({ name: 'Garage Lights', domain: 'light', brightness: 50, actions: ['toggle', 'on', 'off'] });
+  });
+});
+
+describe('house cameras on the Home screen', () => {
+  const st = (id: string, name: string) => ({ entity_id: id, state: 'idle', attributes: { friendly_name: name } });
+  it('guesses lawn, garage and doorbell, in that order, and nothing else', () => {
+    expect(guessCameras([st('camera.backyard', 'Backyard'), st('camera.ring_front', 'Front Door'), st('camera.g3_flex', 'Garage'), st('camera.yard', 'Front Lawn'), st('light.garage', 'Garage light')]))
+      .toEqual(['camera.yard', 'camera.g3_flex', 'camera.ring_front']);
+    expect(guessCameras([st('camera.backyard', 'Backyard')])).toEqual([]);
+  });
+  it('keeps only cameras, six at most, and marks the list as picked', () => {
+    const c = validPanel({ cameras: ['camera.a', 'camera.a', 'camera.b'] });
+    expect(c.cameras).toEqual(['camera.a', 'camera.b']);
+    expect(c.camerasPicked).toBe(true);
+    expect(() => validPanel({ cameras: ['light.porch'] })).toThrow();
+    expect(validPanel({}).cameras).toEqual([]);
+    expect(validPanel({}).camerasPicked).toBeUndefined();
   });
 });

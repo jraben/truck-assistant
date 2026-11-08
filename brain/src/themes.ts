@@ -27,15 +27,16 @@ export type ThemeSettings = {
   custom: Theme[];
 };
 
-const base = { fonts: { display: 'Saira Semi Condensed', body: 'IBM Plex Sans', mono: 'IBM Plex Mono' }, radius: 1, glow: 0 };
+// Inter for body text in every preset: one clear, modern reading face; Saira stays for the big numbers.
+const base = { fonts: { display: 'Saira Semi Condensed', body: 'Inter', mono: 'IBM Plex Mono' }, radius: 1, glow: 0 };
 
 export const PRESETS: Theme[] = [
   { ...base, id: 'night', name: 'Night', colors: {
-    bg: '#0d1114', panel: '#151b20', panel2: '#1c242b', line: '#2a343c', fg: '#e8eef2', dim: '#8a99a5',
-    accent: '#4fc3d9', accentInk: '#062027', ok: '#5fd08a', warn: '#f2b33d', bad: '#ef5b5b' } },
+    bg: '#101417', panel: '#171c20', panel2: '#1f252a', line: '#2c343a', fg: '#e8edf0', dim: '#8d9aa3',
+    accent: '#6bb7c4', accentInk: '#0a2227', ok: '#6ccf95', warn: '#e9b44c', bad: '#e66a62' } },
   { ...base, id: 'day', name: 'Day', colors: {
-    bg: '#f4f6f8', panel: '#ffffff', panel2: '#e8edf0', line: '#b9c4cc', fg: '#05090c', dim: '#3f4c55',
-    accent: '#006a80', accentInk: '#ffffff', ok: '#11733b', warn: '#8a5600', bad: '#b3201f' } },
+    bg: '#f2f4f6', panel: '#fbfcfd', panel2: '#eceff2', line: '#d5dbe0', fg: '#161b1f', dim: '#56636c',
+    accent: '#16697a', accentInk: '#ffffff', ok: '#1d7442', warn: '#8a5600', bad: '#b3261e' } },
   { ...base, id: 'toolbox-red', name: 'Toolbox Red', colors: {
     bg: '#110b0b', panel: '#1b1212', panel2: '#251818', line: '#3d2828', fg: '#f5ecec', dim: '#ab9393',
     accent: '#d42a2d', accentInk: '#ffffff', ok: '#5fd08a', warn: '#f2b33d', bad: '#ff9f43' }, glow: 0.15 },
@@ -46,8 +47,8 @@ export const PRESETS: Theme[] = [
     bg: '#07130f', panel: '#0e1f19', panel2: '#142a22', line: '#23443a', fg: '#e6f5ee', dim: '#8fb3a5',
     accent: '#6ee7b7', accentInk: '#04251a', ok: '#a3e635', warn: '#fbbf24', bad: '#f87171' }, radius: 1.3 },
   { ...base, id: 'tar-pit', name: 'Tar Pit', colors: {
-    bg: '#000000', panel: '#0a0a0a', panel2: '#121212', line: '#242424', fg: '#e6e6e6', dim: '#8c8c8c',
-    accent: '#d9d9d9', accentInk: '#000000', ok: '#6fcf97', warn: '#e0b04a', bad: '#e5685e' }, radius: 0.5 },
+    bg: '#0b0c0d', panel: '#121314', panel2: '#191a1c', line: '#28292b', fg: '#e6e6e6', dim: '#8c8c8c',
+    accent: '#d9d9d9', accentInk: '#0b0c0d', ok: '#6fcf97', warn: '#e0b04a', bad: '#e5685e' }, radius: 0.5 },
   { ...base, id: 'wopr', name: 'WOPR', fonts: { ...base.fonts, mono: 'JetBrains Mono' }, colors: {
     bg: '#020814', panel: '#061226', panel2: '#0a1a33', line: '#173a6b', fg: '#d8e8ff', dim: '#7593bb',
     accent: '#2f8cff', accentInk: '#00101f', ok: '#3ddc97', warn: '#ffb84d', bad: '#ff5470' }, radius: 0.7, glow: 0.3 },

@@ -2,7 +2,7 @@
 .parked .pbody { overflow: auto; min-height: 0; }
 .parked-lock { display: grid; place-items: center; gap: 8px; height: 100%; font-size: 34px; font-family: var(--display); }
 .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-.app-tile { display: grid; gap: 6px; align-content: center; text-align: left; min-height: 110px; padding: 16px; border-radius: calc(14px * var(--r)); border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); }
+.app-tile { display: grid; gap: 6px; align-content: center; text-align: left; min-height: 110px; padding: 16px; border-radius: calc(14px * var(--r)); border: 1px solid var(--hairline); background: var(--panel-2); color: var(--fg); }
 .app-tile b { font-family: var(--display); font-size: 24px; }
 .app-tile span { font-size: 13px; }
 .app-tile:disabled { opacity: .5; }

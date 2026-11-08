@@ -10,20 +10,37 @@ import './home.css';
 
 type Tile = { entity: string; domain: string; name: string; state: string; unit: string | null; deviceClass: string | null; actions: string[]; brightness: number | null; detail?: string };
 type GarageConfig = { cover: string | null; light: string | null; obstruction: string | null; ask: boolean; nearM: number };
-type PanelConfig = { garage: GarageConfig; pages: { title: string; dashboard: string | null; entities: string[] }[] };
-type PanelView = { config: PanelConfig; home: { lat: number; lon: number; radiusM: number } | null; garage: { door: Tile | null; light: Tile | null; obstruction: Tile | null }; pages: { title: string; dashboard: string | null; tiles: Tile[] }[] };
+type PanelConfig = { garage: GarageConfig; pages: { title: string; dashboard: string | null; entities: string[] }[]; cameras?: string[]; camerasPicked?: boolean };
+type CamView = { entity: string; name: string; state: string };
+type PanelView = { config: PanelConfig; home: { lat: number; lon: number; radiusM: number } | null; garage: { door: Tile | null; light: Tile | null; obstruction: Tile | null }; cameras?: CamView[]; pages: { title: string; dashboard: string | null; tiles: Tile[] }[] };
 
 export const HOME_ICON = 'M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6';
 
 export const HOME_VIEW: Layout['views'][number] = {
   id: 'home', label: 'Home', widgets: [
     { type: 'garage', col: 1, row: 1, w: 4, h: 2 },
-    { type: 'haPanel', col: 5, row: 1, w: 8, h: 2 },
+    { type: 'homeCams', col: 5, row: 1, w: 8, h: 1 },
+    { type: 'haPanel', col: 5, row: 2, w: 8, h: 1 },
   ],
 };
-/** Saved layouts from before the Home view get it after Media (or at the end). Pure. */
+/**
+ * Saved layouts from before the Home view get it after Media (or at the end).
+ * A Home view saved before the house cameras gets them above its HA tiles
+ * (the tiles give up their top row). Pure.
+ */
 export function withHomeView(layout: Layout): Layout {
-  if (layout.views.some((v) => v.id === 'home')) return layout;
+  const at = layout.views.findIndex((v) => v.id === 'home');
+  if (at >= 0) {
+    const hv = layout.views[at];
+    if (hv.widgets.some((w) => w.type === 'homeCams')) return layout;
+    const ha = hv.widgets.find((w) => w.type === 'haPanel');
+    if (!ha || ha.h < 2) return layout;
+    const widgets = hv.widgets.map((w) => (w === ha ? { ...w, row: ha.row + 1, h: ha.h - 1 } : w));
+    widgets.push({ type: 'homeCams', col: ha.col, row: ha.row, w: ha.w, h: 1 });
+    const views = [...layout.views];
+    views[at] = { ...hv, widgets };
+    return { ...layout, views };
+  }
   const i = layout.views.findIndex((v) => v.id === 'media');
   const views = [...layout.views];
   views.splice(i >= 0 ? i + 1 : views.length, 0, HOME_VIEW);
@@ -112,6 +129,67 @@ function usePanel(poll = 0): { v: PanelView | null; err: string | null; reload: 
     return () => { alive = false; clearInterval(t); };
   }, [n, poll]);
   return { v, err, reload: () => setN((x) => x + 1) };
+}
+
+/** Refreshes while the screen is showing, every `ms`; stops in a hidden tab. */
+function useTick(ms: number): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let id: number | undefined;
+    const run = () => { clearInterval(id); if (!document.hidden) { setN((x) => x + 1); id = window.setInterval(() => setN((x) => x + 1), ms); } };
+    run();
+    document.addEventListener('visibilitychange', run);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', run); };
+  }, [ms]);
+  return n;
+}
+
+/** One house camera: a still from HA through the brain, refreshed every few seconds. */
+function CamStill({ cam, every, onOpen, big }: { cam: CamView; every: number; onOpen?: () => void; big?: boolean }) {
+  const n = useTick(every);
+  const [ok, setOk] = useState<boolean | null>(null);
+  const [shown, setShown] = useState<string | null>(null);
+  const src = `/api/ha/camera?entity=${encodeURIComponent(cam.entity)}&n=${n}`;
+  // Load off-screen first, so the picture swaps without a blank flash between frames.
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => { setShown(src); setOk(true); };
+    img.onerror = () => setOk(false);
+    img.src = src;
+    return () => { img.onload = null; img.onerror = null; };
+  }, [src]);
+  const Tag = onOpen ? 'button' : 'div';
+  return (
+    <Tag type={onOpen ? 'button' : undefined} class={`camstill ${big ? 'big' : ''}`} onClick={onOpen} aria-label={onOpen ? `${cam.name}: show larger` : cam.name}>
+      {shown ? <img src={shown} alt={cam.name} /> : <span class="camstill-none">{ok === false ? 'No picture' : 'Loading…'}</span>}
+      <span class="camstill-cap"><b>{cam.name}</b>{ok === false && shown && <span> · not updating</span>}{cam.state === 'missing' && <span> · not in Home Assistant</span>}</span>
+    </Tag>
+  );
+}
+
+/** The house cameras: front lawn, garage, doorbell (whatever the owner picked). */
+export function HomeCamsW() {
+  const { v, err } = usePanel(30000);
+  const [open, setOpen] = useState<CamView | null>(null);
+  if (err) return <div class="ha-off" />;
+  if (!v) return <div class="card" />;
+  const cams = v.cameras ?? [];
+  return (
+    <div class="card homecams">
+      <div class="row between cardhead"><h2 class="sect">Cameras</h2>{cams.length > 0 && <span class="lbl">Live stills · every 3 s</span>}</div>
+      {cams.length ? (
+        <div class="camrow" style={{ '--n': cams.length } as Record<string, number>}>
+          {cams.map((c) => <CamStill cam={c} every={3000} onOpen={() => setOpen(c)} />)}
+        </div>
+      ) : <div class="dimtxt">No house cameras picked. Tap Edit on the Home Assistant panel and search for “camera”.</div>}
+      {open && (
+        <div class="camzoom" role="dialog" aria-label={open.name} onClick={() => setOpen(null)}>
+          <CamStill cam={open} every={1000} big />
+          <button type="button" class="btn big" onClick={() => setOpen(null)}>Close</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** The garage widget. */
@@ -257,7 +335,14 @@ export function HaPanelW() {
               <button class="btn" type="submit">Search</button>
             </form>
           )}
-          {hits && <div class="row wrap">{hits.length ? hits.map((t) => <button type="button" class="btn" onClick={() => void save({ ...c, pages: c.pages.map((p, i) => (i === pageIdx ? { ...p, entities: [...new Set([...p.entities, t.entity])] } : p)) })}>+ {t.name}</button>) : <span class="dimtxt">Nothing matches “{q.trim()}”.</span>}</div>}
+          {hits && <div class="row wrap">{hits.length ? hits.map((t) => t.domain === 'camera'
+            ? <button type="button" class="btn" disabled={(c.cameras ?? []).includes(t.entity)} onClick={() => void save({ ...c, cameras: [...(c.cameras ?? []), t.entity].slice(0, 6) })}>+ {t.name} to cameras</button>
+            : <button type="button" class="btn" onClick={() => void save({ ...c, pages: c.pages.map((p, i) => (i === pageIdx ? { ...p, entities: [...new Set([...p.entities, t.entity])] } : p)) })}>+ {t.name}</button>) : <span class="dimtxt">Nothing matches “{q.trim()}”.</span>}</div>}
+          <div class="ha-edit-row">
+            <span class="lbl">Cameras</span>
+            {(v.cameras ?? []).length ? (v.cameras ?? []).map((cam) => <button type="button" class="btn" title="Take it off the Home screen" onClick={() => void save({ ...c, cameras: (c.cameras ?? []).filter((e) => e !== cam.entity) })}>{cam.name} ✕</button>)
+              : <span class="dimtxt">None. Search “camera” above to add the front lawn, garage or doorbell.</span>}
+          </div>
           <form class="ha-edit-row" onSubmit={(e) => { e.preventDefault(); void importDash(); }}>
             <span class="lbl">New page from an HA dashboard</span>
             <input class="minput" value={dash} onInput={(e) => setDash((e.target as HTMLInputElement).value)} placeholder="room-garage" />
@@ -332,4 +417,4 @@ export function GaragePrompt() {
   );
 }
 
-export const HOME_WIDGETS: Record<string, (p: WP) => preact.JSX.Element | null> = { garage: GarageW, haPanel: HaPanelW };
+export const HOME_WIDGETS: Record<string, (p: WP) => preact.JSX.Element | null> = { garage: GarageW, haPanel: HaPanelW, homeCams: HomeCamsW };

@@ -1,18 +1,18 @@
 /* Track D: mileage, maintenance, setup wizard, ops settings. Uses the theme tokens only. */
 .ops-scrim { position: fixed; inset: 0; z-index: 55; background: color-mix(in srgb, var(--bg) 80%, transparent); display: grid; place-items: center; padding: 12px; }
-.ops-panel { width: min(1680px, 100%); height: min(680px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: calc(16px * var(--r)); padding: 14px; display: grid; grid-template-rows: auto 1fr; gap: 10px; min-height: 0; }
+.ops-panel { width: min(1680px, 100%); height: min(680px, 100%); background: var(--panel); border: 1px solid var(--hairline); border-radius: calc(16px * var(--r)); padding: 14px; display: grid; grid-template-rows: auto 1fr; gap: 10px; min-height: 0; }
 .ops-panel > .body { min-height: 0; overflow: auto; }
 .ops-tabs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .ops-tabs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .mtable { width: 100%; border-collapse: collapse; font-size: 15px; }
-.mtable th { text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 6px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 1; }
-.mtable td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.mtable th { text-align: left; font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); padding: 6px; border-bottom: 1px solid var(--hairline); position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.mtable td { padding: 6px; border-bottom: 1px solid var(--hairline); vertical-align: middle; }
 .mtable td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mtable tr.sel td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .mtable input[type="checkbox"] { width: 26px; height: 26px; accent-color: var(--accent); }
 .mtable .note { min-height: 40px; }
 .tblwrap { overflow: auto; max-width: 100%; }
-.bulkbar { position: sticky; bottom: 0; background: var(--panel); border-top: 1px solid var(--line); padding: 8px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; z-index: 2; }
+.bulkbar { position: sticky; bottom: 0; background: var(--panel); border-top: 1px solid var(--hairline); padding: 8px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; z-index: 2; }
 .ptag { font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: calc(6px * var(--r)); border: 1px solid currentColor; white-space: nowrap; text-transform: uppercase; }
 .ptag.business { color: var(--accent); } .ptag.personal { color: var(--ok); } .ptag.commute { color: var(--warn); } .ptag.other { color: var(--fg); } .ptag.none { color: var(--dim); border-style: dashed; }
 .statline { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; }
@@ -22,7 +22,7 @@
 .wiz { width: min(1100px, 100%); max-height: 100%; overflow: auto; background: var(--panel); border: 2px solid var(--accent); border-radius: calc(16px * var(--r)); padding: 18px; display: grid; gap: 14px; }
 .wiz h2 { margin: 0; font-family: var(--display); font-size: 30px; }
 .wiz .dots { display: flex; gap: 6px; flex-wrap: wrap; }
-.wiz .dots button { min-height: 34px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.wiz .dots button { min-height: 34px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--hairline); font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
 .wiz .dots button.cur { border-color: var(--accent); color: var(--fg); }
 .wiz .dots button.done { color: var(--ok); border-color: var(--ok); }
 .wiz .dots button.skipped { color: var(--warn); }
