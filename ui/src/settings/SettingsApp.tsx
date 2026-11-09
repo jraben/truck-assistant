@@ -13,6 +13,7 @@ import { TrackBSections } from './TrackBSections.tsx';
 import { RemoteSection } from './RemoteSection.tsx';
 import { OpsSections } from '../ops/OpsSettings.tsx';
 import { PROJECT } from '../../../brain/src/project.ts';
+import { TrafficSection } from './TrafficSection.tsx';
 
 const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -267,6 +268,8 @@ export function SettingsApp() {
           ))}
         </div>
       </Section>
+
+      <TrafficSection settings={settings} />
 
       </div>
 

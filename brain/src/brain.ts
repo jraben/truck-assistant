@@ -20,6 +20,7 @@ import { chargePeakState, powerKw } from './charges/peak.ts';
 import { ChargeStore } from './charges/store.ts';
 import { SampleStore } from './roadtrip/samples.ts';
 import { RoadTripService } from './roadtrip/service.ts';
+import { TrafficService } from './traffic/service.ts';
 import { DEMO_DESTINATIONS, DEMO_TRIPS } from './demo/world.ts';
 import { genericCurve, kwAt } from './roadtrip/curve.ts';
 import { sameNowPlaying } from './media.ts';
@@ -75,6 +76,9 @@ export class Brain extends EventEmitter {
   readonly samples: SampleStore;
   /** Road-trip planner and the active trip. */
   readonly roadTrip: RoadTripService;
+  /** 511 cameras and incidents ahead, and enforcement cameras (OpenStreetMap). */
+  readonly traffic: TrafficService;
+  private lastTrafficTick = 0;
   private lastTripTick = 0;
   private goalTimer: NodeJS.Timeout | null = null;
   private goalSoon: NodeJS.Timeout | null = null;
@@ -194,6 +198,14 @@ export class Brain extends EventEmitter {
       timeScale: () => { const p = this.sim?.status().charging; return p ? p.timeScale * config.simSpeedup : 1; },
     });
     this.roadTrip.onChange(() => this.changed());
+    this.traffic = new TrafficService({
+      db, settings: () => this.settings.get(),
+      gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
+      heading: () => this.s.gps?.headingDeg ?? null,
+      speedMph: () => this.s.speedMph,
+      online: () => this.net.status?.link !== 'offline',
+      route: () => this.roadTrip.routeNow(),
+    });
     this.goal = new GoalService(db, () => this.settings.get(), () => this.gas.rows());
     this.charges.onChange(() => this.goalChanged());
     this.on('trip', () => this.goalChanged());
@@ -546,6 +558,10 @@ export class Brain extends EventEmitter {
   private tick() {
     const now = Date.now();
     if (this.sim) { try { this.simChargeTick(); } catch (e) { console.error('[sim] charge', e); } }
+    if (now - this.lastTrafficTick >= (this.sim ? 20_000 : 60_000)) {
+      this.lastTrafficTick = now;
+      void this.traffic.tick(now).catch((e) => console.error('[traffic]', e));
+    }
     if (now - this.lastTripTick >= (this.sim ? 10_000 : 30_000)) {
       this.lastTripTick = now;
       void this.roadTrip.tick(now).catch((e) => console.error('[roadtrip]', e));
@@ -665,6 +681,7 @@ export class Brain extends EventEmitter {
       nowPlaying: this.s.nowPlaying ? { ...this.s.nowPlaying } : null,
       driver: { id: d.id, name: d.name, initials: d.initials, color: d.color },
       roadTrip: this.roadTrip.brief(),
+      traffic: this.traffic.brief(),
       driverSuggestion: this.s.driverSuggestion ? { ...this.s.driverSuggestion } : null,
       place: this.s.place ? { ...this.s.place } : null,
       network: { ...this.net.status, bytesThisMonth: { ...this.net.status.bytesThisMonth } },

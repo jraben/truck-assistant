@@ -168,3 +168,24 @@ export const DEMO_AREAS: (LatLon & { name: string })[] = [
   { name: 'Sedona', lat: 34.8697, lon: -111.7610 },
   { name: 'Camp Verde', lat: 34.5636, lon: -111.8540 },
 ];
+
+/**
+ * Invented Arizona 511 data along the simulated drive (and I-17 north), so the
+ * Traffic screen has cameras and incidents in demo mode. The images are a
+ * placeholder the brain draws (DEMO_FOOTAGE/traffic-<n>.jpg replaces one).
+ */
+export const DEMO_TRAFFIC_CAMS = [
+  { id: 7101, roadway: 'Loop 202', direction: 'Eastbound', location: 'L-202 EB @ 44th St', lat: 33.4440, lon: -111.9870 },
+  { id: 7102, roadway: 'Loop 202', direction: 'Westbound', location: 'L-202 WB @ Priest Dr', lat: 33.4320, lon: -111.9400 },
+  { id: 7103, roadway: 'I-10', direction: 'Westbound', location: 'I-10 WB @ 24th St', lat: 33.4380, lon: -112.0300 },
+  { id: 7104, roadway: 'I-10', direction: 'Westbound', location: 'I-10 WB @ 7th St', lat: 33.4470, lon: -112.0650 },
+  { id: 7105, roadway: 'SR-51', direction: 'Northbound', location: 'SR-51 NB @ Thomas Rd', lat: 33.4800, lon: -112.0420 },
+  { id: 7106, roadway: 'I-17', direction: 'Northbound', location: 'I-17 NB @ Carefree Hwy', lat: 33.8050, lon: -112.1260 },
+  { id: 7107, roadway: 'I-17', direction: 'Northbound', location: 'I-17 NB @ Sunset Point', lat: 34.1950, lon: -112.1420 },
+  { id: 7108, roadway: 'Scottsdale Rd', direction: 'Southbound', location: 'Scottsdale Rd SB @ McDowell', lat: 33.4660, lon: -111.9262 },
+];
+export const DEMO_TRAFFIC_EVENTS = [
+  { ID: 88001, RoadwayName: 'I-10', DirectionOfTravel: 'Westbound', EventType: 'accidentsAndIncidents', EventSubType: 'Crash', Description: 'Crash blocking the left lane', LanesAffected: '1 left lane', Latitude: 33.4410, Longitude: -112.0480, IsFullClosure: false },
+  { ID: 88002, RoadwayName: 'Loop 202', DirectionOfTravel: 'Eastbound', EventType: 'roadwork', EventSubType: 'Lane restriction', Description: 'Right lane closed for paving overnight', LanesAffected: '1 right lane', Latitude: 33.4280, Longitude: -111.9600, IsFullClosure: false },
+  { ID: 88003, RoadwayName: 'I-17', DirectionOfTravel: 'Northbound', EventType: 'closures', EventSubType: 'Ramp closure', Description: 'Exit 229 off-ramp closed', LanesAffected: 'Ramp', Latitude: 33.7100, Longitude: -112.1120, IsFullClosure: false },
+];

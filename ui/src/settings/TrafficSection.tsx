@@ -1,0 +1,42 @@
+// Settings portal: a 511 developer key per state, for the Traffic screen.
+import { useState } from 'preact/hooks';
+import { api, settingsStore, type Settings } from '../lib/brain.ts';
+import { keyUrl, STATES_511 } from '../../../brain/src/traffic/states.ts';
+
+type Msg = { ok: boolean; text: string } | null;
+
+export function TrafficSection({ settings }: { settings: Settings }) {
+  const [keys, setKeys] = useState<Record<string, string>>({});
+  const [msg, setMsg] = useState<Msg>(null);
+  const have = settings.keys.traffic511 ?? {};
+  const put = async (traffic511: Record<string, string>) => {
+    try {
+      const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ keys: { traffic511 } }) });
+      settingsStore.set(n); setKeys({}); setMsg({ ok: true, text: 'Saved.' });
+    } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
+  };
+  const typed = Object.fromEntries(Object.entries(keys).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()]));
+  return (
+    <section class="card" id="traffic">
+      <h2>Traffic cameras and incidents (511)</h2>
+      <p class="help">The Traffic screen shows state 511 cameras and crashes, closures and roadwork ahead, fetched by the truck itself wherever it has a signal. Each state needs its own free developer key: make an account on the state's 511 site, log in, and request a key on its developer page. Add the states you drive in; a state without a key is simply skipped. Speed and red-light camera locations come from OpenStreetMap and need no key.</p>
+      <div class="fields form">
+        {STATES_511.map((s) => (
+          <div class="form" style="gap:6px">
+            <label class="f"><span>{s.name}{s.checked ? '' : ' (API not yet checked)'}</span>
+              <input type="password" autocomplete="off" value={keys[s.id] ?? ''} placeholder={have[s.id] ? `set (${have[s.id]}); type to replace` : 'not set'} onInput={(e) => setKeys({ ...keys, [s.id]: (e.target as HTMLInputElement).value })} />
+            </label>
+            <div class="row wrap" style="gap:8px">
+              <a class="btn sm" href={keyUrl(s)} target="_blank" rel="noreferrer">Get a key</a>
+              {have[s.id] && <button class="btn sm danger" type="button" onClick={() => void put({ [s.id]: '' })}>Remove</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div class="row wrap">
+        <button class="btn primary" type="button" disabled={!Object.keys(typed).length} onClick={() => void put(typed)}>Save 511 keys</button>
+        {msg && <span class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</span>}
+      </div>
+    </section>
+  );
+}

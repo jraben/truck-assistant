@@ -1,6 +1,8 @@
 // The shapes in docs/contract.md, verbatim. Change the contract first.
 import type { ThemeSettings } from './themes.ts';
 import type { RoadTripBrief } from './roadtrip/types.ts';
+import type { TrafficBrief } from './traffic/types.ts';
+export type * from './traffic/types.ts';
 export type * from './roadtrip/types.ts';
 import type { DriveSettings, DriveState, DriverDrive, TruckLook } from './drive/types.ts';
 export type * from './drive/types.ts';
@@ -39,6 +41,8 @@ export type State = {
   area?: string | null;
   /** The active road trip, briefly (next stop, latest alert, the coach's line); null when none. */
   roadTrip?: RoadTripBrief;
+  /** A crash or closure close ahead, or an enforcement camera coming up (511 feeds, OpenStreetMap). */
+  traffic?: TrafficBrief;
 };
 
 export type NetworkStatus = {
@@ -115,7 +119,7 @@ export type Settings = {
   relayWatts: Record<string, number>;
   /** The dash tablet's draw from the truck while it charges, watts (estimate). */
   tabletWatts: number;
-  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string };
+  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {
     flatPerKwh: number | null;
@@ -324,6 +328,8 @@ export type Layout = {
   views: { id: string; label: string; widgets: LayoutWidget[] }[];
   /** Set once the Road trip screen has been added to a saved layout (so deleting it sticks). */
   roadTripAdded?: boolean;
+  /** Same, for the Traffic screen. */
+  trafficAdded?: boolean;
 };
 
 export type Health = { ok: boolean; version: string; mqtt: string; gps: string; ha: string; uptimeS: number };

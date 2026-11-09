@@ -328,6 +328,13 @@ export class RoadTripService {
     });
   }
 
+  /** The active trip's route and where the truck is on it (for traffic ahead), or null. */
+  routeNow(): { route: Route; mi: number } | null {
+    const a = this.active;
+    const p = this.progress();
+    return a && p?.onRoute ? { route: a.route, mi: p.routeMi } : null;
+  }
+
   view(): RoadTripView {
     const curve = this.d.samples.curve();
     return {

@@ -1278,3 +1278,32 @@ Stored in `media.json` as `MediaSettings.assistant`; keys write-only (masked bac
   `/api/wopr/*` whichever assistant is picked.
 - Siri and Alexa can't be providers: neither offers an API for asking from
   another app. Siri works through CarPlay; Alexa through its Android app.
+
+## Traffic (511 cameras and incidents, enforcement cameras)
+
+Code: `brain/src/traffic/` (`states.ts`, `feed.ts`, `ahead.ts`, `enforcement.ts`
+pure; `service.ts`), UI `ui/src/components/traffic.tsx` (the **Traffic** screen,
+added once to saved layouts after Road trip), settings `ui/src/settings/TrafficSection.tsx`.
+
+- **Source:** each state's 511 developer API, fetched by the truck itself (not
+  through the home network): `<base>/api/v2/get/cameras` and `/api/v2/get/event`,
+  `key` + `format=json`, ten calls a minute. Keys per state in
+  `Settings.keys.traffic511` (`{az: "..."}`), masked like every key.
+  Checked against the endpoint pages: Arizona (AZ511), Wisconsin (511WI).
+  Same platform, endpoints not yet confirmed: Utah, Nevada, Idaho, Georgia,
+  Louisiana, Alaska, Ontario (a mismatch shows as that state's error).
+- **Which states:** the ones the truck is in, plus those the active trip's route
+  crosses in the next 250 miles. Cameras refetch every 12 h (kept in SQLite),
+  events every 5 min driving or on a trip, 30 min parked; at least 8 s between
+  calls to one site.
+- **Ahead:** along the trip route (≤ 0.6 mi off for cameras, 1 mi for events)
+  when there is one; else in a 30° cone the way the truck is heading; parked,
+  anything within 8–10 mi. Future roadwork is left out.
+- **Enforcement cameras:** speed and red-light camera locations from
+  OpenStreetMap (Overpass, `highway=speed_camera`, `enforcement`), one query per
+  ~17-mile cell, kept a week. Police don't publish live cameras.
+- **Banner (`State.traffic`):** an enforcement camera within 0.8 mi while moving,
+  else a crash or closure within 25 mi ahead.
+- **Routes:** `GET /api/traffic` → `TrafficView`, `POST /api/traffic/refresh`.
+- **Demo:** an invented AZ511 feed along the simulated drive (placeholder
+  pictures from `/api/traffic/demo-cam/<id>`, or `DEMO_FOOTAGE/traffic-<id>.jpg`).

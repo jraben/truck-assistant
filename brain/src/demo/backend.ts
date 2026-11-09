@@ -13,7 +13,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { metersBetween } from '../geo.ts';
 import {
-  coverArt, DEMO_CHARGERS, DEMO_DRIVERS, DEMO_HA_HOST, DEMO_HIGHWAYS, DEMO_PLAYLISTS, DEMO_TRACKS, DEMO_WOPR_HOST, place,
+  coverArt, DEMO_CHARGERS, DEMO_DRIVERS, DEMO_HA_HOST, DEMO_HIGHWAYS, DEMO_TRAFFIC_CAMS, DEMO_TRAFFIC_EVENTS, DEMO_PLAYLISTS, DEMO_TRACKS, DEMO_WOPR_HOST, place,
 } from './world.ts';
 
 type Json = unknown;
@@ -322,6 +322,22 @@ export function ocmAnswer(u: URL): Response {
   })));
 }
 
+// ---- AZ511: cameras and incidents --------------------------------------------------------
+
+export function az511Answer(u: URL): Response {
+  if (u.pathname === '/api/v2/get/cameras') {
+    return json(DEMO_TRAFFIC_CAMS.map((c, i) => ({
+      Id: c.id, Source: 'ADOT', SourceId: String(c.id), Roadway: c.roadway, Direction: c.direction, Latitude: c.lat, Longitude: c.lon, Location: c.location, SortOrder: i,
+      Views: [{ Id: c.id, Url: `/api/traffic/demo-cam/${c.id}.svg`, Status: 'Enabled', Description: c.location }],
+    })));
+  }
+  if (u.pathname === '/api/v2/get/event') {
+    const now = Math.floor(Date.now() / 1000);
+    return json(DEMO_TRAFFIC_EVENTS.map((e) => ({ ...e, Organization: 'ADOT', Reported: now - 1500, LastUpdated: now - 300, StartDate: now - 1500, PlannedEndDate: now + 3600 })));
+  }
+  return notFound();
+}
+
 // ---- OSRM: road routes for the trip planner ---------------------------------------------
 
 /** A route along the demo highway that ends nearest the destination (else a straight line), ~62 mph. */
@@ -363,6 +379,7 @@ export function demoBackend(svc: DemoServices) {
     if (h === 'api.spotify.com' || h === 'accounts.spotify.com') return svc.spotify.handle(u, init);
     if (h === 'api.openchargemap.io') return ocmAnswer(u);
     if (h === 'router.project-osrm.org') return osrmAnswer(u);
+    if (h === 'az511.com' || h === 'www.az511.com') return az511Answer(u);
     return null;
   };
 }

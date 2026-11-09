@@ -1,5 +1,5 @@
 // HTTP + WebSocket per docs/contract.md.
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
@@ -289,6 +289,17 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   registerGoalRoutes(app, brain.goal, () => brain.refreshGoal());
   registerDriveRoutes(app, brain.drive);
   registerRoadTripRoutes(app, brain.roadTrip, brain.samples);
+  app.get('/api/traffic', async () => brain.traffic.view());
+  // DEMO: the invented AZ511 cameras' pictures (DEMO_FOOTAGE/traffic-<id>.jpg, else a drawn placeholder).
+  app.get<{ Params: { id: string } }>('/api/traffic/demo-cam/:id', async (req, reply) => {
+    const id = String(req.params.id).replace(/\.svg$/, '').replace(/[^0-9]/g, '');
+    const dir = process.env.DEMO_FOOTAGE;
+    const jpg = dir ? path.join(dir, `traffic-${id}.jpg`) : null;
+    if (config.demo && jpg && existsSync(jpg)) return reply.type('image/jpeg').send(readFileSync(jpg));
+    const t = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+    return reply.type('image/svg+xml').header('cache-control', 'no-store').send(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180"><rect width="320" height="180" fill="#2a3138"/><path d="M0 180 L140 70 L180 70 L320 180Z" fill="#3b444c"/><path d="M160 72 L160 180" stroke="#e9c46a" stroke-width="3" stroke-dasharray="12 10"/><text x="10" y="22" fill="#dfe6ea" font-family="sans-serif" font-size="14">Demo camera ${id}</text><text x="10" y="170" fill="#9fb0ba" font-family="monospace" font-size="12">${t}</text></svg>`);
+  });
+  app.post('/api/traffic/refresh', async () => { await brain.traffic.tick(); return brain.traffic.view(); });
   await registerVehiclePhoto(app, brain.settings, config.dataDir);
   // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----
   // Kept on the app for the Parked routes (Plex video shares Track B's Plex connection).

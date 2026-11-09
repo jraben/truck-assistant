@@ -226,7 +226,7 @@ function demoSettings(firstDay: string): Settings {
   s.compareVehicle = { id: null, label: 'Gas pickup (V6)', mpgCity: 18, mpgHighway: 24, mpgCombined: 20, fuel: 'regular' };
   s.gas = { source: 'manual', manualPrice: 3.29, haEntities: [], pick: 'cheapest' };
   s.homeWifi = { ssid: 'Home Wi-Fi' };
-  s.keys = { openChargeMap: DEMO_SECRET };
+  s.keys = { openChargeMap: DEMO_SECRET, traffic511: { az: DEMO_SECRET } };
   s.payoffGoal = { ...s.payoffGoal, target: 29_950, startDate: firstDay }; // a round sticker price, not anyone's build
   return validate(s);
 }

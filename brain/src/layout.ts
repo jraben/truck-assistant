@@ -28,6 +28,17 @@ export function migrateRoadTripLayout(l: Layout): Layout {
   return { ...l, views, roadTripAdded: true };
 }
 
+/** Same, once, for the Traffic screen (after Road trip, else Charge). Pure. */
+export function migrateTrafficLayout(l: Layout): Layout {
+  if (l.trafficAdded || l.views.some((v) => v.widgets.some((w) => w.type === 'trafficAhead'))) return l.trafficAdded ? l : { ...l, trafficAdded: true };
+  const def = DEFAULT_LAYOUT.views.find((v) => v.id === 'traffic')!;
+  const views = l.views.slice();
+  let at = views.findIndex((v) => v.id === 'roadtrip');
+  if (at < 0) at = views.findIndex((v) => v.id === 'charge');
+  views.splice(at >= 0 ? at + 1 : views.length, 0, structuredClone(def));
+  return { ...l, views, trafficAdded: true };
+}
+
 /** 12 columns x 2 rows on the 1920x720 bar, unless a view says otherwise. */
 export const DEFAULT_LAYOUT: Layout = {
   views: [
@@ -54,6 +65,10 @@ export const DEFAULT_LAYOUT: Layout = {
     // Road trips: plan charging stops, follow the trip, the charging coach (ui/src/components/roadtrip.tsx).
     { id: 'roadtrip', label: 'Road trip', widgets: [
       { type: 'roadTrip', col: 1, row: 1, w: 12, h: 2 },
+    ] },
+    // 511 cameras and incidents ahead, enforcement cameras (ui/src/components/traffic.tsx).
+    { id: 'traffic', label: 'Traffic', widgets: [
+      { type: 'trafficAhead', col: 1, row: 1, w: 12, h: 2 },
     ] },
     { id: 'trips', label: 'Trips', widgets: [
       { type: 'trips', col: 1, row: 1, w: 12, h: 2 },

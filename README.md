@@ -59,6 +59,13 @@ Built for Jeff's truck first, published for other Slate owners later.
   `home-<name>.jpg`, or a folder `home-<name>/` of numbered frames shown one a
   second (front_lawn, garage, doorbell). Keep stock clips in that folder, never
   in the repo.
+- **Traffic (2026-11-08):** a Traffic screen with state 511 cameras ahead
+  (along the trip route, else the way you're heading), crashes, closures and
+  roadwork ahead, and speed / red-light camera locations from OpenStreetMap;
+  a banner for a crash or closure close ahead or a camera coming up. Each state
+  needs its own free 511 developer key (settings page). Arizona and Wisconsin
+  are confirmed; Utah, Nevada, Idaho, Georgia, Louisiana, Alaska and Ontario use
+  the same platform. Contract: "Traffic".
 - **Pick your assistant (2026-11-08):** the voice button can talk to WOPR
   (default), Claude, any OpenAI-compatible service (ChatGPT, Gemini, Groq,
   OpenRouter, or a model on your own computer through Ollama or LM Studio), or

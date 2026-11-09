@@ -2,7 +2,8 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { validateRailOrder } from './rail.ts';
 import type { ChargingPrefs, CompareVehicle, Driver, Layout, PayoffGoal, Settings, WifiNet } from './types.ts';
-import { DEFAULT_LAYOUT, migrateChargeLayout, migrateRoadTripLayout } from './layout.ts';
+import { STATE_IDS } from './traffic/states.ts';
+import { DEFAULT_LAYOUT, migrateChargeLayout, migrateRoadTripLayout, migrateTrafficLayout } from './layout.ts';
 import { defaultAlertOn } from './charges/peak.ts';
 import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
 import { defaultThemeSettings, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
@@ -112,6 +113,7 @@ export const maskDriver = (d: Driver): Driver => ({ ...d, hotspot: maskWifi(d.ho
 export function maskSettings(s: Settings): Settings {
   const keys: Settings['keys'] = {};
   for (const k of KEY_NAMES) if (s.keys[k]) keys[k] = maskKey(s.keys[k]);
+  if (s.keys.traffic511) keys.traffic511 = Object.fromEntries(Object.entries(s.keys.traffic511).map(([st, v]) => [st, maskKey(v) ?? ""]));
   const homeAssistant = { ...s.homeAssistant };
   if (homeAssistant.token) homeAssistant.token = maskKey(homeAssistant.token); else delete homeAssistant.token;
   return { ...s, keys, homeAssistant, homeWifi: maskWifi(s.homeWifi), drivers: s.drivers.map(maskDriver) };
@@ -176,6 +178,17 @@ function applyKeys(base: Settings['keys'], v: unknown): Settings['keys'] {
   if (!isObj(v)) throw new SettingsError('keys must be an object');
   const keys = { ...base };
   for (const [k, val] of Object.entries(v)) {
+    if (k === 'traffic511') {
+      if (!isObj(val)) continue;
+      const m = { ...(base.traffic511 ?? {}) };
+      for (const [st, sv] of Object.entries(val)) {
+        if (!STATE_IDS.includes(st)) continue;
+        if (sv === null || sv === '') delete m[st];
+        else if (typeof sv === 'string' && !sv.includes(MASK)) m[st] = sv.trim();
+      }
+      if (Object.keys(m).length) keys.traffic511 = m; else delete keys.traffic511;
+      continue;
+    }
     if (!(KEY_NAMES as readonly string[]).includes(k)) continue;
     const key = k as (typeof KEY_NAMES)[number];
     if (val === null || val === '') delete keys[key];
@@ -234,6 +247,7 @@ export function mergeDriver(base: Driver, patch: unknown): Driver {
     layout = p.layout === null ? structuredClone(DEFAULT_LAYOUT) : (structuredClone(p.layout) as Layout);
     // The settings page may not send the marker back; a layout that had the Road trip screen offered keeps it offered.
     if (base.layout.roadTripAdded && layout && typeof layout === 'object') layout.roadTripAdded = true;
+    if (base.layout.trafficAdded && layout && typeof layout === 'object') layout.trafficAdded = true;
     delete p.layout;
   }
   const hotspot = 'hotspot' in p ? mergeWifi(base.hotspot, p.hotspot) : base.hotspot;
@@ -483,7 +497,7 @@ export class SettingsStore {
       this.s = loadSettings(migrateSettings(raw));
       // Once, at load: saved layouts get the Road trip screen (a layout saved later without it keeps that choice).
       const before = JSON.stringify(this.s.drivers.map((d) => d.layout));
-      for (const d of this.s.drivers) d.layout = migrateRoadTripLayout(d.layout);
+      for (const d of this.s.drivers) d.layout = migrateTrafficLayout(migrateRoadTripLayout(d.layout));
       if (JSON.stringify(this.s.drivers.map((d) => d.layout)) !== before) { console.log('[settings] added the Road trip screen to saved layouts'); this.write(); }
       if (isPreDriverFile(raw)) {
         writeFileSync(this.file + '.pre-drivers.bak', JSON.stringify(raw, null, 2), { mode: 0o600 });

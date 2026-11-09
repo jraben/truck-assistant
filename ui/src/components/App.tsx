@@ -29,6 +29,7 @@ const ICONS: Record<string, string> = {
   control: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 8a4 4 0 1 1 0 8a4 4 0 1 1 0-8',
   charge: 'M13 2 4 14h7l-1 8 9-12h-7z',
   roadtrip: 'M4 20l4-16M20 20l-4-16M12 6v2M12 11v2M12 16v2',
+  traffic: 'M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 7a1.5 1.5 0 1 0 0 .01M12 12a1.5 1.5 0 1 0 0 .01M12 17a1.5 1.5 0 1 0 0 .01',
   trips: 'M5 19a2 2 0 1 0 0-.01M19 5a2 2 0 1 0 0-.01M7 19h7a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h7',
   cams: 'M5 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 11l5-3v8l-5-3',
   media: MEDIA_ICON,
@@ -192,6 +193,7 @@ export function App() {
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <PeakBanner s={s} />
       <TripBanner s={s} go={go} />
+      <TrafficBanner s={s} go={go} />
       <ChargePrompt />
       <WeatherOverlay s={s} />
       <TrackBOverlays />
@@ -234,6 +236,13 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
 }
 
 export type { State };
+
+/** A crash or closure close ahead, or an enforcement camera coming up. */
+function TrafficBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
+  const t = s?.traffic;
+  if (!t || s?.roadTrip?.alert || (s?.roadTrip?.coach && (s.roadTrip.coach.state === 'go' || s.roadTrip.coach.state === 'slow'))) return null;
+  return <button type="button" class={`banner ${t.kind === 'camera' ? '' : 'bad'} peakbanner tripbanner`} role="status" onClick={() => go('traffic')}><b>{t.kind === 'camera' ? 'Camera' : 'Traffic'}</b><span>{t.text}</span></button>;
+}
 
 /**
  * Road trip: a stop that was full and switched, a replan, or the coach saying
