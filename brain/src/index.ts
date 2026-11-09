@@ -10,6 +10,7 @@ import { registerRemote } from './remote/routes.ts';
 import { applyPendingRestore } from './ops/backup.ts';
 import { registerParked } from './parkedRoutes.ts';
 import { registerSim } from './simRoutes.ts';
+import { registerGlobe } from './globe.ts';
 import { seedDemo } from './demo/seed.ts';
 
 async function main() {
@@ -29,6 +30,7 @@ async function main() {
   await registerRemote(app, remote);
   registerParked(app, brain, db, remote, (app as unknown as { trackb: { plex: import('./media/plex.ts').PlexService } }).trackb.plex);   // video/games/karaoke, camp/pet, trailers, light show
   registerSim(app, brain, remote);   // the test panel (SIM=1 only)
+  registerGlobe(app, () => brain.getState(), { enabled: config.globeFeed, callsign: config.globeCallsign });   // the truck on a God's Eye View globe
   brain.start();
   await app.listen({ port: config.port, host: config.host });
   await remote.start();
