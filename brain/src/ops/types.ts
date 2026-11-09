@@ -40,7 +40,7 @@ export type OpsConfig = {
     notifyService: string | null;          // HA notify service, e.g. "mobile_app_jeffs_iphone"
     notifiedOn: Record<string, string>;    // reminder id -> last day notified (YYYY-MM-DD)
   };
-  updater: { repo: string | null; channel: 'stable' | 'main' };
+  updater: { repo: string | null; channel: 'stable' | 'main'; auto: AutoUpdate };
   backup: {
     enabled: boolean;
     hour: number;                          // local hour to run, when on home Wi-Fi
@@ -112,6 +112,9 @@ export type Phase = 'idle' | 'checking' | 'up-to-date' | 'available' | 'requeste
 
 export type Job = { id: string; action: 'install' | 'rollback'; tag: string | null; sha: string | null; repo: string; channel: 'stable' | 'main'; assetUrl: string | null; tarballUrl: string | null; requestedAt: string };
 
+/** Install new versions by themselves: never while driving; `when` adds home Wi-Fi as a condition. */
+export type AutoUpdate = { enabled: boolean; when: 'parked' | 'home-wifi' };
+
 export type UpdateStatus = {
   phase: Phase; message: string | null;
   repo: string | null; channel: 'stable' | 'main';
@@ -121,6 +124,8 @@ export type UpdateStatus = {
   job: Job | null;
   canInstall: boolean; installNote: string | null;
   canRollback: boolean;
+  /** Automatic updates: the setting, why an available update is waiting (or null), and the next check. */
+  auto: AutoUpdate & { waiting: string | null; nextCheckAt: string | null; skipped: string | null };
 };
 
 export type BackupStatus = {

@@ -5,6 +5,7 @@ import type { ChargingPrefs, CompareVehicle, Driver, Layout, PayoffGoal, Setting
 import { STATE_IDS } from './traffic/states.ts';
 import { DEFAULT_LAYOUT, migrateChargeLayout, migrateRoadTripLayout, migrateTrafficLayout } from './layout.ts';
 import { defaultAlertOn } from './charges/peak.ts';
+import { driverPhotoOf } from './drive/driverPhoto.ts';
 import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
 import { defaultThemeSettings, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
 
@@ -45,6 +46,7 @@ export function newDriver(id: string, name: string, opts: Partial<Pick<Driver, '
     btTetherMac: null,
     drive: defaultDriverDrive(),
     railOrder: null,
+    photo: null,
   };
 }
 
@@ -241,6 +243,7 @@ export function mergeDriver(base: Driver, patch: unknown): Driver {
   if (!isObj(patch)) throw new SettingsError('body must be a JSON object');
   const p: Record<string, unknown> = { ...patch };
   delete p.id; delete p.guest;
+  delete p.photo; // set only by /api/drivers/:id/photo (it names a file in DATA_DIR)
   if ('theme' in p) p.theme = migrateTheme(p.theme);
   let layout: Layout = base.layout;
   if ('layout' in p) {
@@ -365,6 +368,7 @@ export function validateDriver(d: unknown, idHint: string | number = '?'): Drive
   }
   try { x.drive = validateDriverDrive(x.drive, `${where} drive`); } catch (e) { if (e instanceof DriveSettingsError) throw new SettingsError(e.message); throw e; }
   try { x.railOrder = validateRailOrder(x.railOrder, x.layout); } catch (e) { throw new SettingsError(`${where}: ${(e as Error).message}`); }
+  x.photo = driverPhotoOf(x.photo, x.id);
   return x;
 }
 
@@ -544,6 +548,13 @@ export class SettingsStore {
     if (this.s.drivers.filter((d) => !d.guest).length <= 1) throw new SettingsError('keep at least one named driver');
     this.commit({ ...structuredClone(this.s), drivers: structuredClone(this.s.drivers.filter((x) => x.id !== id)) });
     return true;
+  }
+
+  /** Record (or clear) a driver's photo; the file itself is written by the caller. */
+  setDriverPhoto(id: string, photo: Driver['photo']): Driver['photo'] {
+    if (!this.driver(id)) throw new SettingsError('no such driver');
+    const next = this.commit({ ...structuredClone(this.s), drivers: this.s.drivers.map((d) => (d.id === id ? { ...structuredClone(d), photo } : structuredClone(d))) });
+    return next.drivers.find((d) => d.id === id)!.photo;
   }
 
   /** Record (or clear) the truck photo; the file itself is written by the caller. */

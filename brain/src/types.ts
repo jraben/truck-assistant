@@ -73,7 +73,8 @@ export type NetCandidate = {
 
 export type WifiNet = { ssid: string; password?: string };
 
-export type DriverRef = { id: string; name: string; initials: string; color: string };
+/** `photo`: the URL of their picture (versioned), or null for the initials. */
+export type DriverRef = { id: string; name: string; initials: string; color: string; photo: string | null };
 
 /** What is playing, reported by the cockpit UI (CarPlay, or the Media view's player) or the brain (Spotify). Text only; album art stays in the UI. */
 export type NowPlayingSource = 'carplay' | 'spotify' | 'radio' | 'fm' | 'plex' | 'local';
@@ -220,6 +221,8 @@ export type Driver = {
   drive: DriverDrive;               // Track A: speedometer style, over-limit warning
   /** The cockpit rail's icon order (ids from layout views and rail.ts RAIL_EXTRA_IDS); null = default. */
   railOrder: string[] | null;
+  /** Their picture, DATA_DIR/driver-photos/<file>; set only through /api/drivers/:id/photo. */
+  photo: { file: string; updatedAt: string } | null;
 };
 
 export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel';

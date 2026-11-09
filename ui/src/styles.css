@@ -394,6 +394,7 @@ table.tou td { padding: 4px; vertical-align: middle; }
 
 /* drivers */
 .dbadge { display: inline-grid; place-items: center; border-radius: 50%; color: #fff; font-family: var(--display); font-weight: 800; flex: none; text-shadow: 0 1px 2px rgb(0 0 0 / .45); border: 1px solid var(--hairline); }
+.dbadge.photo { object-fit: cover; border: 2px solid; background: var(--panel-2); box-sizing: border-box; }
 .dgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .dbtn { min-height: 150px; border: 1px solid var(--hairline); border-radius: calc(14px * var(--r)); background: var(--panel-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
 .dbtn b { font-family: var(--display); font-size: 26px; font-weight: 600; }

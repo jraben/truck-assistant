@@ -1,5 +1,6 @@
 // The brain's core: one State, fed by the truck box (MQTT or SIM) and GPS
 // (gpsd or SIM), with SoC, trips, stops and charge sessions derived from it.
+import { driverPhotoUrl } from './drive/driverPhoto.ts';
 import { EventEmitter } from 'node:events';
 import { config } from './config.ts';
 import { kvGet, kvSet, type Db } from './db.ts';
@@ -732,7 +733,7 @@ export class Brain extends EventEmitter {
       relays: Object.fromEntries(Object.entries(this.s.relays).map(([k, v]) => [k, { ...v }])),
       fiveSwitch: [...this.s.fiveSwitch],
       nowPlaying: this.s.nowPlaying ? { ...this.s.nowPlaying } : null,
-      driver: { id: d.id, name: d.name, initials: d.initials, color: d.color },
+      driver: { id: d.id, name: d.name, initials: d.initials, color: d.color, photo: driverPhotoUrl(d) },
       roadTrip: this.roadTrip.brief(),
       traffic: this.traffic.brief(),
       pickup: this.pickup.brief(),

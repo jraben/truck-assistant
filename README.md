@@ -121,6 +121,13 @@ Built for Jeff's truck first, published for other Slate owners later.
   own tuner, HD1 drops to the station's analog signal when the digital one is
   lost (and tries HD again later, or on "Back to HD"), and **Check presets** /
   **Scan the band** find which stations carry HD and what's on HD2-HD4.
+- **Automatic updates (2026-11-09):** Settings → Software updates checks
+  GitHub every 12 hours; tick "Install updates automatically" and a new
+  version installs by itself, never while driving: when parked, or only when
+  parked on home Wi-Fi.
+- **Driver photos (2026-11-09):** each driver can have a photo (Settings →
+  Drivers), shown instead of their initials on the rail and the driver picker.
+  It's cropped and shrunk on the phone before upload and stays on the truck.
 - **Drivers, stops, phone history, gas prices, getting online (2026-11-05):**
   driver profiles (Jeff, Sam, Jordan, Guest) with their own theme, layout,
   charging prefs and gas comparison vehicle; stops named from saved places,

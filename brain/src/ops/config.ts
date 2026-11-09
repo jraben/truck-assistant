@@ -39,7 +39,7 @@ export function defaultOps(): OpsConfig {
   return {
     mileage: { odometerAnchor: null, rates: structuredClone(DEFAULT_RATES), driverDefaults: {}, placeTags: {}, feedIsBusiness: true },
     maintenance: { reminders: defaultReminders(), notifyService: null, notifiedOn: {} },
-    updater: { repo: null, channel: 'stable' },
+    updater: { repo: null, channel: 'stable', auto: { enabled: false, when: 'parked' } },
     backup: { enabled: false, hour: 2, target: { kind: 'none' }, keep: 14, keepLocal: 3, includeSecrets: false },
     auth: { passwordHash: null, trustLocal: true },
     setup: { done: false, steps: {} },
@@ -58,7 +58,10 @@ export function loadOps(raw: unknown): OpsConfig {
   for (const k of Object.keys(d) as (keyof OpsConfig)[]) {
     if (isObj(raw[k])) out[k] = { ...out[k], ...(raw[k] as Record<string, unknown>) };
   }
-  return out as unknown as OpsConfig;
+  const c = out as unknown as OpsConfig;
+  const a = (isObj(c.updater.auto) ? c.updater.auto : {}) as Record<string, unknown>;
+  c.updater.auto = { enabled: a.enabled === true, when: a.when === 'home-wifi' ? 'home-wifi' : 'parked' };
+  return c;
 }
 
 export class OpsStore {

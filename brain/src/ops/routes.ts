@@ -204,13 +204,19 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
     });
     r.post('/api/update/rollback', async (_req, reply) => { try { const s = await ops.updater.rollback(); ops.followUpdate(); return s; } catch (e) { return fail(e, reply); } });
     r.put('/api/update/config', async (req, reply) => {
-      const b = (req.body ?? {}) as { repo?: unknown; channel?: unknown };
+      const b = (req.body ?? {}) as { repo?: unknown; channel?: unknown; auto?: { enabled?: unknown; when?: unknown } };
       const cur = ops.store.get().updater;
+      const auto = { ...cur.auto };
+      if (b.auto !== undefined) {
+        if (typeof b.auto !== 'object' || b.auto === null) return reply.code(400).send({ error: 'auto is {enabled, when}' });
+        if (b.auto.enabled !== undefined) { if (typeof b.auto.enabled !== 'boolean') return reply.code(400).send({ error: 'auto.enabled is true or false' }); auto.enabled = b.auto.enabled; }
+        if (b.auto.when !== undefined) { if (b.auto.when !== 'parked' && b.auto.when !== 'home-wifi') return reply.code(400).send({ error: 'auto.when is parked or home-wifi' }); auto.when = b.auto.when; }
+      }
       const repo = b.repo === undefined ? cur.repo : b.repo === null || b.repo === '' ? null : String(b.repo).trim();
       if (repo && !/^(https?:\/\/)?(www\.)?github\.com\/[\w.-]+\/[\w.-]+?(\.git)?\/?$/i.test(repo)) return reply.code(400).send({ error: 'repo must look like https://github.com/owner/name' });
       const channel = b.channel === undefined ? cur.channel : b.channel;
       if (channel !== 'stable' && channel !== 'main') return reply.code(400).send({ error: 'channel is stable or main' });
-      ops.store.set('updater', { repo, channel });
+      ops.store.set('updater', { repo, channel, auto });
       return ops.updater.status();
     });
 

@@ -14,7 +14,7 @@ import { OpsInputError, OpsStore, type OpsConfig } from './config.ts';
 import { opsDiscovery, opsTopic, type OpsSummary } from './haOps.ts';
 import { MaintenanceService } from './maintenance.ts';
 import { MileageService } from './mileage.ts';
-import { GithubSource, readInstalled, SystemdRunner, Updater, type Job, type Phase } from './updater.ts';
+import { AUTO_CHECK_MS, autoUpdateStep, GithubSource, isDriving, readInstalled, SystemdRunner, Updater, type Job, type Phase } from './updater.ts';
 
 export const AP_PROFILE = 'slate-ap';
 
@@ -50,7 +50,10 @@ export class OpsService {
       installed: () => readInstalled(appRoot, config.version),
       saved: kvGet<{ job: Job | null; phase: Phase; message: string | null }>(db, 'updater'),
       save: (j) => { try { kvSet(db, 'updater', j); } catch { /* best effort */ } },
+      autoInfo: () => this.autoInfo(),
     });
+    const a = kvGet<{ lastCheckAt: number | null; triedTag: string | null }>(db, 'autoUpdate');
+    if (a) this.auto = { lastCheckAt: a.lastCheckAt ?? null, triedTag: a.triedTag ?? null, waiting: null };
     this.db = db;
   }
 
@@ -63,7 +66,7 @@ export class OpsService {
     every(5 * 60_000, () => this.backupTick());
     every(30 * 60_000, () => this.notifyDue());
     every(10_000, () => this.mqttTick());
-    every(6 * 3_600_000, () => { if (this.store.get().updater.repo && this.brain.getState().network.link !== 'offline') return this.updater.check(); });
+    every(60_000, () => this.autoTick());
     this.store.onChange(() => this.publishSummary());
     this.followUpdate();
   }
@@ -71,6 +74,48 @@ export class OpsService {
   stop() { for (const t of this.timers) clearInterval(t); if (this.updTimer) clearTimeout(this.updTimer); }
 
   // ---- updater -----------------------------------------------------------------
+
+  /** The automatic updater's memory (kv 'autoUpdate'): when GitHub was last asked, and the tag it last installed by itself. */
+  private auto: { lastCheckAt: number | null; triedTag: string | null; waiting: string | null } = { lastCheckAt: null, triedTag: null, waiting: null };
+
+  private autoInfo() {
+    const cfg = this.store.get().updater;
+    const u = this.updater ? { phase: this.updater.phase } : { phase: 'idle' as Phase };
+    return {
+      waiting: cfg.auto.enabled ? this.auto.waiting : null,
+      // never checked: the next minute's tick does it
+      nextCheckAt: cfg.repo ? new Date(this.auto.lastCheckAt === null ? Date.now() + 60_000 : this.auto.lastCheckAt + AUTO_CHECK_MS).toISOString() : null,
+      skipped: cfg.auto.enabled && u.phase === 'available' && this.auto.triedTag && this.lastLatest === this.auto.triedTag ? `${this.auto.triedTag} didn't install by itself last time; install it by hand when you're ready` : null,
+    };
+  }
+  private lastLatest: string | null = null;
+
+  /** Once a minute: check GitHub every 12 hours, and install by itself when allowed (updater.ts autoUpdateStep). */
+  async autoTick() {
+    const cfg = this.store.get().updater;
+    if (!cfg.repo) { this.auto.waiting = null; return; }
+    const st = this.brain.getState();
+    const u = this.updater.status();
+    this.lastLatest = u.latest?.tag ?? null;
+    const step = autoUpdateStep(cfg.auto, {
+      now: Date.now(), lastCheckAt: this.auto.lastCheckAt, online: st.network.link !== 'offline',
+      driving: isDriving(st), homeWifi: st.network.link === 'home',
+      phase: u.phase, latestTag: this.lastLatest, triedTag: this.auto.triedTag, installNote: u.installNote,
+    });
+    this.auto.waiting = step.waiting;
+    const save = () => { try { kvSet(this.db, 'autoUpdate', { lastCheckAt: this.auto.lastCheckAt, triedTag: this.auto.triedTag }); } catch { /* best effort */ } };
+    if (step.act === 'check') {
+      this.auto.lastCheckAt = Date.now(); save();
+      await this.updater.check();
+      this.lastLatest = this.updater.status().latest?.tag ?? null;
+      this.publishSummary();
+    } else if (step.act === 'install' && this.lastLatest) {
+      this.auto.triedTag = this.lastLatest; save();
+      console.log(`[update] installing ${this.lastLatest} by itself (${cfg.auto.when === 'home-wifi' ? 'parked on home Wi-Fi' : 'parked'})`);
+      await this.updater.install(this.lastLatest);
+      this.followUpdate();
+    }
+  }
 
   /** Poll the updater service every 3 s while an update runs. */
   followUpdate() {

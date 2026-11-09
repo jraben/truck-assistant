@@ -105,6 +105,8 @@ export function makeBackup(db: Db, dataDir: string, o: { truckId: string; versio
   entries.push(...clipsIndex(dataDir));
   const rdir = path.join(dataDir, 'receipts');
   if (existsSync(rdir)) for (const f of readdirSync(rdir)) if (/^[\w.-]+$/.test(f)) entries.push({ name: `receipts/${f}`, data: readFileSync(path.join(rdir, f)) });
+  const pdir = path.join(dataDir, 'driver-photos');
+  if (existsSync(pdir)) for (const f of readdirSync(pdir)) if (/^[a-z0-9-]+\.(jpg|png|webp)$/.test(f)) entries.push({ name: `driver-photos/${f}`, data: readFileSync(path.join(pdir, f)) });
   const manifest: Manifest = { project: PROJECT_NAME, version: o.version, truckId: o.truckId, createdAt: now.toISOString(), includesSecrets: o.includeSecrets, files: entries.map((e) => ({ name: e.name, size: e.data.length, sha256: sha256(e.data) })) };
   const gz = gzipSync(writeTar([{ name: 'manifest.json', data: Buffer.from(JSON.stringify(manifest, null, 2)) }, ...entries]));
   const file = path.join(dir, name);

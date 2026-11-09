@@ -1,7 +1,19 @@
 // Who's driving: big tap targets on the Drive view (after ignition) and from the rail.
 import { api, pickDriver, settingsStore, stateStore, useStore, type Driver } from '../lib/brain.ts';
 
-export function DriverBadge({ d, size = 40 }: { d: { initials: string; color: string } | null; size?: number }) {
+type BadgeDriver = { id?: string; initials: string; color: string; photo?: string | { updatedAt: string } | null };
+/** The photo URL: the live state carries it ready-made; a settings Driver carries the record. Pure. */
+export const badgePhoto = (d: BadgeDriver | null): string | null => {
+  const p = d?.photo;
+  if (!p) return null;
+  if (typeof p === 'string') return p;
+  return d?.id ? `/api/drivers/${encodeURIComponent(d.id)}/photo?v=${encodeURIComponent(p.updatedAt)}` : null;
+};
+
+/** The driver's photo in a ring of their colour, or their initials on it. */
+export function DriverBadge({ d, size = 40 }: { d: BadgeDriver | null; size?: number }) {
+  const src = badgePhoto(d);
+  if (src) return <img class="dbadge photo" src={src} alt="" width={size} height={size} style={{ width: `${size}px`, height: `${size}px`, borderColor: d?.color }} aria-hidden="true" />;
   return (
     <span class="dbadge" style={{ width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.4)}px`, background: d?.color ?? 'var(--panel-2)' }} aria-hidden="true">
       {d?.initials ?? '?'}

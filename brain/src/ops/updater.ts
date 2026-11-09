@@ -11,8 +11,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { OpsInputError } from './config.ts';
-import type { Installed, Job, Phase, Release, UpdateStatus } from './types.ts';
-export type { Installed, Job, Phase, Release, UpdateStatus } from './types.ts';
+import type { AutoUpdate, Installed, Job, Phase, Release, UpdateStatus } from './types.ts';
+export type { AutoUpdate, Installed, Job, Phase, Release, UpdateStatus } from './types.ts';
 
 
 
@@ -131,6 +131,47 @@ export class SystemdRunner implements Runner {
   hasPrevious() { return existsSync(path.join(this.releasesDir, 'previous')); }
 }
 
+// ---- Automatic updates --------------------------------------------------------
+// GitHub is checked every 12 hours (a small API read, allowed on any link but
+// offline). With automatic updates on, an available version installs by
+// itself, but only with the truck parked (ignition off, no trip open, not
+// moving) and, if chosen, on home Wi-Fi: the install restarts the cockpit
+// and downloads the release. A version that an automatic install already
+// tried (and that failed or was rolled back) is not tried again by itself.
+
+export const AUTO_CHECK_MS = 12 * 3_600_000;
+
+export type AutoInputs = {
+  now: number;
+  lastCheckAt: number | null;
+  online: boolean;
+  driving: boolean;
+  homeWifi: boolean;
+  phase: Phase;
+  latestTag: string | null;
+  /** The tag an automatic install last tried. */
+  triedTag: string | null;
+  /** null when installs can run here; otherwise why not. */
+  installNote: string | null;
+};
+
+/** What the automatic updater should do now, and why an available update is waiting. Pure. */
+export function autoUpdateStep(cfg: AutoUpdate, i: AutoInputs): { act: 'check' | 'install' | null; waiting: string | null } {
+  if (BUSY.includes(i.phase) || i.phase === 'checking') return { act: null, waiting: null };
+  let waiting: string | null = null;
+  if (cfg.enabled && i.phase === 'available' && i.latestTag && i.latestTag !== i.triedTag) {
+    if (i.installNote) waiting = i.installNote;
+    else if (i.driving) waiting = 'Waiting until the truck is parked';
+    else if (cfg.when === 'home-wifi' && !i.homeWifi) waiting = 'Waiting for home Wi-Fi';
+    else return { act: 'install', waiting: null };
+  }
+  const due = i.lastCheckAt === null || i.now - i.lastCheckAt >= AUTO_CHECK_MS;
+  return { act: i.online && due ? 'check' : null, waiting };
+}
+
+/** Is the truck being driven? Ignition on, a trip open, or moving. Pure. */
+export const isDriving = (s: { ignition: boolean | null; trip: unknown; speedMph: number | null }) => !!s.ignition || !!s.trip || (s.speedMph ?? 0) > 2;
+
 /** Give up on a request the updater service never picked up. */
 export const PICKUP_TIMEOUT_MS = 2 * 60_000;
 /** A run that stops reporting (crashed mid-build) is failed after this. */
@@ -139,7 +180,8 @@ export const STALL_MS = 30 * 60_000;
 export class Updater {
   private runner: Runner;
   private source: Pick<GithubSource, 'list'>;
-  private cfg: () => { repo: string | null; channel: 'stable' | 'main' };
+  private cfg: () => { repo: string | null; channel: 'stable' | 'main'; auto?: AutoUpdate };
+  private autoInfo: () => { waiting: string | null; nextCheckAt: string | null; skipped: string | null };
   private installed: () => Installed;
   private save: (j: { job: Job | null; phase: Phase; message: string | null }) => void;
   private s: { phase: Phase; message: string | null; latest: Release | null; releases: Release[]; checkedAt: string | null; job: Job | null };
@@ -147,14 +189,16 @@ export class Updater {
 
   constructor(o: {
     runner: Runner; source: Pick<GithubSource, 'list'>;
-    cfg: () => { repo: string | null; channel: 'stable' | 'main' };
+    cfg: () => { repo: string | null; channel: 'stable' | 'main'; auto?: AutoUpdate };
     installed: () => Installed;
+    autoInfo?: () => { waiting: string | null; nextCheckAt: string | null; skipped: string | null };
     saved?: { job: Job | null; phase: Phase; message: string | null } | null;
     save?: (j: { job: Job | null; phase: Phase; message: string | null }) => void;
     now?: () => number;
   }) {
     this.runner = o.runner; this.source = o.source; this.cfg = o.cfg; this.installed = o.installed;
     this.save = o.save ?? (() => {}); this.now = o.now ?? Date.now;
+    this.autoInfo = o.autoInfo ?? (() => ({ waiting: null, nextCheckAt: null, skipped: null }));
     this.s = { phase: o.saved?.phase ?? 'idle', message: o.saved?.message ?? null, latest: null, releases: [], checkedAt: null, job: o.saved?.job ?? null };
   }
 
@@ -174,6 +218,7 @@ export class Updater {
       installed: this.installed(), latest: this.s.latest, releases: this.s.releases, checkedAt: this.s.checkedAt, job: this.s.job,
       canInstall: !why && !this.busy() && !!c.repo, installNote: why,
       canRollback: !why && !this.busy() && this.runner.hasPrevious(),
+      auto: { ...(c.auto ?? { enabled: false, when: 'parked' }), ...this.autoInfo() },
     };
   }
 

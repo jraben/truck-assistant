@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, loadSettings, putDriver, stateStore, useStore, type Driver, type Settings } from '../lib/brain.ts';
 import { allThemes } from '../lib/theme.ts';
 import { DriverBadge } from '../components/drivers.tsx';
+import { squareJpeg } from '../lib/squarePhoto.ts';
 import { ThemeEditor } from './ThemeEditor.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
 
@@ -51,6 +52,18 @@ export function DriversSection({ settings }: { settings: Settings }) {
       setMsg({ ok: true, text: `Saved ${n.name}'s profile.` });
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoRun = async (text: string, f: () => Promise<unknown>) => {
+    setPhotoBusy(true); setMsg(null);
+    try { await f(); await loadSettings(); setMsg({ ok: true, text }); }
+    catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
+    finally { setPhotoBusy(false); }
+  };
+  const uploadPhoto = (f: File | undefined) => f && photoRun(`Saved ${d.name}'s photo.`, async () => {
+    const jpg = await squareJpeg(f);
+    return api(`/api/drivers/${encodeURIComponent(d.id)}/photo`, { method: 'POST', body: jpg, headers: { 'content-type': 'image/jpeg' } });
+  });
+  const removePhoto = () => photoRun(`Removed ${d.name}'s photo.`, () => api(`/api/drivers/${encodeURIComponent(d.id)}/photo`, { method: 'DELETE' }));
   const add = async () => {
     if (!newName.trim()) return;
     try { const n = await api<Driver>('/api/drivers', { method: 'POST', body: JSON.stringify({ name: newName.trim() }) }); await loadSettings(); setNewName(''); setSel(n.id); }
@@ -85,6 +98,14 @@ export function DriversSection({ settings }: { settings: Settings }) {
           <label class="f"><span>Initials</span><input type="text" maxLength={3} value={draft.initials} onInput={(e) => set('initials', (e.target as HTMLInputElement).value)} /></label>
           <label class="f"><span>Colour</span><input type="color" value={draft.color} style="min-height:48px;width:100%" onInput={(e) => set('color', (e.target as HTMLInputElement).value)} /></label>
           {!d.guest && <label class="f"><span>Phone tracker (HA)</span><input type="text" value={draft.tracker} placeholder="person.jeff" onInput={(e) => set('tracker', (e.target as HTMLInputElement).value)} /></label>}
+        </div>
+        <div class="row wrap" style="gap:10px;align-items:center">
+          <DriverBadge d={d} size={64} />
+          <label class="btn sm" style="cursor:pointer">{d.photo ? 'Change photo…' : 'Add photo…'}
+            <input type="file" accept="image/*" hidden disabled={photoBusy} onChange={(e) => { const i = e.target as HTMLInputElement; void uploadPhoto(i.files?.[0]); i.value = ''; }} />
+          </label>
+          {d.photo && <button class="btn sm danger" type="button" disabled={photoBusy} onClick={() => void removePhoto()}>Remove photo</button>}
+          <span class="dimtxt" style="font-size:13px">{photoBusy ? 'Saving…' : 'Shown instead of the initials. Cropped to a square and shrunk on this device; kept on the truck only.'}</span>
         </div>
         {d.guest && <p class="help">The Guest profile keeps no history beyond the trip itself and can't be deleted.</p>}
 

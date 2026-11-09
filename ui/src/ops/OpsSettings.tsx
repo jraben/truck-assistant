@@ -40,7 +40,21 @@ export function UpdatesSection() {
         <button class="btn" type="button" disabled={!s.repo || BUSY.includes(s.phase)} onClick={() => void act(() => post('/api/update/check'))}>Check for updates</button>
         <button class="btn danger" type="button" disabled={!s.canRollback} onClick={() => { if (confirm('Go back to the previous version?')) void act(() => post('/api/update/rollback')); }}>Roll back</button>
       </div>
-      <div class="kv"><span>Installed</span><span>{inst.tag ?? `v${inst.version}`}{inst.sha ? ` (${inst.sha.slice(0, 7)})` : ''}</span><span>Status</span><span>{s.phase}{s.message ? `: ${s.message}` : ''}</span><span>Last checked</span><span>{ago(s.checkedAt)}</span></div>
+      <label class="check"><input type="checkbox" checked={s.auto.enabled} disabled={!s.repo} onChange={(e) => void act(() => put('/api/update/config', { auto: { enabled: (e.target as HTMLInputElement).checked } }))} /> Install updates automatically</label>
+      {s.auto.enabled && (
+        <div class="row wrap" style="gap:8px;align-items:center">
+          <span class="lbl">Install when</span>
+          {(['parked', 'home-wifi'] as const).map((w) => (
+            <button type="button" class={`btn sm ${s.auto.when === w ? 'primary' : ''}`} onClick={() => void act(() => put('/api/update/config', { auto: { when: w } }))}>{w === 'parked' ? 'Parked' : 'Parked on home Wi-Fi'}</button>
+          ))}
+        </div>
+      )}
+      <p class="help">GitHub is checked every 12 hours{s.repo ? '' : ' once a repository is saved'}. {s.auto.enabled
+        ? `A new version installs by itself, never while driving: only with the ignition off and no trip open${s.auto.when === 'home-wifi' ? ', on home Wi-Fi (the download stays off the phone’s data)' : ''}. The cockpit restarts for about a minute. A version that fails to install isn’t tried again by itself.`
+        : 'New versions wait for you to press Install.'}</p>
+      {s.auto.enabled && s.auto.waiting && s.phase === 'available' && <div class="banner">{s.latest?.tag} is ready: {s.auto.waiting.charAt(0).toLowerCase() + s.auto.waiting.slice(1)}.</div>}
+      {s.auto.skipped && <div class="banner">{s.auto.skipped}</div>}
+      <div class="kv"><span>Installed</span><span>{inst.tag ?? `v${inst.version}`}{inst.sha ? ` (${inst.sha.slice(0, 7)})` : ''}</span><span>Status</span><span>{s.phase}{s.message ? `: ${s.message}` : ''}</span><span>Last checked</span><span>{ago(s.checkedAt)}</span>{s.auto.nextCheckAt && <><span>Next check</span><span>{new Date(s.auto.nextCheckAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</span></>}</div>
       {s.installNote && <p class="help">{s.installNote}</p>}
       {err && <div class="err">{err}</div>}
       {s.releases.slice(0, 5).map((r, i) => (

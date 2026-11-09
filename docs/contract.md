@@ -85,6 +85,14 @@ dash tablet counts only while it charges (the browser's Battery API says so).
   `PUT /api/drivers/:id` (partial merge like settings; `layout` replaced whole,
   null resets); `DELETE /api/drivers/:id` (not the Guest, not the last named
   driver; their trips keep the old `driverId`)
+- Driver photos: `POST /api/drivers/:id/photo` with the image bytes
+  (`image/jpeg|png|webp`, ≤ 6 MB; type from the magic bytes) → `{photo: {file,
+  updatedAt}}`, stored as `DATA_DIR/driver-photos/<id>.<ext>`; `GET` serves it
+  (`?v=<updatedAt>` is cached a day), `DELETE` removes it, and deleting the
+  driver removes it too. `Driver.photo` is set only here (PUT ignores it);
+  `State.driver.photo` is the ready URL or null. Unlike `/api/vehicle/photo`,
+  GET needs the login from other devices (faces). /settings crops to a 256 px
+  square JPEG before upload. Backups include `driver-photos/`.
 - `POST /api/driver` `{id}` → `State['driver']`: pick the active driver. A pick
   while a trip is open re-attributes that trip (and its open stop) to the new
   driver: a correction, not a switch. The brain itself never changes the driver
@@ -989,8 +997,15 @@ type MileageTotals = { trips: number; miles: number; byPurpose: Record<Purpose |
 - `GET /api/update` → `UpdateStatus` `{phase, message, repo, channel, installed, latest, releases, checkedAt, job, canInstall, installNote, canRollback}`;
   phases `idle, checking, up-to-date, available, requested, downloading, building, restarting, verifying, done, rolled-back, failed`
 - `POST /api/update/check`; `POST /api/update/install` `{tag?}`; `POST /api/update/rollback`;
-  `PUT /api/update/config` `{repo, channel: 'stable'|'main'}`; `GET /api/update/version` → the
+  `PUT /api/update/config` `{repo, channel: 'stable'|'main', auto?: {enabled?, when?: 'parked'|'home-wifi'}}`; `GET /api/update/version` → the
   installed `{version, tag, sha, channel, installedAt}` (from `release.json`)
+- GitHub is checked every 12 hours once a repo is set (any link but offline).
+  Automatic updates (`auto.enabled`, off by default) install an available
+  version by themselves only when not driving (ignition off, no trip open,
+  under 2 mph) and, with `when: 'home-wifi'`, on home Wi-Fi. A version an
+  automatic install already tried is not retried by itself. `UpdateStatus.auto`
+  = `{enabled, when, waiting, nextCheckAt, skipped}` (`waiting`: why an
+  available update hasn't installed yet).
 - Stable: GitHub releases (non-draft, non-prerelease; the asset
   `slate-cockpit-<tag>.tar.gz` from `.github/workflows/release.yml` is preferred),
   else version tags. Main: the latest commit; changelog = commits since the installed sha.

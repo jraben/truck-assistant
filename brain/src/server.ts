@@ -26,6 +26,7 @@ import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { registerVehiclePhoto } from './drive/photo.ts';
+import { registerDriverPhotos } from './drive/driverPhoto.ts';
 import { mountOps } from './ops/routes.ts';
 import { registerGoalRoutes } from './goal/routes.ts';
 
@@ -340,6 +341,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   });
   app.post('/api/traffic/refresh', async () => { await brain.traffic.tick(); return brain.traffic.view(); });
   await registerVehiclePhoto(app, brain.settings, config.dataDir);
+  await registerDriverPhotos(app, brain.settings, config.dataDir);
   // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----
   // Kept on the app for the Parked routes (Plex video shares Track B's Plex connection).
   (app as unknown as { trackb: Awaited<ReturnType<typeof registerTrackB>> }).trackb = await registerTrackB(app, brain, nowPlaying);
