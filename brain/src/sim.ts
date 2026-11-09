@@ -8,17 +8,37 @@
 // theft alert. Either way the brain only ever sees truck-box topics and fixes.
 import { bearingDeg, haversineMi, type LatLon } from './geo.ts';
 import type { GpsFix } from './gps.ts';
+import { SIM_ROADS } from './simRoads.ts';
 
 type Leg = LatLon[];
 
-/** Home (Arcadia) -> Tempe -> downtown -> home. Each leg ends at a stop. */
-export const SIM_ROUTE: Leg[] = [
-  [{ lat: 33.4990, lon: -111.9800 }, { lat: 33.4945, lon: -111.9800 }, { lat: 33.4945, lon: -111.9262 }, { lat: 33.4400, lon: -111.9262 }, { lat: 33.4255, lon: -111.9262 }, { lat: 33.4255, lon: -111.9400 }],
-  [{ lat: 33.4255, lon: -111.9400 }, { lat: 33.4255, lon: -111.9790 }, { lat: 33.4370, lon: -112.0200 }, { lat: 33.4480, lon: -112.0400 }, { lat: 33.4484, lon: -112.0740 }],
-  [{ lat: 33.4484, lon: -112.0740 }, { lat: 33.4800, lon: -112.0740 }, { lat: 33.4990, lon: -112.0740 }, { lat: 33.4990, lon: -112.0200 }, { lat: 33.4990, lon: -111.9800 }],
-];
+/** Home (Arcadia) -> Tempe -> downtown -> home, along real streets (simRoads.ts,
+ *  baked by scripts/bake-sim-roads.mjs). Each leg ends at a stop. */
+export const SIM_ROUTE: Leg[] = SIM_ROADS.map((r) => r.pts.map(([lat, lon]) => ({ lat, lon })));
 export const SIM_HOME = SIM_ROUTE[0][0];
-export const SIM_LEG_NAMES = ['Home → Tempe', 'Tempe → Downtown (freeway)', 'Downtown → Home'];
+export const SIM_LEG_NAMES = SIM_ROADS.map((r) => r.name);
+
+/** The road's speed from point `seg` of a leg to the next (mph). */
+export function roadMph(leg: number, seg: number): number {
+  const pts = SIM_ROADS[leg].pts;
+  return pts[Math.min(seg, pts.length - 2)][2];
+}
+
+/** Corner speeds per point: how fast the turn at each point can be taken (mph),
+ *  from the change of heading over the ~20 m either side. Pure (tested). */
+export function cornerMph(leg: LatLon[]): number[] {
+  const out = leg.map(() => Infinity);
+  const reach = 20 / 1609.344;
+  for (let i = 1; i < leg.length - 1; i++) {
+    let a = i - 1; while (a > 0 && haversineMi(leg[a], leg[i]) < reach) a--;
+    let b = i + 1; while (b < leg.length - 1 && haversineMi(leg[i], leg[b]) < reach) b++;
+    if (haversineMi(leg[a], leg[i]) < 0.003 || haversineMi(leg[i], leg[b]) < 0.003) continue; // too short to read a heading
+    const turn = Math.abs(((bearingDeg(leg[i], leg[b]) - bearingDeg(leg[a], leg[i]) + 540) % 360) - 180);
+    out[i] = turn > 60 ? 12 : turn > 35 ? 20 : turn > 20 ? 30 : Infinity;
+  }
+  return out;
+}
+const CORNERS = SIM_ROUTE.map(cornerMph);
 
 /** Ambient light for the brightness loop: a day curve from the local clock, with passing shade. */
 export function simLux(now: Date, t: number): number {
@@ -242,6 +262,19 @@ export class SimTruck {
     return false;
   }
 
+  /** The slowest corner in the next 0.12 mi, as a speed to be at now: a corner
+   *  `d` miles ahead allows its own mph + 300·d, so the truck brakes into it. */
+  private cornerLimit(): number {
+    const route = SIM_ROUTE[this.leg], corners = CORNERS[this.leg];
+    let d = haversineMi(this.pos, route[Math.min(this.seg + 1, route.length - 1)]);
+    let limit = Infinity;
+    for (let i = this.seg + 1; i < route.length - 1 && d < 0.12; i++) {
+      limit = Math.min(limit, corners[i] + 300 * d); // ~0.1 mi to slow from 45 to 15
+      d += haversineMi(route[i], route[i + 1]);
+    }
+    return limit;
+  }
+
   private approach(want: number, dt: number) {
     this.speed += Math.max(-6, Math.min(4, want - this.speed)) * Math.min(1, dt);
     this.speed = Math.max(0, this.speed);
@@ -307,10 +340,11 @@ export class SimTruck {
       if (this.phaseT >= PHASE_S.arrived) { this.nextLeg(); this.setPhase('parked'); }
     } else {
       const remainingLeg = this.remainingLeg();
-      // Leg 2 (Tempe to downtown) runs on the freeway, so the city/highway split has both.
-      let want = this.leg === 1 ? 60 + 5 * Math.sin(this.t / 30) : 34 + 10 * Math.sin(this.t / 40) + 4 * Math.sin(this.t / 7);
+      // The road's own speed, a little over or under it, slowing for corners.
+      const road = roadMph(this.leg, this.seg);
+      let want = Math.min(road * (1.05 + 0.06 * Math.sin(this.t / 40)) + 2 * Math.sin(this.t / 7), this.cornerLimit());
       if (remainingLeg < 0.25) want = Math.max(6, want * (remainingLeg / 0.25));
-      if (this.t % 180 < 20 && remainingLeg > 0.5) want = 0; // a red light now and then
+      if (this.t % 180 < 20 && remainingLeg > 0.5 && road < 45) want = 0; // a red light now and then, never on the freeway
       this.approach(want, dt);
       if (this.advance(dt)) { this.setPhase('arrived'); this.speed = 0; }
     }

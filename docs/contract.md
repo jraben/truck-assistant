@@ -431,7 +431,9 @@ order above, and switches with `nmcli connection up`. Data use is read from
   the repo or `.env`.
 - **Simulation:** `SIM=1` makes the brain invent GPS, speed and truck-box
   data so everything runs on a desk. By itself it drives a loop around
-  Phoenix; the test panel (More › Test panel, `ui/src/sim/`) takes the wheel
+  Phoenix on real streets (`brain/src/simRoads.ts`, baked from OpenStreetMap
+  routing by `scripts/bake-sim-roads.mjs`), at each road's speed, braking for
+  corners, with red lights off the freeway; the test panel (More › Test panel, `ui/src/sim/`) takes the wheel
   through `GET/POST /api/sim` (`SimControl`: mode auto|manual, gear
   park|reverse|drive, ignition, targetMph, loop, cabinF, auxV, lowTire,
   switches), `POST /api/sim/jump {leg}`, `/api/sim/tow {seconds}`,
@@ -443,6 +445,13 @@ order above, and switches with `nmcli connection up`. Data use is read from
   charging hook for the on-peak warning. Putting it in gear unplugs it.
   The panel still only produces truck-box topics and GPS fixes, so the real
   code path runs. Every `/api/sim*` route is 404 unless `SIM=1`.
+- **Globe feed:** `GET /globe/aircraft.json` is the truck as one ground
+  vehicle in dump1090's `aircraft.json` form (`hex` f1a7e0 from ICAO's reserved
+  block, `flight` = `GLOBE_CALLSIGN`, category C2, `alt_baro: "ground"`, `gs`
+  in knots, `track`), and no aircraft without a GPS fix. God's Eye View's Local
+  ADS-B layer reads it (`LOCAL_RECEIVER_FEEDS=1090=http://<brain>/globe/aircraft.json`).
+  Outside `/api` and without a login, because God's Eye sends none: on under
+  `SIM=1`/`DEMO=1`, 404 on a real truck unless `GLOBE_FEED=1`.
 
 ## Track A: Drive
 

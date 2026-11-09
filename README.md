@@ -31,6 +31,7 @@ Built for Jeff's truck first, published for other Slate owners later.
 
   Env (plumbing only; API keys go on the settings page): `PORT` (8080),
   `DATA_DIR` (./data: settings.json + cockpit.db), `SIM=1`, `SIM_SPEEDUP`,
+  `GLOBE_FEED=1`/`GLOBE_CALLSIGN` (the truck on a God's Eye View globe, below),
   `MQTT_URL` (mqtt://localhost:1883), `MQTT_DISABLED=1`, `GPSD_HOST`/`GPSD_PORT`.
   No MQTT broker or gpsd needed on a desk: the brain reports them in
   `/api/health` and keeps working. Pi install: `sudo ./deploy/pi/install.sh`
@@ -211,6 +212,25 @@ camera live, and the CarPlay simulator on or off. The panel's routes
 ```sh
 cd ~/slate-cockpit && sudo -n /usr/local/bin/docker-compose pull && sudo -n /usr/local/bin/docker-compose up -d
 ```
+
+### Watching the simulated drive on God's Eye View
+
+The simulated truck drives real Phoenix streets (OpenStreetMap routing, baked
+into `brain/src/simRoads.ts`; rerun `node scripts/bake-sim-roads.mjs` to change
+the loop). The brain also serves the truck at `/globe/aircraft.json` in the
+format of a home ADS-B receiver, so a [God's Eye View](https://github.com/bilawalsidhu/gods-eye-view)
+globe on the same network can draw it. In God's Eye's `.env`:
+
+```sh
+LOCAL_RECEIVER_FEEDS=1090=http://<brain address>:3950/globe/aircraft.json
+```
+
+Restart God's Eye, turn on **Local ADS-B**, and the truck shows up as
+`TRUCK` on the ground. Click it to track it (trail, speed, heading), or press
+`C` for the cockpit view to ride along at street level. God's Eye only reads
+private network addresses and sends no login, so the feed has none either: it
+is on by itself under `SIM=1`, and a real truck serves it only with
+`GLOBE_FEED=1`, which lets anyone on its network see where it is.
 
 The folder, compose project and container keep their older `slate-cockpit`
 name so the data volume carries over. Data lives in the `slate-cockpit_slate-data` Docker volume. The compose file

@@ -31,6 +31,11 @@ export const config = {
   simSpeedup: Math.max(1, Number(process.env.SIM_SPEEDUP ?? 1) || 1),
   /** OSRM server for road-trip routes (default: OSRM's public demo server, light use only). */
   routerUrl: process.env.ROUTER_URL || undefined,
+  /** /globe/aircraft.json, the truck for a God's Eye View globe (src/globe.ts). On
+   *  under SIM; a real truck needs GLOBE_FEED=1, since the feed has no login. */
+  globeFeed: demo || flag(process.env.SIM) || flag(process.env.GLOBE_FEED),
+  /** The truck's name on the globe (8 letters or digits at most). */
+  globeCallsign: process.env.GLOBE_CALLSIGN ?? 'TRUCK',
   mqttUrl: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
   mqttDisabled: demo || flag(process.env.MQTT_DISABLED),
   gpsdHost: process.env.GPSD_HOST ?? '127.0.0.1',
