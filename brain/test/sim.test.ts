@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mergeControl, SimError, SimTruck, SIM_ROUTE, type SimControl } from '../src/sim.ts';
+import { cornerMph, mergeControl, roadMph, SimError, SimTruck, SIM_ROUTE, type SimControl } from '../src/sim.ts';
 import { metersBetween } from '../src/geo.ts';
 import type { GpsFix } from '../src/gps.ts';
 
@@ -107,5 +107,38 @@ describe('simulated truck, driven by hand', () => {
     vi.advanceTimersByTime(20_000);
     sim.plugIn('home');
     expect(sim.unplug().charging).toBeNull();
+  });
+});
+
+describe('the loop on real roads', () => {
+  it('follows the baked roads: dense points, each leg starting about where the last one ended', () => {
+    expect(SIM_ROUTE).toHaveLength(3);
+    for (const [i, leg] of SIM_ROUTE.entries()) {
+      expect(leg.length).toBeGreaterThan(100);
+      const prev = SIM_ROUTE[(i + 2) % 3].at(-1)!;
+      expect(metersBetween(prev, leg[0])).toBeLessThan(150);
+    }
+    expect(roadMph(1, 0)).toBeGreaterThan(0);
+    expect(Math.max(...SIM_ROUTE[1].map((_, k) => roadMph(1, k)))).toBeGreaterThanOrEqual(50); // the freeway leg
+  });
+
+  it('reads a right-angle turn as a slow corner and a straight road as none', () => {
+    const P = (lat: number, lon: number) => ({ lat, lon });
+    const ell = [P(33.40, -111.90), P(33.4005, -111.90), P(33.401, -111.90), P(33.401, -111.8994), P(33.401, -111.8988)];
+    expect(cornerMph(ell)[2]).toBe(12);
+    const straight = [P(33.40, -111.90), P(33.4005, -111.90), P(33.401, -111.90), P(33.4015, -111.90)];
+    expect(cornerMph(straight).every((m) => m === Infinity)).toBe(true);
+  });
+
+  it('drives the freeway leg at freeway speed on its own', () => {
+    vi.useFakeTimers();
+    const fixes: GpsFix[] = [];
+    const sim = new SimTruck(() => {}, (f) => fixes.push(f), 4);
+    sim.start();
+    sim.jump(1);
+    vi.advanceTimersByTime(12 * 60_000); // 48 simulated minutes: parked, reverse, the whole leg
+    sim.stop(); vi.useRealTimers();
+    expect(Math.max(...fixes.map((f) => f.speedMph ?? 0))).toBeGreaterThan(50);
+    expect(sim.status().leg).not.toBe(1); // arrived downtown and moved on
   });
 });
