@@ -486,7 +486,15 @@ export class Brain extends EventEmitter {
     if (pw && topic === haEntityStateTopic(pw) && !this.ha.configured()) this.haPower = { kw: powerKw(payload, ''), plugged: this.haPower.plugged, at: Date.now() };
   }
 
+  /** The pack's power from the truck box (kW, + drawing, − regenerating): kept for the trip samples, not shown live. */
+  private packPower: { kw: number; at: number } | null = null;
+
   private onTruckbox(sub: string, payload: string) {
+    if (sub === 'sensor/pack_power_kw/state') {
+      const kw = Number(payload.trim());
+      this.packPower = Number.isFinite(kw) && Math.abs(kw) < 1000 ? { kw, at: Date.now() } : null;
+      return;
+    }
     this.drive.onTruckbox(sub, payload);
     const p = parseTruckbox(sub, payload);
     if (!p) return;
@@ -509,7 +517,14 @@ export class Brain extends EventEmitter {
       const limit = MAX_PLAUSIBLE_MPH * (config.sim ? config.simSpeedup : 1);
       if (moving && mi / hours <= limit && mi > 0) this.addMiles(mi);
     }
-    if (this.s.trip && f.fix) this.trips.addPoint(this.s.trip.id, { t: f.at, lat: f.lat, lon: f.lon, speedMph: f.speedMph, headingDeg: f.headingDeg });
+    if (this.s.trip && f.fix) {
+      this.trips.addPoint(this.s.trip.id, { t: f.at, lat: f.lat, lon: f.lon, speedMph: f.speedMph, headingDeg: f.headingDeg });
+      const pw = this.packPower && Date.now() - this.packPower.at < 10_000 ? this.packPower.kw : null;
+      // The dash's own draw and the switched loads: rated watts (Settings), as on the Control screen; the tablet charges while the truck is on.
+      const st = this.settings.get();
+      const accW = Object.values(this.s.relays).reduce((w, r) => w + (r.on === true ? Math.max(0, r.watts ?? 0) : 0), 0);
+      this.trips.addSample(this.s.trip.id, { t: f.at, lat: f.lat, lon: f.lon, altM: f.altM ?? null, speedMph: f.speedMph, powerKw: pw, techW: st.stackWatts + st.tabletWatts, accW });
+    }
     this.changed();
   }
 

@@ -121,6 +121,13 @@ Built for Jeff's truck first, published for other Slate owners later.
   own tuner, HD1 drops to the station's analog signal when the digital one is
   lost (and tries HD again later, or on "Back to HD"), and **Check presets** /
   **Scan the band** find which stations carry HD and what's on HD2-HD4.
+- **Trip energy (2026-11-09):** Trips → a trip → **Energy**: power used and
+  regenerated along the route on a map, with height, speed and power on a
+  chart you can scrub, how much went to driving vs the dash's tech vs
+  switched accessories, and the load it carried. For looking back after a
+  drive, never live. Measured once the truck box can read the pack's power;
+  until then a physics model, and it says which. Asked for on the Slate
+  Forums thread.
 - **Automatic updates (2026-11-09):** Settings → Software updates checks
   GitHub every 12 hours; tick "Install updates automatically" and a new
   version installs by itself, never while driving: when parked, or only when

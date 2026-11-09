@@ -100,6 +100,12 @@ function roundCorners(pts: LatLon[]): LatLon[] {
 }
 
 /** Points every ~0.1 mi along the segments, with timestamps at city or highway pace and a little GPS wander. */
+/** Invented terrain for the demo's trips: low desert in the south, rising north toward the rim, with rolling hills. Not real elevation data. */
+export function demoAltM(lat: number, lon: number): number {
+  // Hills a few miles long and up to ~40 m high on a slope rising about 1,000 m over the 100 miles north.
+  return 340 + Math.max(0, lat - 33.4) * 700 + 40 * Math.sin(lon * 60) * Math.sin(lat * 45);
+}
+
 function densify(segs: Seg[], start: number, r: () => number): { pts: { t: number; lat: number; lon: number; mph: number; hdg: number }[]; end: number } {
   const out: { t: number; lat: number; lon: number; mph: number; hdg: number }[] = [];
   let t = start;
@@ -301,6 +307,7 @@ function writeHistory(db: Db, settings: Settings, plan: Plan[], now: Date, r: ()
   const insTrip = db.prepare(`INSERT INTO trips (started_at, ended_at, miles, duration_s, start_soc, end_soc, kwh_est, start_lat, start_lon, end_lat, end_lon, end_reason,
     driver_id, source, start_stop_id, end_stop_id, city_miles, highway_miles, city_kwh, highway_kwh, simulated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ignition off', ?, 'truck', ?, ?, ?, ?, ?, ?, 0)`);
   const insPt = db.prepare('INSERT INTO trip_points (trip_id, t, lat, lon, speed_mph, heading_deg) VALUES (?, ?, ?, ?, ?, ?)');
+  const insSample = db.prepare('INSERT INTO trip_samples (trip_id, t, lat, lon, alt_m, speed_mph, power_kw, tech_w, acc_w) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)');
   const insCharge = db.prepare(`INSERT INTO charge_sessions (started_at, ended_at, place, network, station_name, lat, lon, kwh, cost, cost_source, start_soc, end_soc, max_kw, note, source, driver_id, simulated)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0)`);
   db.exec('CREATE TABLE IF NOT EXISTS trip_tags (trip_id INTEGER PRIMARY KEY, purpose TEXT, note TEXT, updated_at TEXT NOT NULL)'); // as MileageService makes it
@@ -382,6 +389,19 @@ function writeHistory(db: Db, settings: Settings, plan: Plan[], now: Date, r: ()
       Math.round(cityMi * 100) / 100, Math.round(hwyMi * 100) / 100, r2(cityKwh), r2(hwyKwh));
     const tripId = Number(res.lastInsertRowid);
     for (const q of pts) insPt.run(tripId, iso(q.t), q.lat, q.lon, q.mph, q.hdg);
+    // Energy-review samples every 4 s between those points: invented terrain, no pack power (the demo truck has no CAN either, so it's modelled).
+    db.exec('BEGIN'); // thousands of rows a trip: one transaction keeps seeding quick
+    try {
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const a = pts[k], b = pts[k + 1];
+        for (let t = a.t; t < b.t; t += 4000) {
+          const f = (t - a.t) / Math.max(1, b.t - a.t);
+          const lat = a.lat + (b.lat - a.lat) * f, lon = a.lon + (b.lon - a.lon) * f;
+          insSample.run(tripId, iso(t), Math.round(lat * 1e6) / 1e6, Math.round(lon * 1e6) / 1e6, Math.round(demoAltM(lat, lon) * 10) / 10, Math.round((a.mph + (b.mph - a.mph) * f) * 10) / 10, 37, 0);
+        }
+      }
+      db.exec('COMMIT');
+    } catch (e) { db.exec('ROLLBACK'); throw e; }
     if (p.purpose) insTag.run(tripId, p.purpose, p.note ?? null, iso(end));
     nTrips++; miles += tripMi;
     atKey = p.to === 'supercharger' ? 'sedona' : p.to;

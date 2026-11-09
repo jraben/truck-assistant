@@ -1,4 +1,5 @@
 // Trip storage: one row per trip, thinned GPS points, simplified on close.
+import { SAMPLE_EVERY_MS, type EnergySample } from './drive/energy.ts';
 import type { Db } from './db.ts';
 import { metersBetween, simplify, type LatLon } from './geo.ts';
 import type { Trip, TripPoint } from './types.ts';
@@ -89,6 +90,34 @@ export class TripStore {
     this.db.prepare('UPDATE trips SET miles = miles + ? WHERE id = ?').run(miles, id);
   }
 
+  private lastSampleAt = new Map<number, number>();
+
+  /** One energy-review sample (drive/energy.ts), at most every SAMPLE_EVERY_MS. Never thinned on close. */
+  addSample(id: number, p: { t: Date; lat: number; lon: number; altM: number | null; speedMph: number | null; powerKw: number | null; techW?: number | null; accW?: number | null }) {
+    const last = this.lastSampleAt.get(id);
+    if (last !== undefined && p.t.getTime() - last < SAMPLE_EVERY_MS) return false;
+    this.lastSampleAt.set(id, p.t.getTime());
+    const r = (v: number | null, k: number) => (v === null || !Number.isFinite(v) ? null : Math.round(v * k) / k);
+    this.db.prepare('INSERT INTO trip_samples (trip_id, t, lat, lon, alt_m, speed_mph, power_kw, tech_w, acc_w) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, p.t.toISOString(), Math.round(p.lat * 1e6) / 1e6, Math.round(p.lon * 1e6) / 1e6, r(p.altM, 10), r(p.speedMph, 10), r(p.powerKw, 100), r(p.techW ?? null, 1), r(p.accW ?? null, 1));
+    return true;
+  }
+
+  samples(id: number): EnergySample[] {
+    return (this.db.prepare('SELECT t, lat, lon, alt_m, speed_mph, power_kw, tech_w, acc_w FROM trip_samples WHERE trip_id = ? ORDER BY t').all(id) as
+      { t: string; lat: number; lon: number; alt_m: number | null; speed_mph: number | null; power_kw: number | null; tech_w: number | null; acc_w: number | null }[])
+      .map((p) => ({ t: p.t, lat: p.lat, lon: p.lon, altM: p.alt_m, speedMph: p.speed_mph, powerKw: p.power_kw, techW: p.tech_w, accW: p.acc_w }));
+  }
+
+  /** What the truck carried on this trip beyond the driver (passengers, cargo, a trailer's tongue), for the energy model. */
+  load(id: number): { lb: number | null; note: string | null } | null {
+    const r = this.db.prepare('SELECT load_lb, load_note FROM trips WHERE id = ?').get(id) as { load_lb: number | null; load_note: string | null } | undefined;
+    return r ? { lb: r.load_lb, note: r.load_note } : null;
+  }
+  setLoad(id: number, lb: number | null, note: string | null): boolean {
+    return Number(this.db.prepare('UPDATE trips SET load_lb = ?, load_note = ? WHERE id = ?').run(lb, note, id).changes) > 0;
+  }
+
   /** Record a GPS sample if the thinning rule keeps it. Fills in a missing start position. */
   addPoint(id: number, p: { t: Date; lat: number; lon: number; speedMph: number | null; headingDeg: number | null }) {
     const cand = { lat: p.lat, lon: p.lon, t: p.t.getTime(), headingDeg: p.headingDeg };
@@ -175,6 +204,7 @@ export class TripStore {
       if (curId !== null && curId !== prevId) {
         const cur = this.db.prepare('SELECT miles, city_miles, highway_miles FROM trips WHERE id = ?').get(curId) as { miles: number; city_miles: number | null; highway_miles: number | null } | undefined;
         this.db.prepare('UPDATE trip_points SET trip_id = ? WHERE trip_id = ?').run(prevId, curId);
+        this.db.prepare('UPDATE trip_samples SET trip_id = ? WHERE trip_id = ?').run(prevId, curId);
         this.db.prepare('UPDATE trips SET miles = miles + ? WHERE id = ?').run(cur?.miles ?? 0, prevId);
         if (cur && (cur.city_miles !== null || cur.highway_miles !== null)) this.db.prepare('UPDATE trips SET city_miles = COALESCE(city_miles, 0) + ?, highway_miles = COALESCE(highway_miles, 0) + ? WHERE id = ?').run(cur.city_miles ?? 0, cur.highway_miles ?? 0, prevId);
         this.db.prepare('DELETE FROM trips WHERE id = ?').run(curId);
@@ -202,8 +232,9 @@ export class TripStore {
   deletePhone(driverId: string, fromIso: string, toIso: string): number {
     const ids = (this.db.prepare("SELECT id FROM trips WHERE source = 'phone' AND driver_id = ? AND started_at >= ? AND started_at < ?").all(driverId, fromIso, toIso) as { id: number }[]).map((r) => r.id);
     const delP = this.db.prepare('DELETE FROM trip_points WHERE trip_id = ?');
+    const delS = this.db.prepare('DELETE FROM trip_samples WHERE trip_id = ?');
     const delT = this.db.prepare('DELETE FROM trips WHERE id = ?');
-    for (const id of ids) { delP.run(id); delT.run(id); }
+    for (const id of ids) { delP.run(id); delS.run(id); delT.run(id); }
     return ids.length;
   }
 

@@ -28,6 +28,13 @@ export function openDb(dataDir: string, opts: { sim?: boolean } = {}): Db {
       speed_mph REAL, heading_deg REAL
     );
     CREATE INDEX IF NOT EXISTS trip_points_trip ON trip_points(trip_id, t);
+    -- Every ~2 s of a trip, never thinned: height, speed and pack power for the energy review (drive/energy.ts).
+    CREATE TABLE IF NOT EXISTS trip_samples (
+      trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      t TEXT NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL,
+      alt_m REAL, speed_mph REAL, power_kw REAL
+    );
+    CREATE INDEX IF NOT EXISTS trip_samples_trip ON trip_samples(trip_id, t);
     CREATE TABLE IF NOT EXISTS charger_cache (
       key TEXT PRIMARY KEY, fetched_at INTEGER NOT NULL, body TEXT NOT NULL
     );
@@ -70,6 +77,8 @@ export function openDb(dataDir: string, opts: { sim?: boolean } = {}): Db {
   addColumns(db, 'charge_sessions', { driver_id: 'TEXT' });
   addColumns(db, 'places', { kind: 'TEXT', charge_kw: 'REAL', note: 'TEXT' });
   addColumns(db, 'trips', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
+  addColumns(db, 'trips', { load_lb: 'REAL', load_note: 'TEXT' });
+  addColumns(db, 'trip_samples', { tech_w: 'REAL', acc_w: 'REAL' });
   addColumns(db, 'charge_sessions', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
   // Rows from before the flag existed carry no mark. There is no reliable way to
   // tell a simulated trip from a real one after the fact, so: a brain starting

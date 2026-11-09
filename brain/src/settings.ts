@@ -1,3 +1,4 @@
+import { DEFAULT_ENERGY_MODEL, type EnergyModel } from './drive/energy.ts';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { validateRailOrder } from './rail.ts';
@@ -73,6 +74,7 @@ export function defaultSettings(): Settings {
     truckId: 'slate',
     packKwh: 52.7,
     efficiencyMiPerKwh: 3.5,
+    energyModel: { ...DEFAULT_ENERGY_MODEL },
     relays: {
       relay_1: 'Bed lights', relay_2: 'Light bar', relay_3: 'Rock lights',
       relay_4: 'Air compressor', relay_5: 'Bed fridge', relay_6: 'Inverter',
@@ -80,6 +82,7 @@ export function defaultSettings(): Settings {
     // Typical draws for those loads; the owner sets their own on /settings.
     relayWatts: { relay_1: 36, relay_2: 120, relay_3: 48, relay_4: 360, relay_5: 45, relay_6: 60 },
     tabletWatts: 12,
+    stackWatts: 25,
     keys: {},
     homeAssistant: { bridge: true, url: null },
     homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0, demandPerKw: null },
@@ -376,6 +379,7 @@ export function validate(s: Settings): Settings {
   if (typeof s.truckId !== 'string' || !/^[a-z0-9_-]{1,32}$/i.test(s.truckId)) throw new SettingsError('truckId: letters, digits, - and _ only');
   num(s.packKwh, 'packKwh', 1, 500);
   num(s.efficiencyMiPerKwh, 'efficiencyMiPerKwh', 0.5, 10);
+  s.energyModel = validateEnergyModel(s.energyModel);
   if (!isObj(s.relays)) throw new SettingsError('relays must be an object');
   for (const id of RELAY_IDS) {
     const v = s.relays[id];
@@ -392,6 +396,9 @@ export function validate(s: Settings): Settings {
   if (s.tabletWatts === undefined || s.tabletWatts === null) s.tabletWatts = defaultSettings().tabletWatts;
   num(s.tabletWatts, 'tabletWatts', 0, 100);
   s.tabletWatts = Math.round(s.tabletWatts);
+  if (s.stackWatts === undefined || s.stackWatts === null) s.stackWatts = defaultSettings().stackWatts;
+  num(s.stackWatts, 'stackWatts', 0, 300);
+  s.stackWatts = Math.round(s.stackWatts);
   const ha = s.homeAssistant;
   if (!isObj(ha) || typeof ha.bridge !== 'boolean') throw new SettingsError('homeAssistant.bridge must be true or false');
   const ent = ha.homeChargerEnergyEntity as string | null | undefined;
@@ -577,4 +584,18 @@ export class SettingsStore {
     writeFileSync(tmp, JSON.stringify(this.s, null, 2), { mode: 0o600 });
     renameSync(tmp, this.file);
   }
+}
+
+/** The energy model: any missing number takes its default; out-of-range ones are refused. */
+export function validateEnergyModel(v: unknown): EnergyModel {
+  const d = DEFAULT_ENERGY_MODEL;
+  const o = (isObj(v) ? v : {}) as Record<string, unknown>;
+  const lim: Record<keyof EnergyModel, [number, number]> = { curbLb: [1000, 12000], driverLb: [0, 500], cdA: [0.2, 3], crr: [0.004, 0.03], driveEff: [0.5, 1], regenEff: [0, 1], auxKw: [0, 10] };
+  const out = { ...d };
+  for (const k of Object.keys(lim) as (keyof EnergyModel)[]) {
+    if (o[k] === undefined || o[k] === null) continue;
+    num(o[k], `energyModel.${k}`, lim[k][0], lim[k][1]);
+    out[k] = o[k] as number;
+  }
+  return out;
 }

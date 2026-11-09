@@ -34,6 +34,7 @@ ESPHome's own topic layout, so it works with HA discovery unchanged.
 | `slate/truckbox/sensor/cabin_humidity/state` | %, float | |
 | `slate/truckbox/sensor/aux_battery_v/state` | volts, float | 12V battery |
 | `slate/truckbox/sensor/pitch/state`, `.../roll/state` | degrees, float | tilt gauge |
+| `slate/truckbox/sensor/pack_power_kw/state` | kW, float: + drawing, − regenerating | the HV pack's power, once a CAN bridge can read it; logged per trip for the energy review, not shown live |
 | `slate/truckbox/sensor/tpms_fl_psi/state` (fl, fr, rl, rr) | psi, float | BLE TPMS, if fitted |
 | `slate/truckbox/sensor/tpms_fl_temp/state` (fl, fr, rl, rr) | °F, float | |
 
@@ -99,6 +100,23 @@ dash tablet counts only while it charges (the browser's Battery API says so).
   mid-trip. `POST /api/driver/dismiss` clears `driverSuggestion`.
 - `GET  /api/trips?limit=&driver=&source=` → `Trip[]`; `GET /api/trips/:id` →
   `Trip` + `points`
+- Trip energy, for review after the drive (`brain/src/drive/energy.ts`, the
+  Trips view's **Energy** button): every ~2 s of a truck trip goes into
+  `trip_samples` (position, GPS height, speed, pack power when the truck box
+  sends it, and the estimated watts of the dash tech and of relay loads that
+  were on), never thinned. `GET /api/trips/:id/energy` →
+  `{source: 'measured'|'model'|'mixed'|'none', measuredShare, totals: {miles,
+  movingS, usedKwh, regenKwh, netKwh, whPerMi, climbM, descentM, maxKw,
+  maxRegenKw, driveKwh, techKwh, accessoryKwh}, breakdown (model only:
+  rolling, aero, climbing, accelerating, aux, tech, accessories kWh), massLb,
+  load, model, series: [{t, mi, lat, lon, altM, speedMph, powerKw, measured}]
+  (≤ 800)}`. Measured where the pack's power was sent; elsewhere the physics
+  model with `Settings.energyModel` (`curbLb, driverLb, cdA, crr, driveEff,
+  regenEff, auxKw`: estimates until fitted) at truck + driver + the trip's
+  load. Height and speed are smoothed (±15 s, ±5 s). Tech = `stackWatts` +
+  `tabletWatts`; accessories = `relayWatts` of relays that were on; both go
+  through the DC-DC (90%); driving is the rest. `PUT /api/trips/:id/load`
+  `{lb: 0-5000 | null, note?}`: what it carried beyond the driver.
 - `GET  /api/stops?from=&to=&driver=&source=&limit=` → `Stop[]` (newest first)
 - `PUT  /api/stops/:id/name` `{name, radiusM?}` → `{place: Place, renamed: number}`:
   tap-to-name. Saves a place at the stop's position (default radius 120 m) and

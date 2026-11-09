@@ -1,7 +1,8 @@
 // gpsd client over its JSON socket (localhost:2947). Silent when gpsd is absent.
 import net from 'node:net';
 
-export type GpsFix = { lat: number; lon: number; speedMph: number | null; headingDeg: number | null; fix: boolean; at: Date };
+/** altM: height above sea level (gpsd altMSL, else alt), metres; null without a 3D fix. */
+export type GpsFix = { lat: number; lon: number; speedMph: number | null; headingDeg: number | null; fix: boolean; at: Date; altM?: number | null };
 export type GpsStatus = 'fix' | 'no fix' | 'no gpsd';
 
 const MS_TO_MPH = 2.2369363;
@@ -17,11 +18,13 @@ export function parseGpsdLine(line: string): GpsFix | null {
   if (!hasPos) return { lat: NaN, lon: NaN, speedMph: null, headingDeg: null, fix: false, at: new Date() };
   const speed = Number(m.speed);
   const track = Number(m.track);
+  const alt = Number(m.altMSL ?? m.alt);
   return {
     lat, lon,
     speedMph: Number.isFinite(speed) ? speed * MS_TO_MPH : null,
     headingDeg: Number.isFinite(track) ? track : null,
     fix: mode >= 2,
+    altM: mode >= 3 && Number.isFinite(alt) ? alt : null,
     at: typeof m.time === 'string' && Number.isFinite(Date.parse(m.time)) ? new Date(m.time) : new Date(),
   };
 }

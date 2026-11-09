@@ -119,11 +119,15 @@ export type Settings = {
   truckId: string;
   packKwh: number;
   efficiencyMiPerKwh: number;
+  /** The trip energy model's numbers (drive/energy.ts); estimates until fitted. */
+  energyModel: import('./drive/energy.ts').EnergyModel;
   relays: Record<string, string>;
   /** Rated draw of each relay's load in watts (Control screen estimate; nothing measures it). */
   relayWatts: Record<string, number>;
   /** The dash tablet's draw from the truck while it charges, watts (estimate). */
   tabletWatts: number;
+  /** The rest of the dash electronics (Pi, screen, cameras, truck box, router), watts (estimate). */
+  stackWatts: number;
   keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** NASA FIRMS MAP_KEY (fire hotspots). */ firms?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {

@@ -59,6 +59,12 @@ export function Trips({ s }: WP) {
     return () => { live = false; clearInterval(id); };
   }, [sel, s?.trip?.id]);
 
+  // The energy review (Leaflet and the chart) loads only when it's opened.
+  const [energy, setEnergy] = useState<{ C: typeof import('./TripEnergy.tsx').TripEnergy } | null>(null);
+  const openEnergy = async () => {
+    try { const m = await import('./TripEnergy.tsx'); setEnergy({ C: m.TripEnergy }); } catch (e) { setErr(`Couldn't open the energy view: ${(e as Error).message}`); }
+  };
+
   const drivers = settings?.drivers ?? [];
   const nameOf = (id: string | null) => drivers.find((d) => d.id === id)?.name ?? null;
 
@@ -129,8 +135,14 @@ export function Trips({ s }: WP) {
         : <span class="dimtxt num" style="font-size:13px">SoC <V v={detail.startSoc?.toFixed(0)} why="Charge level unknown at start" />% → <V v={detail.endSoc?.toFixed(0)} why={detail.endedAt ? 'Charge level unknown at end' : 'Trip in progress'} />%</span>)}>
         {detail && <ModeSplit t={detail} kwh />}
         {detail ? <RoutePlot pts={detail.points} /> : <div class="dimtxt">Pick a trip.</div>}
-        {detail && detail.points.length > 1 && <a class="btn sm" href={`/api/trips/${detail.id}/scene.gevbundle.json`} download title="A God's Eye View scene: IMPORT it in God's Eye's Scenes panel">Replay in God's Eye</a>}
+        {detail && detail.points.length > 1 && (
+          <div class="row wrap" style="gap:8px">
+            {detail.source === 'truck' && detail.endedAt && <button class="btn sm primary" type="button" onClick={() => void openEnergy()}>Energy</button>}
+            <a class="btn sm" href={`/api/trips/${detail.id}/scene.gevbundle.json`} download title="A God's Eye View scene: IMPORT it in God's Eye's Scenes panel">Replay in God's Eye</a>
+          </div>
+        )}
       </Card>
+      {energy && detail && <energy.C tripId={detail.id} title={tripTitle(detail)} onClose={() => setEnergy(null)} />}
       {naming && <NameStop stopId={naming.stopId} initial={naming.name} onClose={(saved) => { setNaming(null); if (saved) void load(); }} />}
     </div>
     </DrivingLock>

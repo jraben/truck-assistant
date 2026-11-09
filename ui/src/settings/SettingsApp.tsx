@@ -305,6 +305,18 @@ export function SettingsApp() {
             </div>
           ))}
           <label class="f" style="width:200px"><span>Dash tablet watts (while charging)</span><input type="number" min={0} max={100} step={1} value={draft.tabletWatts ?? 12} onInput={(e) => set('tabletWatts', Number((e.target as HTMLInputElement).value) || 0)} /></label>
+          <label class="f" style="width:240px"><span>Rest of the dash (Pi, screen, cameras) watts</span><input type="number" min={0} max={300} step={1} value={draft.stackWatts ?? 25} onInput={(e) => set('stackWatts', Number((e.target as HTMLInputElement).value) || 0)} /></label>
+        </div>
+      </Section>
+
+      <Section title="Trip energy model" help="Trips → a trip → Energy shows power used and regenerated along the route. Until the truck box can read the pack's own power (CAN), it is worked out from speed, hills and weight with these numbers. They start as estimates: they show where the energy went better than exactly how much.">
+        <div class="fields form">
+          {([
+            ['curbLb', 'Truck, empty (lb)', 1], ['driverLb', 'Driver (lb)', 1], ['cdA', 'Drag area CdA (m²)', 0.01], ['crr', 'Rolling resistance', 0.001],
+            ['driveEff', 'Battery → wheels', 0.01], ['regenEff', 'Regen recovered', 0.01], ['auxKw', 'Truck systems (kW)', 0.05],
+          ] as const).map(([k, label, step]) => (
+            <label class="f" style="width:170px"><span>{label}</span><input type="number" step={step} value={draft.energyModel?.[k] ?? ''} onInput={(e) => { const v = Number((e.target as HTMLInputElement).value); set('energyModel', { ...draft.energyModel, [k]: v }); }} /></label>
+          ))}
         </div>
       </Section>
 

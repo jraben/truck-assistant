@@ -1,4 +1,5 @@
 // HTTP + WebSocket per docs/contract.md.
+import { tripEnergy } from './drive/energy.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -132,6 +133,21 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const t = brain.trips.get(Number(req.params.id));
     if (!t) return reply.code(404).send({ error: 'no such trip' });
     return { ...t, points: brain.trips.points(t.id) };
+  });
+  // The trip's energy for review after the drive: measured pack power where the truck box sent it, the physics model elsewhere.
+  app.get<{ Params: { id: string } }>('/api/trips/:id/energy', async (req, reply) => {
+    const id = Number(req.params.id);
+    const t = brain.trips.get(id);
+    if (!t) return reply.code(404).send({ error: 'no such trip' });
+    const load = brain.trips.load(id) ?? { lb: null, note: null };
+    return { tripId: id, load, model: brain.settings.get().energyModel, ...tripEnergy(brain.trips.samples(id), brain.settings.get().energyModel, load.lb ?? 0) };
+  });
+  app.put<{ Params: { id: string } }>('/api/trips/:id/load', async (req, reply) => {
+    const b = (req.body ?? {}) as { lb?: unknown; note?: unknown };
+    const lb = b.lb === null || b.lb === undefined || b.lb === '' ? null : Number(b.lb);
+    if (lb !== null && !(Number.isFinite(lb) && lb >= 0 && lb <= 5000)) return reply.code(400).send({ error: 'lb is 0-5000 (passengers and cargo beyond the driver), or null' });
+    const note = typeof b.note === 'string' && b.note.trim() ? b.note.trim().slice(0, 80) : null;
+    return brain.trips.setLoad(Number(req.params.id), lb === null ? null : Math.round(lb), note) ? { lb, note } : reply.code(404).send({ error: 'no such trip' });
   });
 
   // ---- drivers ---------------------------------------------------------------
