@@ -30,10 +30,10 @@ export function Relays({ s }: WP) {
   const ids = Object.keys(s?.relays ?? {}).sort();
   const tablet = useTabletPower();
   const tabletWatts = useStore(settingsStore)?.tabletWatts ?? 12;
-  const pw = powerSummary(s?.relays, tablet, tabletWatts);
+  const pw = powerSummary(s?.relays, tablet, tabletWatts, s?.dashW ?? null);
   return (
     <Card label="Upfit relays" right={<span class="row" style="gap:10px">
-      <span class="powertotal num" title="Estimated from the watts set for each load in Settings (nothing in the truck box measures current)">≈ {pw.total} W · {pw.amps} A</span>
+      <span class="powertotal num" title={pw.allMeasured ? 'Measured by the truck box’s current sensors (the tablet is its rated watts)' : 'Measured where a circuit has a current sensor; the rest from the watts set in Settings'}>{pw.allMeasured ? '' : '≈ '}{pw.total} W · {pw.amps} A</span>
       <span class={`tag ${online ? 'ok' : 'warn'}`}>{online ? 'TRUCK BOX ONLINE' : 'TRUCK BOX OFFLINE'}</span>
     </span>}>
       {!online && <div class="banner">Truck box offline. Relay states are unknown and switching is disabled until it reconnects.</div>}
@@ -48,7 +48,9 @@ export function Relays({ s }: WP) {
                 <div class="name">{r.name}</div>
                 <div class="state">{p ? (p.on ? 'Turning on…' : 'Turning off…') : r.on === null ? <V v={null} why={whyTruck(s, 'this relay')} /> : r.on ? 'On' : 'Off'}</div>
               </span>
-              <span class={`watts num ${r.on ? '' : 'idle'}`} title="Estimate: the watts set for this load in Settings">{r.on ? `≈ ${pw.byRelay[id]} W` : `${r.watts ?? 0} W when on`}</span>
+              {pw.measured[id]
+                ? <span class={`watts num ${pw.byRelay[id] > 0 ? '' : 'idle'}`} title="Measured by the current sensor on this circuit">{pw.byRelay[id]} W{r.on && pw.byRelay[id] === 0 ? ' · nothing drawing' : ''}</span>
+                : <span class={`watts num ${r.on ? '' : 'idle'}`} title="Estimate: the watts set for this load in Settings">{r.on ? `≈ ${pw.byRelay[id]} W` : `${r.watts ?? 0} W when on`}</span>}
               {isInverter(r.name) && <InverterCharge s={s} />}
             </button>
           );
@@ -62,6 +64,13 @@ export function Relays({ s }: WP) {
           <span class="watts num" title={tablet.charging === false ? 'On its own battery: no draw on the truck' : 'Estimate: the tablet watts set in Settings'}>{tablet.charging === false ? '0 W from the truck' : `≈ ${pw.tablet} W`}</span>
           {tablet.level !== null && <span class="invbar" role="meter" aria-label="Tablet battery" aria-valuemin={0} aria-valuemax={100} aria-valuenow={tablet.level}><span style={{ width: `${tablet.level}%` }} /></span>}
         </div>
+        {pw.dash !== null && (
+          <div class="tile tablet" aria-label="Dash electronics">
+            <span class="tilehead"><LoadIcon name="screen" /><span class="lbl">Dash</span></span>
+            <span><div class="name">Dash electronics</div><div class="state">Pi, screen, cameras, truck box</div></span>
+            <span class="watts num" title="Measured by the current sensor on the dash feed">{pw.dash} W</span>
+          </div>
+        )}
       </div>
     </Card>
   );

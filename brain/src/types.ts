@@ -26,7 +26,10 @@ export type State = {
   tilt: { pitch: number; roll: number } | null;
   tpms: Record<Wheel, { psi: number | null; tempF: number | null }> | null;
   /** watts: what the load draws when on, as set in Settings (no current sensor: an estimate). */
-  relays: Record<string, { name: string; on: boolean | null; watts: number }>;
+  /** watts: rated (Settings); measuredW: from an INA226 on that circuit (truck box), null when none is fitted or it's offline. */
+  relays: Record<string, { name: string; on: boolean | null; watts: number; measuredW: number | null }>;
+  /** The dash electronics' own feed (Pi, screen, cameras, truck box), measured by an INA226; null when not fitted. */
+  dashW: number | null;
   fiveSwitch: (boolean | null)[];
   trip: { id: number; startedAt: string; miles: number } | null;
   truckbox: boolean;

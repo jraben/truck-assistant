@@ -93,20 +93,20 @@ export class TripStore {
   private lastSampleAt = new Map<number, number>();
 
   /** One energy-review sample (drive/energy.ts), at most every SAMPLE_EVERY_MS. Never thinned on close. */
-  addSample(id: number, p: { t: Date; lat: number; lon: number; altM: number | null; speedMph: number | null; powerKw: number | null; techW?: number | null; accW?: number | null }) {
+  addSample(id: number, p: { t: Date; lat: number; lon: number; altM: number | null; speedMph: number | null; powerKw: number | null; techW?: number | null; accW?: number | null; techMeas?: boolean; accMeas?: boolean }) {
     const last = this.lastSampleAt.get(id);
     if (last !== undefined && p.t.getTime() - last < SAMPLE_EVERY_MS) return false;
     this.lastSampleAt.set(id, p.t.getTime());
     const r = (v: number | null, k: number) => (v === null || !Number.isFinite(v) ? null : Math.round(v * k) / k);
-    this.db.prepare('INSERT INTO trip_samples (trip_id, t, lat, lon, alt_m, speed_mph, power_kw, tech_w, acc_w) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, p.t.toISOString(), Math.round(p.lat * 1e6) / 1e6, Math.round(p.lon * 1e6) / 1e6, r(p.altM, 10), r(p.speedMph, 10), r(p.powerKw, 100), r(p.techW ?? null, 1), r(p.accW ?? null, 1));
+    this.db.prepare('INSERT INTO trip_samples (trip_id, t, lat, lon, alt_m, speed_mph, power_kw, tech_w, acc_w, tech_meas, acc_meas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(id, p.t.toISOString(), Math.round(p.lat * 1e6) / 1e6, Math.round(p.lon * 1e6) / 1e6, r(p.altM, 10), r(p.speedMph, 10), r(p.powerKw, 100), r(p.techW ?? null, 1), r(p.accW ?? null, 1), p.techMeas ? 1 : 0, p.accMeas ? 1 : 0);
     return true;
   }
 
   samples(id: number): EnergySample[] {
-    return (this.db.prepare('SELECT t, lat, lon, alt_m, speed_mph, power_kw, tech_w, acc_w FROM trip_samples WHERE trip_id = ? ORDER BY t').all(id) as
-      { t: string; lat: number; lon: number; alt_m: number | null; speed_mph: number | null; power_kw: number | null; tech_w: number | null; acc_w: number | null }[])
-      .map((p) => ({ t: p.t, lat: p.lat, lon: p.lon, altM: p.alt_m, speedMph: p.speed_mph, powerKw: p.power_kw, techW: p.tech_w, accW: p.acc_w }));
+    return (this.db.prepare('SELECT t, lat, lon, alt_m, speed_mph, power_kw, tech_w, acc_w, tech_meas, acc_meas FROM trip_samples WHERE trip_id = ? ORDER BY t').all(id) as
+      { t: string; lat: number; lon: number; alt_m: number | null; speed_mph: number | null; power_kw: number | null; tech_w: number | null; acc_w: number | null; tech_meas: number | null; acc_meas: number | null }[])
+      .map((p) => ({ t: p.t, lat: p.lat, lon: p.lon, altM: p.alt_m, speedMph: p.speed_mph, powerKw: p.power_kw, techW: p.tech_w, accW: p.acc_w, techMeas: p.tech_meas === 1, accMeas: p.acc_meas === 1 }));
   }
 
   /** What the truck carried on this trip beyond the driver (passengers, cargo, a trailer's tongue), for the energy model. */

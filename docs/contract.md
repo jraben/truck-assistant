@@ -36,6 +36,8 @@ ESPHome's own topic layout, so it works with HA discovery unchanged.
 | `slate/truckbox/sensor/pitch/state`, `.../roll/state` | degrees, float | tilt gauge |
 | `slate/truckbox/sensor/pack_power_kw/state` | kW, float: + drawing, − regenerating | the HV pack's power, once a CAN bridge can read it; logged per trip for the energy review, not shown live |
 | `slate/truckbox/sensor/tpms_fl_psi/state` (fl, fr, rl, rr) | psi, float | BLE TPMS, if fitted |
+| `slate/truckbox/sensor/relay_1_w/state` … `relay_6_w`, `.../relay_N_a/state` | watts / amps, float | measured, if an INA226 is fitted on that circuit (`packages/power_ina226.yaml`); `State.relays[id].measuredW` |
+| `slate/truckbox/sensor/dash_w/state`, `.../dash_a/state` | watts / amps, float | the dash electronics' feed (Pi, screen, cameras, truck box), if fitted; `State.dashW` |
 | `slate/truckbox/sensor/tpms_fl_temp/state` (fl, fr, rl, rr) | °F, float | |
 
 Relay names (default, editable in settings): 1 Bed lights, 2 Light bar,

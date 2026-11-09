@@ -15,7 +15,7 @@ export type EnergyResp = {
   tripId: number;
   source: 'measured' | 'model' | 'mixed' | 'none';
   measuredShare: number;
-  totals: { miles: number; movingS: number; usedKwh: number; regenKwh: number; netKwh: number; whPerMi: number | null; climbM: number | null; descentM: number | null; maxKw: number; maxRegenKw: number; driveKwh: number; techKwh: number; accessoryKwh: number };
+  totals: { miles: number; movingS: number; usedKwh: number; regenKwh: number; netKwh: number; whPerMi: number | null; climbM: number | null; descentM: number | null; maxKw: number; maxRegenKw: number; driveKwh: number; techKwh: number; accessoryKwh: number; techMeasured: number; accessoryMeasured: number };
   breakdown: { rolling: number; aero: number; climbing: number; accelerating: number; aux: number; tech: number; accessories: number } | null;
   massLb: number;
   load: { lb: number | null; note: string | null };
@@ -84,7 +84,7 @@ export function TripEnergy({ tripId, title, onClose }: { tripId: number; title: 
             </div>
             <p class="help">Weight in the model: {e.massLb.toLocaleString()} lb (truck, driver{e.load.lb ? ', load' : ''}). {e.source === 'measured'
               ? 'Power is the pack’s own; the load is a label for comparing trips.'
-              : 'The model’s numbers (drag, rolling resistance, efficiencies) are estimates on /settings → Truck: they show where the energy went better than exactly how much.'} Tech and accessories are rated watts over time, as on the Control screen.</p>
+              : 'The model’s numbers (drag, rolling resistance, efficiencies) are estimates on /settings → Truck: they show where the energy went better than exactly how much.'} Tech and accessories come from the truck box's current sensors where fitted, otherwise the rated watts in Settings.</p>
           </>
         ))}
       </div>
@@ -98,10 +98,11 @@ function Tile({ k, v, sub, good }: { k: string; v: string; sub?: string; good?: 
 
 /** Driving vs the dash's tech vs switched accessories, as one bar. */
 function Split({ t }: { t: EnergyResp['totals'] }) {
+  const how = (share: number) => (share >= 0.95 ? 'measured' : share > 0.05 ? `${Math.round(share * 100)}% measured` : 'rated watts');
   const parts = [
-    { k: 'Driving', v: Math.max(0, t.driveKwh), c: 'var(--accent)' },
-    { k: 'Tech (dash, Pi, cameras, tablet)', v: t.techKwh, c: 'var(--warn)' },
-    { k: 'Accessories (switched loads)', v: t.accessoryKwh, c: 'var(--fg-dim, #8a99a5)' },
+    { k: 'Driving', v: Math.max(0, t.driveKwh), c: 'var(--accent)', how: '' },
+    { k: 'Tech (dash, Pi, cameras, tablet)', v: t.techKwh, c: 'var(--warn)', how: how(t.techMeasured) },
+    { k: 'Accessories (switched loads)', v: t.accessoryKwh, c: 'var(--fg-dim, #8a99a5)', how: how(t.accessoryMeasured) },
   ];
   const sum = parts.reduce((a, p) => a + p.v, 0) || 1;
   return (
@@ -110,7 +111,7 @@ function Split({ t }: { t: EnergyResp['totals'] }) {
         {parts.map((p) => p.v > 0 && <span style={{ width: `${(p.v / sum) * 100}%`, background: p.c }} />)}
       </div>
       <div class="row wrap" style="gap:14px;font-size:14px">
-        {parts.map((p) => <span><i class="dot" style={{ background: p.c }} /> {p.k}: <b class="num">{k1(p.v)} kWh</b> <span class="dimtxt">({Math.round((p.v / sum) * 100)}%)</span></span>)}
+        {parts.map((p) => <span><i class="dot" style={{ background: p.c }} /> {p.k}: <b class="num">{k1(p.v)} kWh</b> <span class="dimtxt">({Math.round((p.v / sum) * 100)}%{p.how ? `, ${p.how}` : ''})</span></span>)}
       </div>
     </div>
   );

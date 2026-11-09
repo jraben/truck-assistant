@@ -96,3 +96,31 @@ describe('trip energy model', () => {
     expect(parseGpsdLine('{"class":"TPV","mode":2,"lat":33.4,"lon":-111.9,"alt":330}')!.altM).toBeNull();
   });
 });
+
+describe('measured 12 V power (INA226 on the truck box)', () => {
+  it('reads relay and dash watts, refuses nonsense, and forgets them when the box goes offline', async () => {
+    const { parseTruckbox, applyTruckbox, clearTruckbox } = await import('../src/truckbox.ts');
+    expect(parseTruckbox('sensor/relay_4_w/state', '312.6')).toEqual({ relayW: { id: 'relay_4', w: 312.6 } });
+    expect(parseTruckbox('sensor/dash_w/state', '21.04')).toEqual({ dashW: 21 });
+    expect(parseTruckbox('sensor/relay_4_w/state', 'unavailable')).toEqual({ relayW: { id: 'relay_4', w: null } });
+    expect(parseTruckbox('sensor/relay_4_w/state', '-3')).toEqual({ relayW: { id: 'relay_4', w: null } });
+    expect(parseTruckbox('sensor/relay_9_w/state', '5')).toBeNull();
+    const s = { relays: { relay_4: { name: 'Compressor', on: true, watts: 360, measuredW: null } }, dashW: null } as never as import('../src/types.ts').State;
+    const tilt = { pitch: null, roll: null };
+    applyTruckbox(s, { relayW: { id: 'relay_4', w: 312.6 } }, tilt);
+    applyTruckbox(s, { dashW: 21 }, tilt);
+    expect(s.relays.relay_4.measuredW).toBe(312.6);
+    expect(s.dashW).toBe(21);
+    clearTruckbox(Object.assign(s, { fiveSwitch: [] }), tilt);
+    expect(s.relays.relay_4.measuredW).toBeNull();
+    expect(s.dashW).toBeNull();
+  });
+
+  it('the trip split says how much of it was measured', () => {
+    const half = run(31, 30).map((p, i) => ({ ...p, techW: 30, accW: 0, techMeas: i < 16, accMeas: false }));
+    const e = tripEnergy(half);
+    expect(e.totals.techMeasured).toBeCloseTo(0.5, 1);
+    expect(e.totals.accessoryMeasured).toBe(0);
+    expect(tripEnergy(run(31, 30).map((p) => ({ ...p, techMeas: true }))).totals.techMeasured).toBe(1);
+  });
+});

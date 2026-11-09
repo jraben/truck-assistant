@@ -13,6 +13,7 @@ to the Pi's Mosquitto broker, using the topics in `docs/contract.md`.
 | `packages/tpms_ble.yaml` + `tpms_decode.h` | BLE TPMS scanner and decoder (unverified, see TPMS). |
 | `packages/vibration.yaml` | "Vibration" while parked, from the MPU-6050: dashcam motion clips and the parked-motion alert. |
 | `packages/watch_link.yaml` | UART link to the tier 1 LTE-M watch (`firmware/watch`), and Wi-Fi off when parked. |
+| `packages/power_ina226.yaml` | Measured watts on one 12 V circuit (INA226 + shunt); include once per circuit. See Measured power. |
 | `secrets.example.yaml` | Copy to `secrets.yaml` (gitignored) and fill in. |
 
 **Status:** `esphome config` validates and `esphome compile` builds with
@@ -174,6 +175,32 @@ Nothing in this build back-feeds Slate's own wiring.
 | Each direct relay load | sized to load and wire, ≤5A |
 | Automotive relay coil feeds | 2A |
 | Compressor / inverter load side | per the device manual and wire gauge (typically 30A) |
+
+### Measured power (optional INA226 sensors)
+
+Without these, every watt on the Control screen and in the trip energy split
+is the rated figure from Settings. With them, the circuits that have one are
+measured; the rest stay rated, and the screens say which is which.
+
+- **One INA226 board per circuit** (about $5-10, I2C), its shunt in the
+  circuit's positive feed **after the fuse and relay, before the load**, VBUS
+  to the same point, GND common with the truck box, SDA/SCL on the existing
+  bus (GPIO21/22, shared with the SHT31 and MPU-6050).
+- **Shunts:** the INA226 reads up to 81.9 mV, so use a 75 mV shunt rated a bit
+  above the circuit's fuse: `shunt_ohm = 0.075 / amps` (30 A -> `0.0025`,
+  10 A -> `0.0075`). The board's own R100 (0.1 ohm) is fine to about 0.8 A,
+  which suits the dash feed, never a light bar or compressor.
+- **Addresses:** set each with the A0/A1 pads: 0x40, 0x41, 0x42, 0x43, 0x46,
+  0x47, 0x48. Not 0x44/0x45 (SHT31).
+- **The dash feed:** one sensor named `Dash` on the 12 V line feeding the Pi's
+  buck converter, the screen and the cameras (and this box) makes the trip
+  energy's "tech" share measured.
+- **Turn each on** in `truckbox.yaml` under `packages:` (examples there):
+  `name: "Relay 4"` publishes `sensor/relay_4_w` and `sensor/relay_4_a`;
+  `name: "Dash"` publishes `sensor/dash_w` and `sensor/dash_a`.
+- The 12 V battery as a whole (draw, DC-DC charging, battery health) is a
+  different job: a shunt monitor on the battery negative (e.g. a Victron
+  SmartShunt, Bluetooth). Not wired into the cockpit yet.
 
 ---
 

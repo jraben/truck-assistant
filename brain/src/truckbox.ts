@@ -13,6 +13,9 @@ export type TruckboxPatch = {
   pitch?: number | null;
   roll?: number | null;
   tpms?: { wheel: Wheel; field: 'psi' | 'tempF'; value: number | null };
+  /** Measured watts (packages/power_ina226.yaml). */
+  relayW?: { id: string; w: number | null };
+  dashW?: number | null;
 };
 
 const onOff = (p: string): boolean | null => (p === 'ON' ? true : p === 'OFF' ? false : null);
@@ -23,6 +26,9 @@ const float = (p: string): number | null => {
 };
 
 /** `sub` is the topic after "<truckId>/truckbox/". Returns null for topics we don't use. */
+/** A watts reading: a number from 0 to 5 kW, else null (unavailable, NaN, nonsense). Pure. */
+const watts = (p: string) => { const v = Number(p); return Number.isFinite(v) && v >= 0 && v < 5000 ? Math.round(v * 10) / 10 : null; };
+
 export function parseTruckbox(sub: string, payload: string): TruckboxPatch | null {
   const p = payload.trim();
   if (sub === 'status') return { truckbox: p === 'online' };
@@ -39,6 +45,9 @@ export function parseTruckbox(sub: string, payload: string): TruckboxPatch | nul
   if (sub === 'sensor/roll/state') return { roll: float(p) };
   m = /^sensor\/tpms_(fl|fr|rl|rr)_(psi|temp)\/state$/.exec(sub);
   if (m) return { tpms: { wheel: m[1] as Wheel, field: m[2] === 'psi' ? 'psi' : 'tempF', value: float(p) } };
+  m = /^sensor\/(relay_[1-6])_w\/state$/.exec(sub);
+  if (m) return { relayW: { id: m[1], w: watts(p) } };
+  if (sub === 'sensor/dash_w/state') return { dashW: watts(p) };
   return null;
 }
 
@@ -57,6 +66,8 @@ export function applyTruckbox(s: State, p: TruckboxPatch, tilt: { pitch: number 
   if (p.pitch !== undefined) tilt.pitch = p.pitch;
   if (p.roll !== undefined) tilt.roll = p.roll;
   if (p.pitch !== undefined || p.roll !== undefined) s.tilt = tilt.pitch !== null && tilt.roll !== null ? { pitch: tilt.pitch, roll: tilt.roll } : null;
+  if (p.relayW && s.relays[p.relayW.id]) s.relays[p.relayW.id].measuredW = p.relayW.w;
+  if (p.dashW !== undefined) s.dashW = p.dashW;
   if (p.tpms) {
     s.tpms ??= { fl: { psi: null, tempF: null }, fr: { psi: null, tempF: null }, rl: { psi: null, tempF: null }, rr: { psi: null, tempF: null } };
     s.tpms[p.tpms.wheel][p.tpms.field] = p.tpms.value;
@@ -67,7 +78,8 @@ export function applyTruckbox(s: State, p: TruckboxPatch, tilt: { pitch: number 
 
 /** Truck box offline: everything it reported is now unknown. */
 export function clearTruckbox(s: State, tilt: { pitch: number | null; roll: number | null }) {
-  for (const r of Object.values(s.relays)) r.on = null;
+  for (const r of Object.values(s.relays)) { r.on = null; r.measuredW = null; }
+  s.dashW = null;
   s.fiveSwitch = s.fiveSwitch.map(() => null);
   s.ignition = null; s.reverse = null; s.cabinTempF = null; s.aux12v = null; s.tilt = null; s.tpms = null; s.gear = null;
   tilt.pitch = null; tilt.roll = null;

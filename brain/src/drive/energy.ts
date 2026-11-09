@@ -20,7 +20,7 @@
 import { haversineMi } from '../geo.ts';
 
 /** techW: the dash electronics (Pi, screen, cameras, tablet); accW: the relay loads that were on. Both rated watts (estimates); null = not recorded. */
-export type EnergySample = { t: string; lat: number; lon: number; altM: number | null; speedMph: number | null; powerKw: number | null; techW?: number | null; accW?: number | null };
+export type EnergySample = { t: string; lat: number; lon: number; altM: number | null; speedMph: number | null; powerKw: number | null; techW?: number | null; accW?: number | null; techMeas?: boolean; accMeas?: boolean };
 
 /** The physics model's numbers. Defaults are estimates for a small EV pickup until the Slate's are published or fitted. */
 export type EnergyModel = {
@@ -62,6 +62,8 @@ export type TripEnergy = {
      * accessories are rated watts over time; driving is the rest.
      */
     driveKwh: number; techKwh: number; accessoryKwh: number;
+    /** Share of the trip whose tech / accessory watts were measured (INA226), 0-1; the rest is rated watts. */
+    techMeasured: number; accessoryMeasured: number;
   };
   /** Model only: where the energy went (kWh at the battery). Null when measured. */
   breakdown: { rolling: number; aero: number; climbing: number; accelerating: number; aux: number; tech: number; accessories: number } | null;
@@ -88,12 +90,12 @@ export function tripEnergy(samples: EnergySample[], model: EnergyModel = DEFAULT
   // Speed is smoothed too: GPS speed wobbles by a mph or two between samples, and every wobble
   // would count as speeding up and slowing down, which the model charges for and only partly gets back.
   const spd = smoothAlt(pts.map((p) => ({ t: p.ms, alt: p.speedMph })), SPEED_WINDOW_S);
-  const empty: TripEnergy = { source: 'none', measuredShare: 0, totals: { miles: 0, movingS: 0, usedKwh: 0, regenKwh: 0, netKwh: 0, whPerMi: null, climbM: null, descentM: null, maxKw: 0, maxRegenKw: 0, driveKwh: 0, techKwh: 0, accessoryKwh: 0 }, breakdown: null, massLb, series: [] };
+  const empty: TripEnergy = { source: 'none', measuredShare: 0, totals: { miles: 0, movingS: 0, usedKwh: 0, regenKwh: 0, netKwh: 0, whPerMi: null, climbM: null, descentM: null, maxKw: 0, maxRegenKw: 0, driveKwh: 0, techKwh: 0, accessoryKwh: 0, techMeasured: 0, accessoryMeasured: 0 }, breakdown: null, massLb, series: [] };
   if (pts.length < 2) return empty;
 
   let mi = 0, movingS = 0, usedJ = 0, regenJ = 0, measuredS = 0, climb = 0, descent = 0, hadAlt = false, maxKw = 0, maxRegen = 0;
   const br = { rolling: 0, aero: 0, climbing: 0, accelerating: 0, aux: 0, tech: 0, accessories: 0 };
-  let techJ = 0, accJ = 0;
+  let techJ = 0, accJ = 0, techMeasS = 0, accMeasS = 0;
   const series: EnergyPoint[] = [{ t: pts[0].t, mi: 0, lat: pts[0].lat, lon: pts[0].lon, altM: alt[0], speedMph: pts[0].speedMph, powerKw: 0, measured: pts[0].powerKw !== null }];
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1], b = pts[i];
@@ -111,6 +113,8 @@ export function tripEnergy(samples: EnergySample[], model: EnergyModel = DEFAULT
       // The 12 V side (dash, accessories) runs off the pack through the DC-DC converter.
       const tW = ((a.techW ?? 0) + (b.techW ?? 0)) / 2 / DCDC_EFF, aW = ((a.accW ?? 0) + (b.accW ?? 0)) / 2 / DCDC_EFF;
       techJ += tW * dt; accJ += aW * dt;
+      if (a.techMeas && b.techMeas) techMeasS += dt;
+      if (a.accMeas && b.accMeas) accMeasS += dt;
       if (a.powerKw !== null && b.powerKw !== null) {
         measured = true; measuredS += dt;
         kw = (a.powerKw + b.powerKw) / 2;
@@ -151,6 +155,7 @@ export function tripEnergy(samples: EnergySample[], model: EnergyModel = DEFAULT
       climbM: hadAlt ? Math.round(climb) : null, descentM: hadAlt ? Math.round(descent) : null,
       maxKw: Math.round(maxKw * 10) / 10, maxRegenKw: Math.round(-maxRegen * 10) / 10,
       techKwh: kwh(techJ), accessoryKwh: kwh(accJ),
+      techMeasured: Math.round(Math.min(1, techMeasS / drivingS) * 100) / 100, accessoryMeasured: Math.round(Math.min(1, accMeasS / drivingS) * 100) / 100,
       driveKwh: Math.round((netKwh - kwh(techJ) - kwh(accJ)) * 1000) / 1000,
     },
     breakdown: share >= 0.95 ? null : { rolling: kwh(br.rolling), aero: kwh(br.aero), climbing: kwh(br.climbing), accelerating: kwh(br.accelerating), aux: kwh(br.aux), tech: kwh(br.tech), accessories: kwh(br.accessories) },

@@ -64,6 +64,7 @@ The Pi still runs the brain; a **Pi 4** is enough now that it drives no screen.
 | Right-angle cables: HDMI 90°, 2× USB-C 90° (touch, power) | The connectors sit about 26 mm from the panel end, so straight plugs won't fit in the insert | 20 | Required | B | — |
 | Carlinkit CPC200-CCPA (Autokit) | Wireless CarPlay to USB. Driven over WebUSB by `ui/src/carplay/`. **Don't let it update its firmware.** | 45 (range 40–65) | Required for CarPlay | B | [carlinkit.com](https://www.carlinkit.com/) (main site) |
 | USB microphone (lavalier or small array) | Siri and calls through CarPlay, WOPR voice | 15 | Optional (voice) | F | — |
+| INA226 current sensor boards + 75 mV shunts (one per circuit to measure) | Measured watts per relay load and for the dash feed, instead of rated watts (`firmware/truckbox/packages/power_ina226.yaml`) | 5-10 each, shunts 5-15 | Optional | F | TI INA226 breakout boards (generic) |
 | 4-ch Class-D amp (~50 W×4) | **Only if Slate's speakers turn out to be passive** | 100–180 | Unknown until delivery | opt | — |
 
 ## 3. Location, network, radio

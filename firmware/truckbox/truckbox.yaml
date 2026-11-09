@@ -102,6 +102,10 @@ packages:
   vibration: !include packages/vibration.yaml
   # UART link to the tier 1 LTE-M watch (firmware/watch). Comment out if there is no watch.
   watch_link: !include packages/watch_link.yaml
+  # Measured power (INA226 current sensors): one include per circuit fitted.
+  # Without these the cockpit uses the rated watts from Settings. README "Measured power".
+  # relay_4_power: !include { file: packages/power_ina226.yaml, vars: { name: "Relay 4", address: "0x40", shunt_ohm: "0.0025", max_a: "30" } }
+  # dash_power: !include { file: packages/power_ina226.yaml, vars: { name: "Dash", address: "0x41", shunt_ohm: "0.1", max_a: "0.8" } }
 
 esphome:
   name: ${name}

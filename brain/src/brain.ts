@@ -164,7 +164,8 @@ export class Brain extends EventEmitter {
       ts: new Date().toISOString(),
       speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null,
       ignition: null, reverse: null, cabinTempF: null, aux12v: null, tilt: null, tpms: null,
-      relays: Object.fromEntries(RELAY_IDS.map((id) => [id, { name: st.relays[id], on: null, watts: st.relayWatts[id] }])),
+      relays: Object.fromEntries(RELAY_IDS.map((id) => [id, { name: st.relays[id], on: null, watts: st.relayWatts[id], measuredW: null }])),
+      dashW: null,
       fiveSwitch: [null, null, null, null, null],
       trip: null, truckbox: false, nowPlaying: null,
       driver: null, driverSuggestion: null, place: null,
@@ -522,8 +523,12 @@ export class Brain extends EventEmitter {
       const pw = this.packPower && Date.now() - this.packPower.at < 10_000 ? this.packPower.kw : null;
       // The dash's own draw and the switched loads: rated watts (Settings), as on the Control screen; the tablet charges while the truck is on.
       const st = this.settings.get();
-      const accW = Object.values(this.s.relays).reduce((w, r) => w + (r.on === true ? Math.max(0, r.watts ?? 0) : 0), 0);
-      this.trips.addSample(this.s.trip.id, { t: f.at, lat: f.lat, lon: f.lon, altM: f.altM ?? null, speedMph: f.speedMph, powerKw: pw, techW: st.stackWatts + st.tabletWatts, accW });
+      // Measured (INA226 on the truck box) wherever a circuit has one; rated watts elsewhere.
+      const rs = Object.values(this.s.relays);
+      const accW = rs.reduce((w, r) => w + (r.measuredW ?? (r.on === true ? Math.max(0, r.watts ?? 0) : 0)), 0);
+      const accMeas = rs.some((r) => r.measuredW !== null) && rs.every((r) => r.measuredW !== null || r.on !== true);
+      const techW = (this.s.dashW ?? st.stackWatts) + st.tabletWatts;
+      this.trips.addSample(this.s.trip.id, { t: f.at, lat: f.lat, lon: f.lon, altM: f.altM ?? null, speedMph: f.speedMph, powerKw: pw, techW, accW, techMeas: this.s.dashW !== null, accMeas });
     }
     this.changed();
   }

@@ -127,7 +127,9 @@ Built for Jeff's truck first, published for other Slate owners later.
   switched accessories, and the load it carried. For looking back after a
   drive, never live. Measured once the truck box can read the pack's power;
   until then a physics model, and it says which. Asked for on the Slate
-  Forums thread.
+  Forums thread. Optional INA226 current sensors on the truck box
+  (`firmware/truckbox/packages/power_ina226.yaml`) make the relay loads and
+  the dash's own draw measured, on the Control screen and in the trip split.
 - **Automatic updates (2026-11-09):** Settings → Software updates checks
   GitHub every 12 hours; tick "Install updates automatically" and a new
   version installs by itself, never while driving: when parked, or only when

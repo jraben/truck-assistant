@@ -204,7 +204,7 @@ describe('migration from flat settings', () => {
 describe('truck box topics', () => {
   const blank = (): State => ({
     ts: '', speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null, ignition: null, reverse: null,
-    cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: { relay_1: { name: 'Bed lights', on: null, watts: 36 } }, fiveSwitch: [null, null, null, null, null], trip: null, truckbox: false, nowPlaying: null,
+    cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: { relay_1: { name: 'Bed lights', on: null, watts: 36, measuredW: null } }, dashW: null, fiveSwitch: [null, null, null, null, null], trip: null, truckbox: false, nowPlaying: null,
     driver: null, driverSuggestion: null, place: null, network: null as unknown as State['network'], drive: null, chargePeak: null,
   });
   it('parses ESPHome topics and derives gear R from reverse', () => {

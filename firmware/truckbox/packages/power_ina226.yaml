@@ -1,0 +1,47 @@
+# Measured power on one 12 V circuit: a TI INA226 on the I2C bus, reading the
+# voltage across a shunt resistor in that circuit's positive feed. Include it
+# once per circuit you fit (truckbox.yaml, `packages:`), each with its own
+# address and shunt:
+#
+#   relay_4_power: !include
+#     file: packages/power_ina226.yaml
+#     vars: { name: "Relay 4", address: "0x40", shunt_ohm: "0.0025", max_a: "30" }
+#   dash_power: !include
+#     file: packages/power_ina226.yaml
+#     vars: { name: "Dash", address: "0x41", shunt_ohm: "0.1", max_a: "0.8" }
+#
+# `name` is part of the contract: "Relay 4" publishes
+#   slate/truckbox/sensor/relay_4_w/state   (watts)
+#   slate/truckbox/sensor/relay_4_a/state   (amps)
+# and "Dash" (the Pi, screen, cameras and this box: their shared 12 V feed)
+# publishes sensor/dash_w and sensor/dash_a. The brain uses a measured figure
+# wherever one arrives and the rated watts from Settings everywhere else.
+#
+# Addresses: A0/A1 straps give 0x40-0x4F. Skip 0x44 and 0x45: the SHT31 cabin
+# sensor uses one of them. 0x40, 0x41, 0x42, 0x43, 0x46, 0x47, 0x48 cover six
+# relays and the dash.
+#
+# Shunts: the INA226 reads up to 81.9 mV across the shunt, so a 75 mV shunt
+# fits: shunt_ohm = 0.075 / its rated amps (30 A -> 0.0025, 10 A -> 0.0075).
+# The little R100 resistor on the common breakout boards (0.1 ohm) is fine to
+# about 0.8 A: enough for the dash feed, not for a light bar. Wire the shunt on
+# the HIGH side (after the relay or fuse, before the load) and the board's VBUS
+# pin to the same point, so bus volts and watts are the circuit's own. Grounds
+# common with the truck box. See README "Measured power".
+sensor:
+  - platform: ina226
+    address: ${address}
+    shunt_resistance: ${shunt_ohm} ohm
+    max_current: ${max_a}A
+    adc_averaging: 64
+    update_interval: 2s
+    current:
+      name: ${name} A
+      accuracy_decimals: 2
+      filters:
+        - lambda: return fabsf(x) < 0.005f ? 0.0f : x;   # shunt offset noise at zero
+    power:
+      name: ${name} W
+      accuracy_decimals: 1
+      filters:
+        - lambda: return x < 0.1f ? 0.0f : x;

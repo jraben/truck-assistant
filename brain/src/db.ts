@@ -79,6 +79,7 @@ export function openDb(dataDir: string, opts: { sim?: boolean } = {}): Db {
   addColumns(db, 'trips', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
   addColumns(db, 'trips', { load_lb: 'REAL', load_note: 'TEXT' });
   addColumns(db, 'trip_samples', { tech_w: 'REAL', acc_w: 'REAL' });
+  addColumns(db, 'trip_samples', { tech_meas: 'INTEGER', acc_meas: 'INTEGER' });
   addColumns(db, 'charge_sessions', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
   // Rows from before the flag existed carry no mark. There is no reliable way to
   // tell a simulated trip from a real one after the fact, so: a brain starting

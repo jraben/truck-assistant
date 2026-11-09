@@ -145,7 +145,7 @@ describe('gate codes (WOPR /api/where text)', () => {
 class FakeBrain extends EventEmitter implements BrainView {
   s: State = {
     ts: '', speedMph: 0, soc: 70, socSource: 'manual', rangeMi: 120, gear: null, gps: { lat: 33.5, lon: -111.9, headingDeg: null, fix: true },
-    ignition: false, reverse: false, cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: {}, fiveSwitch: [], trip: null, truckbox: false,
+    ignition: false, reverse: false, cabinTempF: null, aux12v: null, tilt: null, tpms: null, relays: {}, dashW: null, fiveSwitch: [], trip: null, truckbox: false,
     nowPlaying: null, driver: { id: 'jeff', name: 'Jeff', initials: 'J', color: '#fff', photo: null }, driverSuggestion: null, place: null,
     network: { link: 'home', label: 'HOME WI-FI', ssid: 'x', driverId: null, signal: 90, manual: false, saveData: false, bytesThisTrip: 0, bytesThisMonth: {}, backend: 'sim', bluetooth: 'supported', error: null },
     drive: null, chargePeak: null,

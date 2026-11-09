@@ -16,26 +16,35 @@ export type TabletPower = {
 };
 
 export type PowerSummary = {
-  /** Watts per relay id, 0 while off or unknown. */
+  /** Watts per relay id: measured where an INA226 reads that circuit, else the rated watts while on (0 off or unknown). */
   byRelay: Record<string, number>;
+  /** Which relays' watts are measured. */
+  measured: Record<string, boolean>;
+  /** The dash electronics' own feed, measured (null without a sensor: then it isn't counted). */
+  dash: number | null;
   /** The tablet's draw on the truck: its watts while charging, 0 on battery, its watts if unknown. */
   tablet: number;
   total: number;
   amps: number;
+  /** Every figure in the total is measured (the tablet aside). */
+  allMeasured: boolean;
 };
 
 /** Pure (tested). */
-export function powerSummary(relays: State['relays'] | null | undefined, tablet: TabletPower, tabletWatts: number): PowerSummary {
-  const byRelay: Record<string, number> = {};
-  let total = 0;
+export function powerSummary(relays: State['relays'] | null | undefined, tablet: TabletPower, tabletWatts: number, dashW: number | null = null): PowerSummary {
+  const byRelay: Record<string, number> = {}, measured: Record<string, boolean> = {};
+  let total = 0, allMeasured = true;
   for (const [id, r] of Object.entries(relays ?? {})) {
-    const w = r.on === true ? Math.max(0, r.watts ?? 0) : 0;
+    const m = r.measuredW ?? null;
+    const w = m !== null ? m : r.on === true ? Math.max(0, r.watts ?? 0) : 0;
     byRelay[id] = w;
+    measured[id] = m !== null;
+    if (m === null && r.on === true) allMeasured = false;
     total += w;
   }
   const t = tablet.charging === false ? 0 : Math.max(0, tabletWatts);
-  total += t;
-  return { byRelay, tablet: t, total, amps: Math.round((total / SYSTEM_VOLTS) * 10) / 10 };
+  total += t + (dashW ?? 0);
+  return { byRelay, measured, dash: dashW, tablet: t, total: Math.round(total), amps: Math.round((total / SYSTEM_VOLTS) * 10) / 10, allMeasured };
 }
 
 type BatteryLike = EventTarget & { level: number; charging: boolean };
