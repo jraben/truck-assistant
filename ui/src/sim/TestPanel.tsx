@@ -230,6 +230,7 @@ function TruckTab({ st, set, post }: TabProps) {
         <div class="row">
           <button type="button" class="btn" onClick={() => void post('/api/sim/bump').then((ok) => ok && toast('Bumped the truck box (vibration)'))}>Bump the truck</button>
           <button type="button" class="btn" onClick={() => void post('/api/sim/tow', { seconds: 90 }).then((ok) => ok && toast('Towing it away: the theft alert fires past the alert radius'))}>Tow it away</button>
+          <button type="button" class="btn" onClick={() => void post('/api/sim/flight', { flight: 'AA 1234' }).then((ok) => ok && toast('Fake flight AA 1234 from Dallas: lands at PHX in about 25 min (Road trip view)'))}>Fake inbound flight</button>
         </div>
         <span class="dimtxt">Alerts from a simulated truck are logged, not sent to the phone, unless SIM_ALERTS=1.</span>
       </div>

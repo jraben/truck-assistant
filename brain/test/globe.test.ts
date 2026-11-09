@@ -21,4 +21,15 @@ describe('globe feed', () => {
   it('uses an address from the reserved block that God\'s Eye accepts', () => {
     expect(GLOBE_HEX).toMatch(/^[0-9a-f]{6}$/);
   });
+
+  it('adds the airport pickup’s inbound plane beside the truck, under its own hex when known', async () => {
+    const { PICKUP_HEX } = await import('../src/globe.ts');
+    const at = Date.parse('2027-06-01T15:00:00Z');
+    const truck = { gps: { lat: 33.45, lon: -112.07, headingDeg: 270, fix: true }, speedMph: 60 };
+    const doc = globeAircraft(truck, at, 'slate-1', 3, { callsign: 'AAL1234', lat: 33.9, lon: -111.2, altFt: 12000, gsKt: 310, track: 250, hex: 'a4b5c6' });
+    expect(doc.aircraft).toHaveLength(2);
+    expect(doc.aircraft[0]).toMatchObject({ hex: 'a4b5c6', flight: 'AAL1234 ', alt_baro: 12000, gs: 310, track: 250 });
+    const noHex = globeAircraft({ gps: null, speedMph: null }, at, 'slate-1', 3, { callsign: 'SWA2510', lat: 33.9, lon: -111.2, altFt: 'ground', gsKt: null, track: null, hex: null });
+    expect(noHex.aircraft).toEqual([expect.objectContaining({ hex: PICKUP_HEX, alt_baro: 'ground' })]);
+  });
 });

@@ -4,8 +4,16 @@ import { api, toast } from '../lib/brain.ts';
 import type { PickupView } from '../../../brain/src/pickup/service.ts';
 import { fmtTime, wazeUrl } from '../lib/fmt.ts';
 import { Card } from './common.tsx';
+import { DrivingLock } from '../drive/Lock.tsx';
 
-const STEPS = [['en-route', 'Flying'], ['approach', 'Approach'], ['taxiing', 'Landed'], ['at-gate', 'At gate']] as const;
+/** "36,000 ft · 518 mph" / "On the ground · 14 mph", from ADS-B. Pure. */
+export function planeLine(pl: { altFt: number | 'ground' | null; gsKt: number | null }): string {
+  const spd = pl.gsKt === null ? '' : ` · ${Math.round(pl.gsKt * 1.15078)} mph`;
+  if (pl.altFt === 'ground') return `On the ground${spd}`;
+  return `${pl.altFt === null ? 'Altitude unknown' : `${pl.altFt.toLocaleString('en-US')} ft`}${spd}`;
+}
+
+const STEPS =[['en-route', 'Flying'], ['approach', 'Approach'], ['taxiing', 'Landed'], ['at-gate', 'At gate']] as const;
 
 export function PickupCard() {
   const [v, setV] = useState<PickupView | null>(null);
@@ -21,13 +29,26 @@ export function PickupCard() {
     catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
   const cancel = async () => { setV(await api<PickupView>('/api/pickup', { method: 'DELETE' })); };
-  const p = v?.pickup, s = v?.state;
+  const p = v?.pickup, s = v?.state, pl = s?.plane ?? null, o = s?.official ?? null;
   if (p) {
     const idx = STEPS.findIndex(([k]) => k === s?.phase);
     return (
       <Card label={`Pickup · ${p.flight.label}${p.who ? ` · ${p.who}` : ''}`} right={<button class="btn sm" type="button" onClick={() => void cancel()}>Done</button>}>
+        {v?.sim && <div class="tag dim" style="justify-self:start">Simulated flight (test panel)</div>}
+        {o?.cancelled && <div class="banner bad">The airline lists {p.flight.label} as cancelled.</div>}
+        {o?.diverted && <div class="banner bad">{p.flight.label} has been diverted.</div>}
         <div class="pkline">{s?.line ?? 'Looking for the flight…'}</div>
         {p.origin && p.dest && <div class="dimtxt">{p.origin.city ?? p.origin.iata} → {p.dest.name}</div>}
+        {pl && <div class="dimtxt num">{planeLine(pl)}</div>}
+        {o && (o.gate || o.terminal || o.baggage || o.delayMin !== null || o.status) && (
+          <div class="row wrap dimtxt num" style="gap:12px">
+            {o.terminal && <span>Terminal <b>{o.terminal}</b></span>}
+            {o.gate && <span>Gate <b>{o.gate}</b></span>}
+            {o.baggage && <span>Bags at <b>{o.baggage}</b></span>}
+            {o.delayMin !== null && o.delayMin !== 0 && <span>{o.delayMin > 0 ? `${o.delayMin} min late` : `${-o.delayMin} min early`}</span>}
+            {o.status && <span>{o.status}</span>}
+          </div>
+        )}
         <div class="pksteps">{STEPS.map(([, label], i) => <span class={i <= idx ? 'on' : ''}>{label}</span>)}</div>
         <div class="rtsum">
           {s?.milesOut !== null && s?.milesOut !== undefined && s.milesOut > 0 && <div><b class="num">{s.milesOut}</b><small>mi out</small></div>}
@@ -37,19 +58,21 @@ export function PickupCard() {
         </div>
         {p.dest && <a class="btn primary" href={wazeUrl(p.dest.lat, p.dest.lon)} target="_blank" rel="noreferrer">Waze to {p.dest.iata ?? 'the airport'}</a>}
         {v?.error && <div class="dimtxt" style="font-size:13px">{v.error}</div>}
-        <div class="attrib">Position: ADS-B via adsb.fi (open data); route: adsbdb. ADS-B shows where the plane is, not the gate or bag carousel.</div>
+        <div class="attrib">Position: ADS-B via adsb.fi (open data); route: adsbdb. Landing time is an estimate from distance and speed.{v?.officialOn ? ' Gate, bags and delays: FlightAware AeroAPI.' : ' The gate and bag carousel need a FlightAware key (Settings → Traffic cameras and incidents).'}</div>
       </Card>
     );
   }
   return (
     <Card label="Airport pickup">
-      {v?.suggestion && <button class="btn primary" type="button" disabled={busy} onClick={() => void start(v.suggestion!.flight.label)}>Track {v.suggestion.flight.label} (from “{v.suggestion.from}”)</button>}
-      <form class="pkform" onSubmit={(e) => { e.preventDefault(); if (flight.trim()) void start(flight); }}>
-        <input type="text" placeholder="Flight (AA 1234)" value={flight} onInput={(e) => setFlight((e.target as HTMLInputElement).value)} aria-label="Flight number" />
-        <input type="text" placeholder="Who (optional)" value={who} onInput={(e) => setWho((e.target as HTMLInputElement).value)} aria-label="Who you're picking up" />
-        <label class="dimtxt"><input type="checkbox" checked={bags} onChange={(e) => setBags((e.target as HTMLInputElement).checked)} /> checked bags</label>
-        <button class="btn primary" type="submit" disabled={busy || !flight.trim()}>{busy ? 'Finding…' : 'Track'}</button>
-      </form>
+      <DrivingLock what="typing" summary="Set the flight when the truck is stopped; a pickup already on keeps showing while you drive.">
+        {v?.suggestion && <button class="btn primary" type="button" disabled={busy} onClick={() => void start(v.suggestion!.flight.label)}>Track {v.suggestion.flight.label} (from “{v.suggestion.from}”)</button>}
+        <form class="pkform" onSubmit={(e) => { e.preventDefault(); if (flight.trim()) void start(flight); }}>
+          <input type="text" placeholder="Flight (AA 1234)" value={flight} onInput={(e) => setFlight((e.target as HTMLInputElement).value)} aria-label="Flight number" />
+          <input type="text" placeholder="Who (optional)" value={who} onInput={(e) => setWho((e.target as HTMLInputElement).value)} aria-label="Who you're picking up" />
+          <label class="dimtxt"><input type="checkbox" checked={bags} onChange={(e) => setBags((e.target as HTMLInputElement).checked)} /> checked bags</label>
+          <button class="btn primary" type="submit" disabled={busy || !flight.trim()}>{busy ? 'Finding…' : 'Track'}</button>
+        </form>
+      </DrivingLock>
       <div class="dimtxt" style="font-size:13px">Follows the flight live and tells you when to leave, with alerts to your phone when it's time, when it lands and when it's at the gate.</div>
     </Card>
   );

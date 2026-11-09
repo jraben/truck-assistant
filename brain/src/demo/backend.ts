@@ -397,8 +397,10 @@ export function demoFlight(callsign: string, now = Date.now()) {
   }
   const milesOut = ((landAt - now) / 60_000) * 8.6, total = 868;
   const f = Math.min(1, milesOut / total);
-  return { flight: callsign, lat: PHX.lat + (DFW.lat - PHX.lat) * f, lon: PHX.lon + (DFW.lon - PHX.lon) * f, alt_baro: milesOut < 30 ? Math.round(milesOut * 330) : 36000, gs: milesOut < 30 ? 180 : 450, track: 265, seen: 1 };
+  return { hex: 'f1a7e1', flight: callsign, lat: PHX.lat + (DFW.lat - PHX.lat) * f, lon: PHX.lon + (DFW.lon - PHX.lon) * f, alt_baro: milesOut < 30 ? Math.round(milesOut * 330) : 36000, gs: milesOut < 30 ? 180 : 450, track: 265, seen: 1 };
 }
+/** Start a flight's simulated arrival again (the SIM test panel's "fake inbound flight"). */
+export function resetDemoFlight(callsign: string) { flightStart.delete(callsign.toUpperCase()); }
 export function adsbAnswer(u: URL): Response {
   const cs = decodeURIComponent(u.pathname.split('/').pop() ?? '').toUpperCase();
   return json({ ac: cs ? [demoFlight(cs)] : [], now: Date.now() });

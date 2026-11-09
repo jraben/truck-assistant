@@ -4,10 +4,10 @@ import type { Trip } from '../lib/brain.ts';
 import { useLockout } from './hooks.ts';
 
 /** Wrap video, a browser or a long list: over the lockout speed it is replaced by a calm notice. */
-export function DrivingLock({ what, children, summary }: { what: 'video' | 'browser' | 'list'; children: ComponentChildren; summary?: ComponentChildren }) {
+export function DrivingLock({ what, children, summary }: { what: 'video' | 'browser' | 'list' | 'typing'; children: ComponentChildren; summary?: ComponentChildren }) {
   const { locked } = useLockout();
   if (!locked) return <>{children}</>;
-  const words = what === 'video' ? 'Video pauses' : what === 'browser' ? 'The browser pauses' : 'Long lists pause';
+  const words = what === 'video' ? 'Video pauses' : what === 'browser' ? 'The browser pauses' : what === 'typing' ? 'Typing waits' : 'Long lists pause';
   return (
     <div class="lockout" role="status">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z" /></svg>

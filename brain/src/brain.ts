@@ -230,6 +230,7 @@ export class Brain extends EventEmitter {
       gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
       online: () => this.net.status?.link !== 'offline',
       notify: async (title, message, clickUrl) => { if (this.pushToPhone) await this.pushToPhone(title, message, clickUrl); },
+      flightAwareKey: () => this.settings.get().keys.flightAware ?? null,
     });
     this.hazards = new HazardService({
       route: () => this.roadTrip.routeNow(),

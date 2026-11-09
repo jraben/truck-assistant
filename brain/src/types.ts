@@ -131,7 +131,7 @@ export type Settings = {
   tabletWatts: number;
   /** The rest of the dash electronics (Pi, screen, cameras, truck box, router), watts (estimate). */
   stackWatts: number;
-  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** NASA FIRMS MAP_KEY (fire hotspots). */ firms?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
+  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** NASA FIRMS MAP_KEY (fire hotspots). */ firms?: string; /** FlightAware AeroAPI (airport pickup: gate, bags, delays; paid, optional). */ flightAware?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {
     flatPerKwh: number | null;

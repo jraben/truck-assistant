@@ -54,7 +54,8 @@ export function findFlight(text: string): FlightId | null {
 }
 
 /** What ADS-B says right now (readsb fields). */
-export type Aircraft = { lat: number; lon: number; altFt: number | 'ground' | null; gsKt: number | null; track: number | null; seenAt: number };
+/** hex: the ICAO 24-bit address (adsb.fi `hex`), for God's Eye to match the plane with its own ADS-B. */
+export type Aircraft = { lat: number; lon: number; altFt: number | 'ground' | null; gsKt: number | null; track: number | null; seenAt: number; hex?: string | null };
 export type Airport = { iata: string | null; icao: string | null; name: string; city: string | null; lat: number; lon: number };
 
 export function parseAdsb(body: unknown, now: number): Aircraft | null {
@@ -63,7 +64,8 @@ export function parseAdsb(body: unknown, now: number): Aircraft | null {
   if (!a) return null;
   const alt = a.alt_baro === 'ground' ? 'ground' : typeof a.alt_baro === 'number' ? a.alt_baro : null;
   const seen = typeof a.seen_pos === 'number' ? a.seen_pos : typeof a.seen === 'number' ? a.seen : 0;
-  return { lat: a.lat as number, lon: a.lon as number, altFt: alt, gsKt: typeof a.gs === 'number' ? a.gs : null, track: typeof a.track === 'number' ? a.track : null, seenAt: now - seen * 1000 };
+  const hex = typeof a.hex === 'string' && /^~?[0-9a-f]{6}$/i.test(a.hex) ? a.hex.replace('~', '').toLowerCase() : null;
+  return { lat: a.lat as number, lon: a.lon as number, altFt: alt, gsKt: typeof a.gs === 'number' ? a.gs : null, track: typeof a.track === 'number' ? a.track : null, seenAt: now - seen * 1000, hex };
 }
 
 export function parseRoute(body: unknown): { origin: Airport | null; destination: Airport | null } {
@@ -85,7 +87,43 @@ export type PickupState = {
   leaveAt: string | null;
   driveMin: number | null;
   line: string;
+  /** Where the plane is (fresh ADS-B only), for the card and the God's Eye globe. */
+  plane?: { lat: number; lon: number; altFt: number | 'ground' | null; gsKt: number | null; track: number | null; hex: string | null } | null;
+  /** The airline's own word (FlightAware AeroAPI, only with a key in Settings). */
+  official?: Official | null;
 };
+
+/** Gate, bags and delays from FlightAware AeroAPI: the part ADS-B can't know. */
+export type Official = {
+  status: string | null;
+  gate: string | null; terminal: string | null; baggage: string | null;
+  /** Arrival delay in minutes (+ late, − early), or null. */
+  delayMin: number | null;
+  /** Estimated touchdown ("on") and gate arrival ("in"). */
+  estimatedOn: string | null; estimatedIn: string | null;
+  cancelled: boolean; diverted: boolean;
+  checkedAt: string;
+};
+
+/**
+ * AeroAPI `GET /flights/{ident}` → the leg arriving nearest now (it lists a
+ * few days either side). Field names from AeroAPI v4's documented schema; not
+ * yet checked against a live answer. Pure.
+ */
+export function parseAeroApi(body: unknown, now: number): Official | null {
+  const fl = (body as { flights?: Record<string, unknown>[] } | null)?.flights;
+  if (!Array.isArray(fl) || !fl.length) return null;
+  const t = (v: unknown) => (typeof v === 'string' && Number.isFinite(Date.parse(v)) ? v : null);
+  const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 60) : null);
+  const arrive = (f: Record<string, unknown>) => Date.parse(t(f.estimated_on) ?? t(f.scheduled_on) ?? t(f.estimated_in) ?? t(f.scheduled_in) ?? '') || Infinity;
+  const f = [...fl].sort((a, b) => Math.abs(arrive(a) - now) - Math.abs(arrive(b) - now))[0];
+  const delay = typeof f.arrival_delay === 'number' ? Math.round(f.arrival_delay / 60) : null;
+  return {
+    status: s(f.status), gate: s(f.gate_destination), terminal: s(f.terminal_destination), baggage: s(f.baggage_claim),
+    delayMin: delay, estimatedOn: t(f.estimated_on), estimatedIn: t(f.estimated_in),
+    cancelled: f.cancelled === true, diverted: f.diverted === true, checkedAt: new Date(now).toISOString(),
+  };
+}
 
 /** Minutes from touchdown to the gate, and from the gate to the curb (more with checked bags). */
 export const TAXI_MIN = 10;
@@ -97,6 +135,12 @@ export const BAGS_MIN = 25;
  * when it was first seen on the ground at the destination (kept by the caller).
  */
 export function pickupState(o: { now: number; ac: Aircraft | null; dest: Airport | null; landedAt: number | null; stoppedSince: number | null; bags: boolean; driveMin: number | null; label: string; who: string | null }): PickupState {
+  const ac = o.ac;
+  const plane = ac && o.now - ac.seenAt <= 10 * 60_000 ? { lat: ac.lat, lon: ac.lon, altFt: ac.altFt, gsKt: ac.gsKt, track: ac.track, hex: ac.hex ?? null } : null;
+  return { ...stateOf(o), plane };
+}
+
+function stateOf(o: Parameters<typeof pickupState>[0]): PickupState {
   const { now, ac, dest } = o;
   const iso = (t: number) => new Date(t).toISOString();
   const curb = (o.bags ? BAGS_MIN : 0) + DEPLANE_MIN;

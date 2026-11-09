@@ -11,12 +11,29 @@ import type { State } from './types.ts';
 
 /** An address from ICAO's reserved F block, so it never matches a real aircraft. */
 export const GLOBE_HEX = 'f1a7e0';
+/** The inbound pickup flight when ADS-B gave no hex (same reserved block). */
+export const PICKUP_HEX = 'f1a7e2';
+
+/** The airport pickup's inbound plane, drawn beside the truck so the two can be seen converging. */
+export type InboundPlane = { callsign: string; lat: number; lon: number; altFt: number | 'ground' | null; gsKt: number | null; track: number | null; hex: string | null };
 
 type Dump1090 = { now: number; messages: number; aircraft: Record<string, unknown>[] };
 
 /** The feed document for the truck's current state. Pure (tested). */
-export function globeAircraft(s: Pick<State, 'gps' | 'speedMph'>, nowMs: number, callsign: string, messages: number): Dump1090 {
+export function globeAircraft(s: Pick<State, 'gps' | 'speedMph'>, nowMs: number, callsign: string, messages: number, plane: InboundPlane | null = null): Dump1090 {
   const doc: Dump1090 = { now: nowMs / 1000, messages, aircraft: [] };
+  // The real hex when ADS-B gave one: God's Eye's Local ADS-B card can then look up the aircraft type.
+  // It does NOT merge with God's Eye's public Flights layer (that only de-duplicates against its
+  // Military layer), so with Flights on the plane shows twice; turn Flights off to see it once.
+  if (plane) doc.aircraft.push({
+    hex: plane.hex ?? PICKUP_HEX,
+    flight: plane.callsign.replace(/[^0-9A-Za-z]/g, '').slice(0, 8).toUpperCase().padEnd(8),
+    alt_baro: plane.altFt ?? 'ground',
+    lat: plane.lat, lon: plane.lon,
+    ...(plane.gsKt === null ? {} : { gs: plane.gsKt }),
+    ...(plane.track === null ? {} : { track: plane.track }),
+    seen: 0, seen_pos: 0, messages,
+  });
   if (!s.gps?.fix) return doc; // no fix: nothing to draw, and God's Eye ages the truck out
   doc.aircraft.push({
     hex: GLOBE_HEX,
@@ -34,11 +51,11 @@ export function globeAircraft(s: Pick<State, 'gps' | 'speedMph'>, nowMs: number,
   return doc;
 }
 
-export function registerGlobe(app: FastifyInstance, state: () => State, opts: { enabled: boolean; callsign: string }) {
+export function registerGlobe(app: FastifyInstance, state: () => State, opts: { enabled: boolean; callsign: string; plane?: () => InboundPlane | null }) {
   let messages = 0;
   app.get('/globe/aircraft.json', async (_req, reply) => {
     if (!opts.enabled) return reply.code(404).send({ error: 'The globe feed is off (GLOBE_FEED=1 turns it on)' });
     reply.header('Cache-Control', 'no-store');
-    return globeAircraft(state(), Date.now(), opts.callsign, ++messages);
+    return globeAircraft(state(), Date.now(), opts.callsign, ++messages, opts.plane?.() ?? null);
   });
 }

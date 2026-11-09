@@ -72,6 +72,14 @@ export function registerSim(app: FastifyInstance, brain: Brain, remote: RemoteSe
     return { ok: true };
   });
 
+  /** A made-up flight into Phoenix (lands in ~25 min), so the whole airport pickup flow runs at a desk. No flight-tracking calls go out. */
+  app.post('/api/sim/flight', async (req, reply) => {
+    if (!brain.simTruck) return off(reply);
+    const b = (req.body ?? {}) as { flight?: unknown; who?: unknown };
+    try { return await brain.pickup.simInbound(typeof b.flight === 'string' && b.flight.trim() ? b.flight : 'AA 1234', typeof b.who === 'string' ? b.who.slice(0, 40) : 'Test passenger'); }
+    catch (e) { return reply.code(400).send({ error: (e as Error).message }); }
+  });
+
   /** Back to the desk camera set: rear, front, hitch, bed and 360, all test patterns. */
   app.post('/api/sim/cameras', async (_req, reply) => {
     if (!brain.simTruck) return off(reply);

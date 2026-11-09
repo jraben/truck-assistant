@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { openDb } from '../src/db.ts';
-import { findFlight, parseAdsb, parseFlight, parseRoute, pickupState, BAGS_MIN, DEPLANE_MIN, TAXI_MIN, type Airport } from '../src/pickup/flight.ts';
+import { findFlight, parseAdsb, parseAeroApi, parseFlight, parseRoute, pickupState, BAGS_MIN, DEPLANE_MIN, TAXI_MIN, type Airport } from '../src/pickup/flight.ts';
 import { PickupService } from '../src/pickup/service.ts';
 import { adsbdbAnswer } from '../src/demo/backend.ts';
 
@@ -28,7 +28,7 @@ describe('flight numbers', () => {
 
 describe('feeds', () => {
   it('reads adsb.fi and adsbdb answers', () => {
-    expect(parseAdsb({ ac: [{ flight: 'AAL1234 ', lat: 33.6, lon: -110, alt_baro: 31000, gs: 440, track: 260, seen: 2 }] }, 10_000)).toEqual({ lat: 33.6, lon: -110, altFt: 31000, gsKt: 440, track: 260, seenAt: 8000 });
+    expect(parseAdsb({ ac: [{ flight: 'AAL1234 ', lat: 33.6, lon: -110, alt_baro: 31000, gs: 440, track: 260, seen: 2 }] }, 10_000)).toEqual({ lat: 33.6, lon: -110, altFt: 31000, gsKt: 440, track: 260, seenAt: 8000, hex: null });
     expect(parseAdsb({ ac: [] }, 0)).toBeNull();
     expect(parseRoute({})).toEqual({ origin: null, destination: null });
     expect(parseRoute({ response: { flightroute: { destination: { iata_code: 'PHX', name: 'Sky Harbor', latitude: 33.43, longitude: -112.01 } } } }).destination).toMatchObject({ iata: 'PHX', lat: 33.43 });
@@ -96,5 +96,72 @@ describe('pickup service', () => {
     const svc = new PickupService({ db: openDb(mkdtempSync(path.join(tmpdir(), 'pk-'))), gps: () => null, online: () => true, notify: async () => {} });
     svc.setNextAppointment(() => ({ title: 'Pick up Jordan - WN 2510', location: 'PHX' }));
     expect(svc.view().suggestion).toMatchObject({ flight: { callsign: 'SWA2510' } });
+  });
+
+  it('shows the plane (altitude, speed, hex) and keeps FlightAware off without a key', async () => {
+    const calls: string[] = [];
+    const f = (async (u: string | URL) => {
+      const url = new URL(String(u)); calls.push(url.hostname);
+      if (url.hostname === 'api.adsbdb.com') return adsbdbAnswer(url);
+      if (url.hostname === 'opendata.adsb.fi') return new Response(JSON.stringify({ ac: [{ hex: 'A4B5C6', lat: 33.9, lon: -111.0, alt_baro: 24000, gs: 430, track: 250, seen: 0 }] }));
+      return new Response('{}', { status: 500 });
+    }) as typeof fetch;
+    const svc = new PickupService({ db: openDb(mkdtempSync(path.join(tmpdir(), 'pk-'))), gps: () => null, online: () => true, notify: async () => {}, fetchFn: f, flightAwareKey: () => null });
+    const v = await svc.start({ flight: 'WN 2510' });
+    expect(v.state!.plane).toMatchObject({ altFt: 24000, gsKt: 430, hex: 'a4b5c6' });
+    expect(v.officialOn).toBe(false);
+    expect(calls).not.toContain('aeroapi.flightaware.com');
+    expect(svc.plane()).toMatchObject({ callsign: 'SWA2510', lat: 33.9 });
+  });
+
+  it('asks FlightAware with the key in a header (never the URL), at most every 5 minutes', async () => {
+    let now = Date.now(); // start() polls at the real clock
+    const aero: { url: string; key: string | null }[] = [];
+    const f = (async (u: string | URL, init?: RequestInit) => {
+      const url = new URL(String(u));
+      if (url.hostname === 'api.adsbdb.com') return adsbdbAnswer(url);
+      if (url.hostname === 'opendata.adsb.fi') return new Response(JSON.stringify({ ac: [{ lat: 34.5, lon: -111.0, alt_baro: 30000, gs: 450, seen: 0 }] }));
+      if (url.hostname === 'aeroapi.flightaware.com') {
+        aero.push({ url: String(u), key: new Headers(init?.headers).get('x-apikey') });
+        return new Response(JSON.stringify({ flights: [{ status: 'En Route / On Time', gate_destination: 'B12', terminal_destination: '4', baggage_claim: '7', arrival_delay: 900, estimated_on: '2027-06-01T15:40:00Z', estimated_in: '2027-06-01T15:48:00Z', cancelled: false, diverted: false }] }));
+      }
+      return new Response('{}', { status: 500 });
+    }) as typeof fetch;
+    const svc = new PickupService({ db: openDb(mkdtempSync(path.join(tmpdir(), 'pk-'))), gps: () => null, online: () => true, notify: async () => {}, fetchFn: f, flightAwareKey: () => 'secret-key-123' });
+    const v = await svc.start({ flight: 'AA 1234' });
+    expect(v.state!.official).toMatchObject({ gate: 'B12', terminal: '4', baggage: '7', delayMin: 15 });
+    expect(v.officialOn).toBe(true);
+    expect(aero[0]).toEqual({ url: 'https://aeroapi.flightaware.com/aeroapi/flights/AAL1234', key: 'secret-key-123' });
+    expect(JSON.stringify(svc.view())).not.toContain('secret-key-123');
+    now += 31_000; await svc.tick(now);
+    expect(aero).toHaveLength(1);
+    now += 5 * 60_000; await svc.tick(now);
+    expect(aero).toHaveLength(2);
+  });
+
+  it('a refused key is said plainly, and AeroAPI picks the leg arriving nearest now', () => {
+    const now = Date.parse('2027-06-01T15:00:00Z');
+    const o = parseAeroApi({ flights: [
+      { scheduled_on: '2027-05-31T15:30:00Z', gate_destination: 'A1' },
+      { estimated_on: '2027-06-01T15:20:00Z', gate_destination: 'B12', arrival_delay: -300, cancelled: true },
+      { scheduled_on: '2027-06-02T15:30:00Z', gate_destination: 'C3' },
+    ] }, now)!;
+    expect(o).toMatchObject({ gate: 'B12', delayMin: -5, cancelled: true, diverted: false });
+    expect(parseAeroApi({ flights: [] }, now)).toBeNull();
+    expect(parseAeroApi(null, now)).toBeNull();
+  });
+
+  it('SIM: a fake inbound flight runs without any flight-tracking calls', async () => {
+    const outside: string[] = [];
+    const f = (async (u: string | URL) => { outside.push(new URL(String(u)).hostname); return new Response('{}', { status: 500 }); }) as typeof fetch;
+    const svc = new PickupService({ db: openDb(mkdtempSync(path.join(tmpdir(), 'pk-'))), gps: () => null, online: () => true, notify: async () => {}, fetchFn: f });
+    const v = await svc.simInbound('AA 1234', 'Test passenger');
+    expect(v.sim).toBe(true);
+    expect(v.pickup!.dest!.iata).toBe('PHX');
+    expect(v.state!.phase).toBe('en-route');
+    expect(v.state!.plane!.altFt).toBe(36000);
+    expect(outside.filter((h) => /adsb|aeroapi/.test(h))).toEqual([]);
+    svc.cancel();
+    expect(svc.view().sim).toBe(false);
   });
 });

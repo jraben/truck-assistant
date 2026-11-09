@@ -37,7 +37,7 @@ async function main() {
   const wopr = (app as unknown as { trackb: { wopr: import('./wopr/service.ts').WoprService } }).trackb.wopr;
   brain.pickup.setNextAppointment(() => { const n = wopr.getNext().next; return n ? { title: n.title, location: n.location } : null; });
   registerPickup(app, brain.pickup);
-  registerGlobe(app, () => brain.getState(), { enabled: config.globeFeed, callsign: config.globeCallsign });   // the truck on a God's Eye View globe
+  registerGlobe(app, () => brain.getState(), { enabled: config.globeFeed, callsign: config.globeCallsign, plane: () => brain.pickup.plane() });   // the truck on a God's Eye View globe
   brain.start();
   await app.listen({ port: config.port, host: config.host });
   await remote.start();

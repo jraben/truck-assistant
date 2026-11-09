@@ -1442,6 +1442,30 @@ Code: `brain/src/pickup/` (`flight.ts` pure), UI `ui/src/components/pickup.tsx`
   WOPR's next calendar event is offered as a suggestion.
 - Routes: `GET/POST/DELETE /api/pickup`. Demo: any flight is a simulated arrival
   from Dallas landing at PHX 25 minutes after it's first asked about.
+- `PickupState.plane` `{lat, lon, altFt, gsKt, track, hex} | null` (fresh ADS-B
+  only): the card shows altitude and speed. `PickupView.sim` (the test panel's
+  flight), `officialOn` (a FlightAware key is set).
+- Setting a flight (the form and the calendar suggestion) waits while driving
+  (`DrivingLock`); a pickup already on keeps its card and banner.
+- Optional gate, terminal, bag carousel, delay, cancelled/diverted:
+  `Settings.keys.flightAware` (FlightAware AeroAPI, paid per query; off without
+  a key). `GET https://aeroapi.flightaware.com/aeroapi/flights/<CALLSIGN>` with
+  the key in `x-apikey` only, once at the start and then every 5 minutes while a
+  pickup is on; the leg arriving nearest now is used. `PickupState.official`
+  `{status, gate, terminal, baggage, delayMin, estimatedOn, estimatedIn,
+  cancelled, diverted, checkedAt} | null`. A 401/403 says the key was refused.
+  Field names from AeroAPI v4's documented schema, not yet checked live. The key
+  is never logged or returned (masked like every other key; dropped from
+  backups without secrets).
+- SIM test panel: `POST /api/sim/flight {flight?, who?}` follows the demo's
+  simulated arrival (DFW → PHX, lands in ~25 min) with no flight-tracking
+  calls, so the card, the leave-by time and the alerts can be run at a desk.
+- God's Eye View: with the globe feed on, `/globe/aircraft.json` carries the
+  inbound plane beside the truck (God's Eye's Local ADS-B layer, magenta), under
+  its real ICAO hex when adsb.fi gave one (its card can then look up the
+  aircraft type), else `f1a7e2` (reserved block). God's Eye merges by hex only
+  among its local sources; its public Flights layer doesn't check Local ADS-B,
+  so **turn the Flights layer off, or you'll see the plane twice**.
 
 ## Hazards ahead (weather, wind, fires)
 

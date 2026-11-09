@@ -16,6 +16,8 @@ export function TrafficSection({ settings }: { settings: Settings }) {
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };
   const [firms, setFirms] = useState('');
+  const [fa, setFa] = useState('');
+  const saveFa = async (v: string) => { try { const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ keys: { flightAware: v } }) }); settingsStore.set(n); setFa(''); setMsg({ ok: true, text: v ? 'Saved.' : 'Removed.' }); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } };
   const saveFirms = async (v: string) => { try { const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ keys: { firms: v } }) }); settingsStore.set(n); setFirms(''); setMsg({ ok: true, text: v ? 'Saved.' : 'Removed.' }); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } };
   const typed = Object.fromEntries(Object.entries(keys).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()]));
   return (
@@ -47,6 +49,15 @@ export function TrafficSection({ settings }: { settings: Settings }) {
       <div class="row wrap">
         <button class="btn" type="button" disabled={!firms.trim()} onClick={() => void saveFirms(firms.trim())}>Save FIRMS key</button>
         {settings.keys.firms && <button class="btn sm danger" type="button" onClick={() => void saveFirms('')}>Remove</button>}
+      </div>
+      <h3 class="sub">Airport pickup: gate, bags and delays (FlightAware, optional)</h3>
+      <p class="help">Airport pickup follows the plane for free (ADS-B). The gate, the baggage carousel, delays and cancellations only come from the airline's data: paste a FlightAware AeroAPI key to add them. It's paid per lookup; the truck asks once when a pickup starts and every 5 minutes after, only while one is on. Without a key nothing is asked.</p>
+      <div class="fields form">
+        <label class="f"><span>AeroAPI key</span><input type="password" autocomplete="off" value={fa} placeholder={settings.keys.flightAware ? `set (${settings.keys.flightAware}); type to replace` : 'not set'} onInput={(e) => setFa((e.target as HTMLInputElement).value)} /></label>
+      </div>
+      <div class="row wrap">
+        <button class="btn" type="button" disabled={!fa.trim()} onClick={() => void saveFa(fa.trim())}>Save AeroAPI key</button>
+        {settings.keys.flightAware && <button class="btn sm danger" type="button" onClick={() => void saveFa('')}>Remove</button>}
       </div>
     </section>
   );
