@@ -112,6 +112,12 @@ Built for Jeff's truck first, published for other Slate owners later.
   (WOPR, Spotify, Plex, AM/FM). Desk test without WOPR:
   `node scripts/mock-wopr.mjs` (login jeff / test). Details: `docs/contract.md`
   (Track B) and `deploy/pi/README.md` (Media).
+- **HD Radio (2026-11-09):** HD1-HD4 sub-channels with song titles, on the
+  truck's RTL-SDR through [nrsc5](https://github.com/theori-io/nrsc5) (built by
+  the Pi installer), or from an
+  [nrsc5-webplayer](https://github.com/wryandginger/nrsc5-webplayer) running
+  elsewhere (say at home), which also sends album art. Suggested on the Slate
+  Forums thread. Set the server address on /settings → AM/FM.
 - **Drivers, stops, phone history, gas prices, getting online (2026-11-05):**
   driver profiles (Jeff, Sam, Jordan, Guest) with their own theme, layout,
   charging prefs and gas comparison vehicle; stops named from saved places,

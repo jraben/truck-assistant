@@ -16,9 +16,11 @@ export type RadioStation = {
 };
 
 /** streamId: the internet stream it plays when there is no tuner ("tunein:s123" | "rb:<uuid>"). */
-export type FmPreset = { mhz: number; name: string; streamId?: string | null };
+/** `hd`: an HD Radio channel 1-4 (tuner with nrsc5, or the HD Radio server); absent/null for analog. */
+export type FmPreset = { mhz: number; name: string; streamId?: string | null; hd?: number | null };
 /** auto = the tuner when one is plugged in, else the stations' internet streams. */
-export type FmSource = 'auto' | 'internet' | 'tuner';
+/** 'hdserver': a remote nrsc5-webplayer (fm.hdServer). */
+export type FmSource = 'auto' | 'internet' | 'tuner' | 'hdserver';
 
 export type SpotifyToken = { access: string; refresh: string; expiresAt: number; scope: string; user: string | null };
 
@@ -33,7 +35,7 @@ export type MediaSettings = {
   };
   plex: { url: string | null; token?: string };
   radio: { kjefUrl: string; favourites: Record<string, RadioStation[]> };
-  fm: { presets: FmPreset[]; ppm: number; gain: number | null; source: FmSource };
+  fm: { presets: FmPreset[]; ppm: number; gain: number | null; source: FmSource; hdServer: string | null };
   local: { folder: string | null };  // null = DATA_DIR/music
   receipts: { autoImport: boolean };
   /** Which AI answers the voice button (WOPR by default), and speech in/out. Keys masked like the rest. */
@@ -78,7 +80,8 @@ export type LocalEntry = { name: string; path: string };
 export type LocalTrack = LocalEntry & { title: string; artist: string | null; album: string | null; size: number };
 export type LocalListing = { root: string; path: string; parent: string | null; dirs: LocalEntry[]; files: LocalTrack[] };
 
-export type Tuner = { state: 'present' | 'none' | 'no-software' | 'sim' | 'busy'; message: string; checkedAt: string };
+/** `hd`: nrsc5 is installed, so HD Radio channels can be decoded. */
+export type Tuner = { state: 'present' | 'none' | 'no-software' | 'sim' | 'busy'; message: string; checkedAt: string; hd?: boolean };
 
 export type RadioNow = { stationId: string; name: string; title: string | null; artist: string | null; since: string };
 

@@ -185,6 +185,7 @@ function FmSection({ m, put, status }: SP & { status: MediaStatus | null }) {
   const [presets, setPresets] = useState<FmPreset[]>(m.fm.presets);
   const [ppm, setPpm] = useState(m.fm.ppm);
   const [gain, setGain] = useState<string>(m.fm.gain === null ? '' : String(m.fm.gain));
+  const [hdServer, setHdServer] = useState(m.fm.hdServer ?? '');
   const [msg, setMsg] = useState<Msg>(null);
   const t = status?.fm.tuner;
   return (
@@ -195,6 +196,9 @@ function FmSection({ m, put, status }: SP & { status: MediaStatus | null }) {
           <div class="row wrap">
             <input type="number" step="0.1" style="width:110px" value={p.mhz} onInput={(e) => setPresets(presets.map((x, j) => (j === i ? { ...x, mhz: Number((e.target as HTMLInputElement).value) } : x)))} />
             <input type="text" value={p.name} onInput={(e) => setPresets(presets.map((x, j) => (j === i ? { ...x, name: (e.target as HTMLInputElement).value } : x)))} />
+            <select aria-label="HD Radio channel" value={p.hd ?? 0} onChange={(e) => { const v = Number((e.target as HTMLSelectElement).value); setPresets(presets.map((x, j) => (j === i ? { ...x, hd: v || null } : x))); }}>
+              <option value={0}>Analog</option>{[1, 2, 3, 4].map((n) => <option value={n}>HD{n}</option>)}
+            </select>
             <button class="btn sm danger" type="button" onClick={() => setPresets(presets.filter((_, j) => j !== i))}>Remove</button>
           </div>
         ))}
@@ -203,9 +207,10 @@ function FmSection({ m, put, status }: SP & { status: MediaStatus | null }) {
       <div class="fields form">
         <label class="f"><span>Frequency correction (ppm)</span><input type="number" value={ppm} onInput={(e) => setPpm(Number((e.target as HTMLInputElement).value))} /></label>
         <label class="f"><span>Gain dB (empty = automatic)</span><input type="number" value={gain} onInput={(e) => setGain((e.target as HTMLInputElement).value)} /></label>
+        <label class="f"><span>HD Radio server (nrsc5-webplayer)</span><input type="url" value={hdServer} placeholder="http://192.168.1.50:7430" onInput={(e) => setHdServer((e.target as HTMLInputElement).value)} /></label>
       </div>
-      <p class="help">AM presets are written in MHz: 620 kHz = 0.62.</p>
-      <div class="row wrap"><button class="btn primary" type="button" onClick={() => void put({ fm: { presets, ppm, gain: gain.trim() === '' ? null : Number(gain) } }).then(setMsg)}>Save AM/FM</button><Note m={msg} /></div>
+      <p class="help">AM presets are written in MHz: 620 kHz = 0.62. HD1-HD4 are a station's digital channels: the truck's tuner decodes them when nrsc5 is installed (deploy/pi/install.sh builds it). An HD Radio server is an <a href="https://github.com/wryandginger/nrsc5-webplayer" target="_blank" rel="noreferrer">nrsc5-webplayer</a> with its own tuner, say at home: the truck tunes it and plays its stream, with song titles and album art, wherever it can reach it (home Wi-Fi or Tailscale).</p>
+      <div class="row wrap"><button class="btn primary" type="button" onClick={() => void put({ fm: { presets, ppm, gain: gain.trim() === '' ? null : Number(gain), hdServer: hdServer.trim() } }).then(setMsg)}>Save AM/FM</button><Note m={msg} /></div>
     </Section>
   );
 }

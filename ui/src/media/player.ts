@@ -104,6 +104,7 @@ class Player {
     a.play().catch((e: Error) => { if (e.name !== 'AbortError') patch({ loading: false, error: e.name === 'NotAllowedError' ? 'Tap play: the browser blocked sound until the screen is touched.' : e.message }); });
     clearInterval(this.radioTimer);
     if (track.source === 'radio') { this.radioTimer = window.setInterval(() => void this.radioTitle(), 10_000); setTimeout(() => void this.radioTitle(), 2500); }
+    else if (track.source === 'fm' && track.id.startsWith('hd:')) { this.radioTimer = window.setInterval(() => void this.hdTitle(), 8000); setTimeout(() => void this.hdTitle(), 3000); }
     this.publish();
   }
 
@@ -123,6 +124,20 @@ class Player {
         patch({ current: t });
         this.publish();
       }
+    } catch { /* the title is a nicety */ }
+  }
+
+  /** HD Radio: the song title, artist and album art the station sends (tuner or HD Radio server). */
+  private async hdTitle() {
+    const cur = playerStore.get().current;
+    if (cur?.source !== 'fm' || !cur.id.startsWith('hd:')) { clearInterval(this.radioTimer); return; }
+    try {
+      const n = await api<{ mhz: number; hd: number; via: string; title: string | null; artist: string | null; art: string | null; station: string | null } | null>('/api/media/fm/hd/now');
+      if (!n || cur.id !== `hd:${n.via}:${n.mhz}:${n.hd}` || !n.title) return;
+      const album = n.station ? `${n.station} · HD${n.hd}` : cur.album;
+      if (n.title === cur.title && n.artist === cur.artist && (n.art ?? cur.art) === cur.art) return;
+      patch({ current: { ...cur, title: n.title, artist: n.artist, album, art: n.art ?? cur.art } });
+      this.publish();
     } catch { /* the title is a nicety */ }
   }
 

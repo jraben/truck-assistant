@@ -659,6 +659,19 @@ type MediaSettings = {
   `GET /api/media/fm/stream?mhz=` → audio/mpeg (`rtl_fm | ffmpeg`; 503 with
   the reason when there is no tuner, e.g. SIM); `POST /api/media/fm/stop`;
   `POST /api/media/fm/seek {from, dir: 1|-1}` → `{mhz | null}` (rtl_power sweep).
+  Status also carries `source: 'tuner'|'internet'|'hdserver'` and
+  `hd: {tuner: bool (nrsc5 installed), server: {configured, reachable}}`.
+- HD Radio (HD1-HD4, song titles): on the truck's tuner,
+  `GET /api/media/fm/stream?mhz=&hd=1-4` runs `nrsc5 -t raw -o - | ffmpeg`
+  (never `--dump-aas-files`: nrsc5 writes those under names the broadcast
+  picks, unchecked). Through a remote nrsc5-webplayer (`fm.hdServer`),
+  `GET /api/media/fm/hd/stream?mhz=&hd=` tunes it (`/tune_manual`) and relays
+  its `/stream.mp3`; `GET /api/media/fm/hd/server-art?f=<name>` relays its
+  album art (a checked file name, images only). `GET /api/media/fm/hd/now` →
+  `{via, mhz, hd, synced, station, slogan, title, artist, album, genre,
+  programs: [{hd, type}], art, merDb, kbps, alert, since} | null`.
+  Auto source order: tuner, then the HD Radio server when it answers, then
+  internet streams. Presets may carry `hd: 1-4`.
 - Plex (the token stays in the brain): `GET /api/media/plex/sections`,
   `…/artists?section=`, `…/recent?section=`, `…/playlists`,
   `…/children?key=&type=`, `…/search?q=` → `PlexItem[]`;

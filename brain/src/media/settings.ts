@@ -19,7 +19,7 @@ export function defaultMediaSettings(): MediaSettings {
     spotify: { clientId: null, deviceName: 'Slate Truck', connect: true, bitrate: 160, tokens: {} },
     plex: { url: null },
     radio: { kjefUrl: KJEF_PUBLIC, favourites: {} },
-    fm: { presets: [], ppm: 0, gain: null, source: 'auto' },
+    fm: { presets: [], ppm: 0, gain: null, source: 'auto', hdServer: null },
     local: { folder: null },
     receipts: { autoImport: true },
     assistant: defaultAssistant(),
@@ -113,10 +113,13 @@ export function mergeMedia(base: MediaSettings, patch: unknown): MediaSettings {
       n.fm.presets = f.presets.map((x, i) => {
         if (!isObj(x) || typeof x.mhz !== 'number' || !(validFm(x.mhz) || (x.mhz === 0 && typeof x.streamId === 'string'))) throw new MediaSettingsError(`fm.presets[${i}].mhz must be an FM frequency 87.5-108.0 or an AM one 0.53-1.71`);
         const sid = typeof x.streamId === 'string' && /^(tunein:s\d+|rb:[\w-]+)$/.test(x.streamId) ? x.streamId : null;
-        return { mhz: Math.round(x.mhz * 100) / 100, name: typeof x.name === 'string' && x.name.trim() ? x.name.trim().slice(0, 40) : fmLabel(x.mhz), streamId: sid };
+        if (x.hd !== undefined && x.hd !== null && !(Number.isInteger(x.hd) && (x.hd as number) >= 1 && (x.hd as number) <= 4 && x.mhz >= 87.5)) throw new MediaSettingsError(`fm.presets[${i}].hd must be an FM HD channel 1-4`);
+        const hd = typeof x.hd === 'number' ? x.hd : null;
+        return { mhz: Math.round(x.mhz * 100) / 100, name: typeof x.name === 'string' && x.name.trim() ? x.name.trim().slice(0, 40) : fmLabel(x.mhz) + (hd ? ` HD${hd}` : ''), streamId: sid, ...(hd ? { hd } : {}) };
       }).slice(0, 30);
     }
-    if ('source' in f) { if (f.source !== 'auto' && f.source !== 'internet' && f.source !== 'tuner') throw new MediaSettingsError('fm.source is auto, internet or tuner'); n.fm.source = f.source; }
+    if ('source' in f) { if (f.source !== 'auto' && f.source !== 'internet' && f.source !== 'tuner' && f.source !== 'hdserver') throw new MediaSettingsError('fm.source is auto, internet, tuner or hdserver'); n.fm.source = f.source; }
+    if ('hdServer' in f) n.fm.hdServer = optUrl(f.hdServer, 'fm.hdServer');
     if ('ppm' in f) { if (typeof f.ppm !== 'number' || Math.abs(f.ppm) > 200) throw new MediaSettingsError('fm.ppm must be -200..200'); n.fm.ppm = Math.round(f.ppm); }
     if ('gain' in f) { if (f.gain !== null && (typeof f.gain !== 'number' || f.gain < 0 || f.gain > 60)) throw new MediaSettingsError('fm.gain is 0-60 dB or null (automatic)'); n.fm.gain = f.gain as number | null; }
   }

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import { player, playerStore } from './player.ts';
 import { mediaStatusStore, refreshMediaStatus, type MaskedMediaSettings, type PlexItem, type RadioStation, type SpotifyPlaylist } from './status.ts';
-import { fmName, presetTrack, type FmPreset } from './FmTab.tsx';
+import { fmName, presetTrack, type FmPreset, type FmSourceNow } from './FmTab.tsx';
 import type { Track } from './player.ts';
 import { KIND_ART } from './sources.ts';
 
@@ -16,7 +16,7 @@ export function ShortcutsTab({ stationTrack, plexTrack }: { stationTrack: (s: Ra
   const ms = useStore(mediaStatusStore);
   const st = useStore(stateStore);
   const p = useStore(playerStore);
-  const [fm, setFm] = useState<{ presets: FmPreset[]; internet: boolean }>({ presets: [], internet: false });
+  const [fm, setFm] = useState<{ presets: FmPreset[]; source: FmSourceNow }>({ presets: [], source: 'tuner' });
   const [radio, setRadio] = useState<RadioStation[]>([]);
   const [spotify, setSpotify] = useState<SpotifyPlaylist[]>([]);
   const [plex, setPlex] = useState<PlexItem[]>([]);
@@ -26,7 +26,7 @@ export function ShortcutsTab({ stationTrack, plexTrack }: { stationTrack: (s: Ra
     void Promise.all([
       api<MaskedMediaSettings>('/api/media/settings').catch(() => null),
       api<{ source: string }>('/api/media/fm/status').catch(() => null),
-    ]).then(([s, f]) => setFm({ presets: s?.fm.presets ?? [], internet: f?.source === 'internet' }));
+    ]).then(([s, f]) => setFm({ presets: s?.fm.presets ?? [], source: (f?.source as FmSourceNow | undefined) ?? 'tuner' }));
     void Promise.all([api<RadioStation[]>('/api/media/radio/presets').catch(() => []), api<RadioStation[]>('/api/media/radio/favourites').catch(() => [])])
       .then(([a, b]) => setRadio([...a, ...b.filter((x) => !a.some((y) => y.id === x.id))]));
   }, [st?.driver?.id]);
@@ -36,8 +36,8 @@ export function ShortcutsTab({ stationTrack, plexTrack }: { stationTrack: (s: Ra
   const cur = p.current;
   const tiles: Tile[] = [
     ...fm.presets.map((x): Tile => {
-      const t = presetTrack(x, fm.internet);
-      return { key: `fm:${t.id}`, kind: 'AM/FM', title: x.name, sub: x.mhz ? fmName(x.mhz) : 'AM/FM', art: null, on: cur?.source === 'fm' && cur.id === t.id, play: () => player.play(t) };
+      const t = presetTrack(x, fm.source);
+      return { key: `fm:${t.id}`, kind: 'AM/FM', title: x.name, sub: x.mhz ? `${fmName(x.mhz)}${x.hd ? ` HD${x.hd}` : ''}` : 'AM/FM', art: null, on: cur?.source === 'fm' && cur.id === t.id, play: () => player.play(t) };
     }),
     ...radio.map((s): Tile => ({ key: `radio:${s.id}`, kind: 'Radio', title: s.name, sub: s.tags.slice(0, 2).join(' · ') || 'Internet radio', art: s.favicon, on: cur?.source === 'radio' && cur.id === s.id, play: () => player.play(stationTrack(s)) })),
     ...spotify.slice(0, 24).map((pl): Tile => ({

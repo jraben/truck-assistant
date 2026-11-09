@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import type { MediaSettings } from './settings.ts';
+import { HD_FFMPEG_ARGS, newHdLog, nrsc5Args, readHdLine, type HdLog, type HdNow } from './hd.ts';
 
 import type { Tuner } from './types.ts';
 export type { Tuner } from './types.ts';
@@ -80,11 +81,22 @@ export class FmService {
   private tuner: Tuner | null = null;
   private procs: ChildProcess[] = [];
   private tuned: number | null = null;
+  private hd: { log: HdLog; since: string } | null = null;
   private lastChannels: { at: number; list: number[] } | null = null;
 
   constructor(sim: boolean, media: () => MediaSettings) { this.sim = sim; this.media = media; }
 
   current() { return this.tuned; }
+  /** The HD channel being decoded (1-4), or null for analog / nothing. */
+  currentHd() { return this.hd?.log.hd ?? null; }
+  hasNrsc5() { return !this.sim && !!which('nrsc5'); }
+
+  /** What the HD decoder has heard so far (station, song, sub-channels), or null when not on HD. */
+  hdNow(): HdNow | null {
+    if (!this.hd) return null;
+    const { log, since } = this.hd;
+    return { via: 'tuner', ...log, programs: [...log.programs], art: null, since };
+  }
 
   /** Is there a dongle? `rtl_test -t` lists devices; checked at most once a minute. */
   async detect(force = false): Promise<Tuner> {
@@ -103,7 +115,7 @@ export class FmService {
       p.on('error', () => { clearTimeout(kill); resolve(buf); });
     });
     const n = /Found (\d+) device/.exec(out);
-    if (n && Number(n[1]) > 0) return (this.tuner = { state: 'present', message: out.split('\n').find((l) => /^\s*0:/.test(l))?.trim() ?? 'RTL-SDR found', checkedAt: at });
+    if (n && Number(n[1]) > 0) return (this.tuner = { state: 'present', hd: !!which('nrsc5'), message: out.split('\n').find((l) => /^\s*0:/.test(l))?.trim() ?? 'RTL-SDR found', checkedAt: at });
     const busy = /usb_claim_interface error|resource busy/i.test(out);
     return (this.tuner = { state: busy ? 'busy' : 'none', message: busy ? 'The tuner is in use by another program (or the DVB driver: see deploy/pi/README.md).' : 'No RTL-SDR tuner plugged in. AM/FM needs a USB RTL-SDR dongle (about $30) and an antenna.', checkedAt: at });
   }
@@ -112,16 +124,37 @@ export class FmService {
     for (const p of this.procs) { try { p.kill('SIGTERM'); } catch { /* gone */ } }
     this.procs = [];
     this.tuned = null;
+    this.hd = null;
   }
 
-  /** Tune and return the MP3 stream. Throws with a reason when there is no tuner. */
-  async stream(mhz: number): Promise<Readable> {
+  /**
+   * Tune and return the MP3 stream: analog with rtl_fm, or HD channel `hd`
+   * (1-4) with nrsc5. Throws with a reason when there is no tuner (or no nrsc5).
+   */
+  async stream(mhz: number, hd: number | null = null): Promise<Readable> {
     this.stopStream();
     const t = await this.detect(true);
     if (t.state !== 'present') throw Object.assign(new Error(t.message), { status: 503 });
     const f = this.media().fm;
-    const rtl = spawn(which('rtl_fm')!, rtlFmArgs(mhz, f), { stdio: ['ignore', 'pipe', 'ignore'] });
-    const ff = spawn(which('ffmpeg')!, FFMPEG_ARGS, { stdio: ['pipe', 'pipe', 'ignore'] });
+    if (hd !== null && isAm(mhz)) throw Object.assign(new Error('HD Radio here is FM only'), { status: 400 });
+    const nrsc5 = hd !== null ? which('nrsc5') : null;
+    if (hd !== null && !nrsc5) throw Object.assign(new Error('HD Radio needs nrsc5: run deploy/pi/install.sh again (it builds nrsc5).'), { status: 503 });
+    const rtl = nrsc5
+      ? spawn(nrsc5, nrsc5Args(mhz, hd!, f), { stdio: ['ignore', 'pipe', 'pipe'] })
+      : spawn(which('rtl_fm')!, rtlFmArgs(mhz, f), { stdio: ['ignore', 'pipe', 'ignore'] });
+    const ff = spawn(which('ffmpeg')!, nrsc5 ? HD_FFMPEG_ARGS : FFMPEG_ARGS, { stdio: ['pipe', 'pipe', 'ignore'] });
+    if (nrsc5) {
+      const state = { log: newHdLog(mhz, hd!), since: new Date().toISOString() };
+      this.hd = state;
+      let buf = '';
+      rtl.stderr!.setEncoding('utf8');
+      rtl.stderr!.on('data', (d: string) => {
+        buf += d;
+        const lines = buf.split(/\r?\n/);
+        buf = lines.pop()!.slice(-4000);
+        if (this.hd === state) for (const l of lines) readHdLine(state.log, l);
+      });
+    }
     rtl.stdout!.pipe(ff.stdin!);
     ff.stdin!.on('error', () => {});
     const procs = [rtl, ff];

@@ -19,6 +19,7 @@ import { PlaceStore, StopStore } from '../stops/store.ts';
 import { kwhFromSoc, priceHomeSession } from '../charges/pricing.ts';
 import { SIM_ROUTE } from '../sim.ts';
 import type { Settings } from '../types.ts';
+import { DEMO_HD_URL } from './backend.ts';
 import { DEMO_CHARGERS, DEMO_DRIVERS, DEMO_HA_URL, DEMO_PLACES, DEMO_SECRET, DEMO_WOPR_URL, place, type DemoPlace } from './world.ts';
 
 export const DEMO_DAYS = 24;
@@ -270,6 +271,9 @@ function seedInto(dataDir: string, now: Date): SeedSummary {
   const far = now.getTime() + 10 * 365 * 86400_000;
   for (const d of [...DEMO_DRIVERS.map((x) => x.id), 'guest']) media.spotify.tokens[d] = { access: 'demo-access', refresh: 'demo-refresh', expiresAt: far, scope: 'user-read-playback-state', user: DEMO_DRIVERS.find((x) => x.id === d)?.name ?? 'Guest' };
   media.radio.kjefUrl = 'https://stream.demo/radio.mp3';
+  // HD Radio through an invented nrsc5-webplayer (src/demo/backend.ts); the SIM truck has no tuner, so Auto picks it.
+  media.fm.hdServer = DEMO_HD_URL;
+  media.fm.presets = [{ mhz: 91.5, name: 'Desert Jazz', streamId: null, hd: 2 }, { mhz: 99.9, name: 'Canyon Rock', streamId: null, hd: 1 }];
   media.receipts.autoImport = false;
   mergeMedia(defaultMediaSettings(), media); // throws if the store would refuse any of it (it falls back to defaults)
   writeJson(path.join(dataDir, 'media.json'), media);

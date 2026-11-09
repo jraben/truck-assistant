@@ -16,6 +16,7 @@ import { SpotifyService } from './media/spotifyService.ts';
 import { PlexError, PlexService } from './media/plex.ts';
 import { LocalError, LocalService } from './media/local.ts';
 import { FmService } from './media/fm.ts';
+import { HdServer, HdServerError, serverBase, validHd } from './media/hd.ts';
 import { AirStreams, type AirStation } from './media/airstreams.ts';
 import { WoprError, woprJson } from './wopr/client.ts';
 import { AssistantError, AssistantService } from './assistant/service.ts';
@@ -52,12 +53,22 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
   const air = new AirStreams(config.version);
   /** Where the dial is built for: the truck's GPS, else the home place, else Phoenix. */
   const dialPos = () => brain.getState().gps ?? brain.stops.places.all().find((p) => /home/i.test(p.name)) ?? { lat: 33.4484, lon: -112.074 };
-  /** Tuner or internet streams, for this request. */
-  const fmSource = async (): Promise<'tuner' | 'internet'> => {
+  const hdServer = new HdServer(() => serverBase(media.get().fm.hdServer));
+  let hdSeen: { at: number; ok: boolean; url: string | null } = { at: 0, ok: false, url: null };
+  /** Is the HD Radio server there? Asked at most once a minute (it's usually only reachable at home or over the VPN). */
+  const hdReachable = async (force = false) => {
+    const url = media.get().fm.hdServer;
+    if (!url) return false;
+    if (force || hdSeen.url !== url || Date.now() - hdSeen.at > 60_000) hdSeen = { at: Date.now(), ok: await hdServer.reachable(), url };
+    return hdSeen.ok;
+  };
+  /** Tuner, HD Radio server or internet streams, for this request. Auto: the truck's tuner, else the server when it answers, else streams. */
+  const fmSource = async (): Promise<'tuner' | 'internet' | 'hdserver'> => {
     const s = media.get().fm.source;
     if (s !== 'auto') return s;
     const t = await fm.detect();
-    return t.state === 'present' || t.state === 'busy' ? 'tuner' : 'internet';
+    if (t.state === 'present' || t.state === 'busy') return 'tuner';
+    return (await hdReachable()) ? 'hdserver' : 'internet';
   };
   const wopr = new WoprService(brain, media);
   const assistant = new AssistantService(wopr, media, brain.ha, brain);
@@ -139,7 +150,10 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
   });
 
   // ---- AM/FM -------------------------------------------------------------------------
-  app.get('/api/media/fm/status', async () => ({ tuner: await fm.detect(true), tuned: fm.current(), presets: media.get().fm.presets, source: await fmSource(), setting: media.get().fm.source }));
+  app.get('/api/media/fm/status', async () => ({
+    tuner: await fm.detect(true), tuned: fm.current(), presets: media.get().fm.presets, source: await fmSource(), setting: media.get().fm.source,
+    hd: { tuner: fm.hasNrsc5(), server: { configured: hdServer.configured(), reachable: await hdReachable(true) } },
+  }));
   // Internet streams of the local AM/FM stations (no tuner needed; uses data).
   app.get('/api/media/fm/stations', async (_req, reply) => {
     if (!online()) return reply.code(503).send({ error: 'Offline: station streams need the internet.' });
@@ -171,17 +185,51 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
       return reply.code(502).send({ error: (e as Error).message });
     }
   });
-  app.get<{ Querystring: { mhz?: string } }>('/api/media/fm/stream', async (req, reply) => {
-    const mhz = Number(req.query.mhz);
+  /** ?hd=1-4, or nothing for analog. */
+  const hdParam = (v: string | undefined): number | null | 'bad' => { if (v === undefined || v === '' || v === '0') return null; const n = Number(v); return validHd(n) ? n : 'bad'; };
+  app.get<{ Querystring: { mhz?: string; hd?: string } }>('/api/media/fm/stream', async (req, reply) => {
+    const mhz = Number(req.query.mhz), hd = hdParam(req.query.hd);
     if (!validFm(mhz)) return reply.code(400).send({ error: 'mhz must be 87.5-108.0 (FM) or 0.53-1.71 (AM)' });
+    if (hd === 'bad') return reply.code(400).send({ error: 'hd is an HD Radio channel 1-4' });
     try {
-      const s = await fm.stream(mhz);
+      const s = await fm.stream(mhz, hd);
       reply.raw.on('close', () => { if (fm.current() === mhz) fm.stopStream(); });
       reply.header('content-type', 'audio/mpeg').header('cache-control', 'no-store').header('x-station', encodeURIComponent(fmLabel(mhz)));
       return reply.send(s);
     } catch (e) { return fail(reply, e); }
   });
-  app.post('/api/media/fm/stop', async () => { fm.stopStream(); return { ok: true }; });
+  app.post('/api/media/fm/stop', async () => { fm.stopStream(); if (hdServer.current()) await hdServer.stop(); return { ok: true }; });
+  // HD Radio through a remote nrsc5-webplayer: tune it, relay its MP3, read its song titles and art.
+  app.get<{ Querystring: { mhz?: string; hd?: string } }>('/api/media/fm/hd/stream', async (req, reply) => {
+    const mhz = Number(req.query.mhz), hd = hdParam(req.query.hd) ?? 1;
+    if (!validFm(mhz) || mhz < 87.5) return reply.code(400).send({ error: 'mhz must be an FM frequency 87.5-108.0' });
+    if (hd === 'bad') return reply.code(400).send({ error: 'hd is an HD Radio channel 1-4' });
+    try {
+      const s = await hdServer.stream(mhz, hd);
+      reply.raw.on('close', () => s.body.destroy());
+      reply.header('content-type', s.type).header('cache-control', 'no-store').header('x-station', encodeURIComponent(`${fmLabel(mhz)} HD${hd}`));
+      return reply.send(s.body);
+    } catch (e) {
+      const err = e as HdServerError;
+      return reply.code(err instanceof HdServerError ? err.status : 502).send({ error: err.message });
+    }
+  });
+  app.get('/api/media/fm/hd/now', async (_req, reply) => {
+    const t = fm.hdNow();
+    if (t) return t;
+    if (!hdServer.current()) return null;
+    try { return await hdServer.now(); } catch (e) { return reply.code(502).send({ error: (e as Error).message }); }
+  });
+  app.get<{ Querystring: { f?: string } }>('/api/media/fm/hd/server-art', async (req, reply) => {
+    try {
+      const r = await hdServer.art(q(req.query.f));
+      if (!r.ok || !r.body) return reply.code(404).send({ error: 'no art' });
+      const type = r.headers.get('content-type') ?? '';
+      if (!/^image\//.test(type)) return reply.code(415).send({ error: 'not an image' });
+      reply.header('content-type', type).header('cache-control', 'max-age=3600');
+      return reply.send(Buffer.from(await r.arrayBuffer()));
+    } catch (e) { return reply.code(e instanceof HdServerError ? e.status : 502).send({ error: (e as Error).message }); }
+  });
   app.post('/api/media/fm/seek', async (req, reply) => {
     const b = (req.body ?? {}) as { from?: number; dir?: number };
     const from = Number(b.from ?? 87.9), dir = b.dir === -1 ? -1 : 1;

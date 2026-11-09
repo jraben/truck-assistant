@@ -244,6 +244,67 @@ export function silentWav(seconds: number, rate = 16_000): Buffer {
   return b;
 }
 
+// ---- HD Radio: an invented nrsc5-webplayer ------------------------------------------
+
+/** Invented sub-channels and songs, by "MHz:program" (program 0 = HD1). */
+const HD_DIAL: Record<string, { slogan: string; genre: string; songs: [string, string][] }> = {
+  '91.5:0': { slogan: 'Desert Public Radio', genre: 'News', songs: [['Morning Edition', 'Desert Public Radio'], ['The Weather Hour', 'Desert Public Radio']] },
+  '91.5:1': { slogan: 'Desert Jazz', genre: 'Jazz', songs: [['Mesa Blue', 'The Saguaro Trio'], ['Late Monsoon', 'Rita Calloway Quartet'], ['Route 66 Shuffle', 'Hank Morrow']] },
+  '99.9:0': { slogan: 'Canyon Rock', genre: 'Rock', songs: [['Dust Devil', 'Copper State'], ['Highway Ghosts', 'The Red Rocks']] },
+  '99.9:1': { slogan: 'Canyon Deep Cuts', genre: 'Rock', songs: [['Slow Burn', 'Copper State'], ['Ocotillo', 'Lena Vance']] },
+};
+
+/**
+ * One silent MPEG-1 Layer III frame (128 kbps, 44.1 kHz, stereo): the 4-byte
+ * header and 413 zero bytes, which decode to silence. 26 ms each.
+ */
+export function silentMp3Frame(): Uint8Array {
+  const f = new Uint8Array(417);
+  f.set([0xff, 0xfb, 0x90, 0x00]);
+  return f;
+}
+
+/** An endless, real-time silent MP3 (what an nrsc5-webplayer sends, minus the radio). */
+function silentStream(): ReadableStream<Uint8Array> {
+  const frame = silentMp3Frame();
+  const burst = (n: number) => { const b = new Uint8Array(frame.length * n); for (let i = 0; i < n; i++) b.set(frame, i * frame.length); return b; };
+  let t: ReturnType<typeof setInterval> | undefined;
+  return new ReadableStream({
+    start(c) {
+      c.enqueue(burst(77)); // ~2 s up front so a player starts at once
+      t = setInterval(() => { try { c.enqueue(burst(19)); } catch { clearInterval(t); } }, 500);
+    },
+    cancel() { clearInterval(t); },
+  });
+}
+
+export class DemoHdRadio {
+  private tuned: { freq: string; program: number; at: number } | null = null;
+  private clock: () => number;
+  constructor(clock: () => number) { this.clock = clock; }
+  handle(u: URL): Response {
+    const p = u.pathname;
+    if (p === '/stream_status') return Response.json({ active: !!this.tuned, preset: null });
+    if (p === '/tune_manual') {
+      const freq = Number(u.searchParams.get('freq')), program = Number(u.searchParams.get('program'));
+      if (!Number.isFinite(freq) || !Number.isInteger(program)) return Response.json({ status: 'error', message: 'Frequency must be a decimal and Program must be an integer' }, { status: 400 });
+      this.tuned = { freq: freq.toFixed(1), program, at: this.clock() };
+      return Response.json({ status: 'success', freq, program });
+    }
+    if (p === '/stop') { this.tuned = null; return Response.json({ status: 'success' }); }
+    if (p === '/stream.mp3') return this.tuned ? new Response(silentStream(), { headers: { 'content-type': 'audio/mpeg' } }) : new Response('Stream not active. Choose a preset first.', { status: 503 });
+    if (p === '/status') {
+      const t = this.tuned;
+      if (!t) return Response.json({ title: 'Unknown Title', artist: 'Unknown Artist', running: false });
+      const ch = HD_DIAL[`${t.freq}:${t.program}`];
+      if (!ch) return Response.json({ title: 'Loading...', artist: 'Tuning receiver...', running: true, mer: '', bitrate: '' });
+      const [title, artist] = ch.songs[Math.floor((this.clock() - t.at) / 90_000) % ch.songs.length];
+      return Response.json({ title, artist, album: '', genre: ch.genre, slogan: ch.slogan, mer: '10.8 dB', bitrate: '48.0 kbps', art_url: '', running: true });
+    }
+    return new Response('not found', { status: 404 });
+  }
+}
+
 // ---- Spotify: an invented playlist on the truck --------------------------------------
 
 export class DemoSpotify {
@@ -394,10 +455,14 @@ export function osrmAnswer(u: URL): Response {
 
 // ---- the dispatcher the gate calls --------------------------------------------------
 
-export type DemoServices = { house: DemoHouse; wopr: DemoWopr; spotify: DemoSpotify };
+export type DemoServices = { house: DemoHouse; wopr: DemoWopr; spotify: DemoSpotify; hdRadio: DemoHdRadio };
+
+/** The invented HD Radio server (an nrsc5-webplayer) the demo's AM/FM tab uses. */
+export const DEMO_HD_HOST = 'hdradio.demo';
+export const DEMO_HD_URL = `http://${DEMO_HD_HOST}:7430`;
 
 export function makeDemoServices(clock: () => number = Date.now): DemoServices {
-  return { house: new DemoHouse(clock), wopr: new DemoWopr(clock), spotify: new DemoSpotify(clock) };
+  return { house: new DemoHouse(clock), wopr: new DemoWopr(clock), spotify: new DemoSpotify(clock), hdRadio: new DemoHdRadio(clock) };
 }
 
 /** Answer a request for one of the invented services, or null (not ours: the gate decides). */
@@ -406,6 +471,7 @@ export function demoBackend(svc: DemoServices) {
     const h = u.hostname.toLowerCase();
     if (h === DEMO_HA_HOST) return svc.house.handle(u, init);
     if (h === DEMO_WOPR_HOST) return svc.wopr.handle(u, init);
+    if (h === DEMO_HD_HOST) return svc.hdRadio.handle(u);
     if (h === 'api.spotify.com' || h === 'accounts.spotify.com') return svc.spotify.handle(u, init);
     if (h === 'api.openchargemap.io') return ocmAnswer(u);
     if (h === 'router.project-osrm.org') return osrmAnswer(u);
