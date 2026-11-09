@@ -7,9 +7,9 @@ and no modem. The goal is CarPlay (Waze, music), charging and trip info,
 Home Assistant, cameras and aux-switch control on one large, clean screen.
 Built for Jeff's truck first, published for other Slate owners later.
 
-[![A 30-second demo: the Drive screen, media, switches, 360° cameras, charging, the house and trips](docs/media/demo-poster.jpg)](https://youtu.be/2Pft-cJQ2mI)
+[![A 30-second demo: the Drive screen, media, switches, 360° cameras, charging, the house and trips](docs/media/demo-poster.jpg)](https://youtu.be/WZFJHZxagOI)
 
-*30-second demo ([watch on YouTube](https://youtu.be/2Pft-cJQ2mI)): a simulated truck and invented data.*
+*30-second demo ([watch on YouTube](https://youtu.be/WZFJHZxagOI)): a simulated truck and invented data.*
 
 > **Not affiliated with Slate Auto.** This is an independent DIY project; it
 > is not made, endorsed or supported by Slate Auto. MIT licensed (`LICENSE`).
