@@ -186,7 +186,7 @@ export class Brain extends EventEmitter {
         const price = g.today?.price ?? g.manualPrice;
         return v && v.mpgHighway > 0 && price > 0 ? { label: v.label, mpg: v.mpgHighway, pricePerGallon: price } : null;
       },
-      destinations: () => (config.demo ? DEMO_DESTINATIONS : this.stops.placesWithVisits(null).map((p) => ({ name: p.name, lat: p.lat, lon: p.lon }))),
+      destinations: () => (config.demo ? DEMO_DESTINATIONS : this.stops.placesWithVisits(null).map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, placeId: p.id, kind: p.kind, chargeKw: p.chargeKw }))),
       settings: () => this.finderSettings(),
       soc: () => this.soc.value,
       gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),

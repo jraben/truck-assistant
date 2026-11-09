@@ -33,8 +33,10 @@ function useMinute() {
 
 const bust = (url: string, n: number) => `${url}${url.includes('?') ? '&' : '?'}t=${n}`;
 
-export function TrafficAhead(_p: WP) {
+export function TrafficAhead({ s }: WP) {
   const { v, err } = useTraffic();
+  // Driving lockout (drive/lockout.ts): pictures pause while moving, like video does; the list stays.
+  const locked = !!s?.drive?.lockout.locked;
   const minute = useMinute();
   const [big, setBig] = useState<string | null>(null);
   const keyedNames = v.states.filter((s) => s.keyed).map((s) => s.name.replace(/ \(.*\)$/, '')).join(', ');
@@ -48,13 +50,13 @@ export function TrafficAhead(_p: WP) {
             const view = c.views[0];
             return (
               <button type="button" class="tfcam" onClick={() => setBig(big === c.key ? null : c.key)} aria-label={`${c.location ?? c.roadway}, ${c.distMi} miles`}>
-                <img src={bust(view.url, minute)} alt="" loading="lazy" />
+                {locked ? <div class="tfpaused">Picture paused while driving</div> : <img src={bust(view.url, minute)} alt="" loading="lazy" />}
                 <div class="tfcap num"><b>{c.distMi} mi</b> · {c.location ?? c.roadway ?? 'Camera'}</div>
               </button>
             );
           })}
         </div>
-        {big && (() => { const c = v.cameras.find((x) => x.key === big); return c ? <div class="tfbig" onClick={() => setBig(null)}><img src={bust(c.views[0].url, minute)} alt={c.location ?? ''} /><div class="tfcap">{c.location} · {c.distMi} mi{c.direction ? ` · ${c.direction}` : ''}</div></div> : null; })()}
+        {big && !locked && (() => { const c = v.cameras.find((x) => x.key === big); return c ? <div class="tfbig" onClick={() => setBig(null)}><img src={bust(c.views[0].url, minute)} alt={c.location ?? ''} /><div class="tfcap">{c.location} · {c.distMi} mi{c.direction ? ` · ${c.direction}` : ''}</div></div> : null; })()}
       </Card>
       <div class="tfside">
         <Card label="On the road ahead">

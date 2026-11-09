@@ -174,3 +174,22 @@ export function samplePoints(route: Route, stepMi: number): RoutePoint[] {
   out.push(route.points[route.points.length - 1]);
   return out;
 }
+
+/**
+ * A route through stops: each leg fetched on its own and joined into one, with
+ * the mile where each leg ends (the stops, then the destination).
+ */
+export async function fetchRouteVia(points: LatLon[], opts: { router?: string; fetchFn?: FetchFn } = {}): Promise<{ route: Route; legEnds: number[] }> {
+  if (points.length < 2) throw new Error('a route needs a start and an end');
+  const legs: Route[] = [];
+  for (let i = 0; i < points.length - 1; i++) legs.push(await fetchRoute(points[i], points[i + 1], opts));
+  const out: RoutePoint[] = [];
+  const legEnds: number[] = [];
+  let offset = 0, minutes = 0;
+  legs.forEach((l, i) => {
+    for (const [k, p] of l.points.entries()) if (!(i > 0 && k === 0)) out.push({ ...p, mi: p.mi + offset });
+    offset += l.miles; minutes += l.minutes;
+    legEnds.push(offset);
+  });
+  return { route: { points: out, miles: offset, minutes, source: legs.every((l) => l.source === 'osrm') ? 'osrm' : 'straight', elevation: false }, legEnds };
+}

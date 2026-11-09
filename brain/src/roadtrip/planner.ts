@@ -12,6 +12,7 @@
 import type { Charger, ChargerAvailability } from '../types.ts';
 import { minutesToCharge, type Curve } from './curve.ts';
 import { climb, type Route } from './route.ts';
+import type { PlannedWaypoint, TripWaypoint } from './types.ts';
 
 export const GRID = 5;
 /** A stop adds at least this many points: pulling off for a 1-minute top-up is never worth it. */
@@ -61,7 +62,14 @@ export type PlanInput = {
   avoid?: ReadonlySet<string>;
   now: number;
   maxCharge?: number;
+  /** Plan only to this mile (a stop along the way); default the end of the route. */
+  endMi?: number;
+  /** The leg starts at a stop along the way: a charger right beside it (within 2 miles back) can be used. */
+  fromStop?: boolean;
 };
+
+/** Where this leg ends on the route. */
+export const endOf = (i: Pick<PlanInput, 'route' | 'endMi'>) => Math.min(i.endMi ?? i.route.miles, i.route.miles);
 
 export type Backup = { id: string; name: string; network: string | null; lat: number; lon: number; maxKw: number | null; routeMi: number; extraMin: number; availability: ChargerAvailability | null };
 
@@ -148,7 +156,7 @@ function search(inp: PlanInput, em: ReturnType<typeof energyModel>, startMi: num
   const levels: number[] = [];
   for (let l = GRID * 2; l <= max; l += GRID) levels.push(l);
   const cands = inp.candidates
-    .filter((c) => c.routeMi > startMi + 0.5 && c.routeMi < inp.route.miles && !avoid.has(c.charger.id))
+    .filter((c) => c.routeMi > startMi + (inp.fromStop && startMi === inp.startMi ? -2 : 0.5) && c.routeMi < endOf(inp) && !avoid.has(c.charger.id))
     .sort((a, b) => a.routeMi - b.routeMi);
   const nodes: Node[] = [{ c: null, mi: startMi, offMi: 0 }, ...cands.map((c) => ({ c, mi: c.routeMi, offMi: c.offMi }))];
   // labels[node][levelIndex]; the start has one level (its own charge).
@@ -165,10 +173,10 @@ function search(inp: PlanInput, em: ReturnType<typeof energyModel>, startMi: num
       const depart = levelOf(i, k);
       const exitPct = em.detourPct(from.offMi);
       // To the destination.
-      const destArrive = depart - exitPct - em.pct(from.mi, inp.route.miles);
+      const destArrive = depart - exitPct - em.pct(from.mi, endOf(inp));
       reach = Math.max(reach, from.mi + Math.max(0, (depart - exitPct - inp.arriveMinSoc)) / 100 * inp.packKwh * em.eff);
       if (destArrive >= inp.destMinSoc) {
-        const cost = lab.cost + em.driveMin(from.mi, inp.route.miles) + (from.offMi / DETOUR_MPH) * 60;
+        const cost = lab.cost + em.driveMin(from.mi, endOf(inp)) + (from.offMi / DETOUR_MPH) * 60;
         if (!best || cost < best.cost) best = { cost, node: i, level: k, arrive: destArrive };
       }
       // To each later charger in reach.
@@ -203,7 +211,7 @@ function search(inp: PlanInput, em: ReturnType<typeof energyModel>, startMi: num
 export function plan(inp: PlanInput): PlanResult {
   const em = energyModel(inp);
   const avoid = inp.avoid ?? new Set<string>();
-  const kwh = em.kwh(inp.startMi, inp.route.miles);
+  const kwh = em.kwh(inp.startMi, endOf(inp));
   const found = search(inp, em, inp.startMi, inp.startSoc, avoid);
   const t0 = inp.now;
   if (!found) {
@@ -211,10 +219,10 @@ export function plan(inp: PlanInput): PlanResult {
     const gapNote = (() => {
       const reachable = inp.candidates.filter((c) => !avoid.has(c.charger.id)).map((c) => c.routeMi).sort((a, b) => a - b);
       let prev = inp.startMi;
-      for (const m of [...reachable, inp.route.miles]) { if (m - prev > 0 && m > inp.startMi) { if (em.pct(prev, m) > (inp.maxCharge ?? MAX_CHARGE) - inp.arriveMinSoc) return `No charger in reach between mile ${Math.round(prev)} and mile ${Math.round(m)}.`; prev = m; } }
+      for (const m of [...reachable, endOf(inp)]) { if (m - prev > 0 && m > inp.startMi) { if (em.pct(prev, m) > (inp.maxCharge ?? MAX_CHARGE) - inp.arriveMinSoc) return `No charger in reach between mile ${Math.round(prev)} and mile ${Math.round(m)}.`; prev = m; } }
       return 'No set of chargers on this route keeps you above your arrival minimum.';
     })();
-    return { feasible: false, note: r && avoid.size ? 'Only possible with a charger that was ruled out (full or skipped).' : gapNote, stops: [], arriveSoc: round(inp.startSoc - em.pct(inp.startMi, inp.route.miles)), arriveAt: new Date(t0 + em.driveMin(inp.startMi, inp.route.miles) * 60_000).toISOString(), totalMin: round(em.driveMin(inp.startMi, inp.route.miles)), driveMin: round(em.driveMin(inp.startMi, inp.route.miles)), chargeMin: 0, kwh: round(kwh, 1), chargeCost: 0, typicalPriceStops: 0 };
+    return { feasible: false, note: r && avoid.size ? 'Only possible with a charger that was ruled out (full or skipped).' : gapNote, stops: [], arriveSoc: round(inp.startSoc - em.pct(inp.startMi, endOf(inp))), arriveAt: new Date(t0 + em.driveMin(inp.startMi, endOf(inp)) * 60_000).toISOString(), totalMin: round(em.driveMin(inp.startMi, endOf(inp))), driveMin: round(em.driveMin(inp.startMi, endOf(inp))), chargeMin: 0, kwh: round(kwh, 1), chargeCost: 0, typicalPriceStops: 0 };
   }
 
   // Walk the path for times, then find each stop's backup.
@@ -239,8 +247,8 @@ export function plan(inp: PlanInput): PlanResult {
     });
     mi = s.c.routeMi; off = s.c.offMi;
   }
-  driveMin += em.driveMin(mi, inp.route.miles) + (off / DETOUR_MPH) * 60;
-  const arriveAt = new Date(clock + (em.driveMin(mi, inp.route.miles) + (off / DETOUR_MPH) * 60) * 60_000).toISOString();
+  driveMin += em.driveMin(mi, endOf(inp)) + (off / DETOUR_MPH) * 60;
+  const arriveAt = new Date(clock + (em.driveMin(mi, endOf(inp)) + (off / DETOUR_MPH) * 60) * 60_000).toISOString();
 
   // Backups: from the state before each stop, the best plan that skips it; its first stop is the backup.
   for (let k = 0; k < stops.length; k++) {
@@ -289,4 +297,44 @@ export function priceStop(ch: Charger, kwhBought: number): Pick<PlanStop, 'kwhBo
   const listed = listedPerKwh(ch.price);
   const [pricePerKwh, priceSource] = paid !== null ? [paid, 'paid' as const] : listed !== null ? [listed, 'listed' as const] : [TYPICAL_DC_PER_KWH, 'typical' as const];
   return { kwhBought: round(kwhBought, 1), pricePerKwh, priceSource, cost: round(kwhBought * pricePerKwh, 2) };
+}
+
+/** Most a stay charges the pack to (kind to the battery overnight). */
+export const STAY_CHARGE_MAX = 90;
+/** A wall charger delivers about this share of its rating into the pack. */
+const STAY_CHARGE_EFF = 0.9;
+
+/**
+ * The whole trip through stops along the way: each leg (to the next stop, then
+ * to the destination) planned on its own; at each stop the truck waits its
+ * stay and, where there's charging, gains what that charger gives in that time.
+ */
+export function planLegs(inp: PlanInput, via: (TripWaypoint & { routeMi: number })[]): { result: PlanResult; via: PlannedWaypoint[] } {
+  const ahead = via.filter((w) => w.routeMi > inp.startMi + 0.1).sort((a, b) => a.routeMi - b.routeMi);
+  const t0 = inp.now;
+  let mi = inp.startMi, soc = inp.startSoc, now = inp.now;
+  const stops: PlanStop[] = [], planned: PlannedWaypoint[] = [];
+  let driveMin = 0, chargeMin = 0, kwh = 0, cost = 0, typical = 0;
+  const legs = [...ahead.map((w) => ({ w, end: w.routeMi })), { w: null as (TripWaypoint & { routeMi: number }) | null, end: inp.endMi ?? inp.route.miles }];
+  for (const { w, end } of legs) {
+    const r = plan({ ...inp, startMi: mi, startSoc: soc, endMi: end, now, destMinSoc: w ? inp.arriveMinSoc : inp.destMinSoc, fromStop: planned.length > 0 });
+    if (!r.feasible) {
+      return { result: { ...r, note: `${w ? `On the way to ${w.name}: ` : planned.length ? 'On the last leg: ' : ''}${r.note ?? 'not reachable'}`, stops: [...stops, ...r.stops] }, via: planned };
+    }
+    stops.push(...r.stops);
+    driveMin += r.driveMin; chargeMin += r.chargeMin; kwh += r.kwh; cost += r.chargeCost; typical += r.typicalPriceStops;
+    if (!w) {
+      const totalMin = (Date.parse(r.arriveAt) - t0) / 60_000;
+      return {
+        result: { feasible: true, note: stops.length ? null : r.note, stops, arriveSoc: r.arriveSoc, arriveAt: r.arriveAt, totalMin: Math.round(totalMin), driveMin: Math.round(driveMin), chargeMin: Math.round(chargeMin), kwh: Math.round(kwh * 10) / 10, chargeCost: Math.round(cost * 100) / 100, typicalPriceStops: typical },
+        via: planned,
+      };
+    }
+    const gain = w.chargeKw ? ((w.chargeKw * STAY_CHARGE_EFF * (w.stayMin / 60)) / inp.packKwh) * 100 : 0;
+    const depart = Math.max(r.arriveSoc, Math.min(STAY_CHARGE_MAX, r.arriveSoc + gain));
+    const departAt = new Date(Date.parse(r.arriveAt) + w.stayMin * 60_000).toISOString();
+    planned.push({ ...w, arriveAt: r.arriveAt, departAt, arriveSoc: Math.round(r.arriveSoc), departSoc: Math.round(depart) });
+    mi = end; soc = depart; now = Date.parse(departAt);
+  }
+  throw new Error('unreachable');
 }

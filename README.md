@@ -80,6 +80,9 @@ Built for Jeff's truck first, published for other Slate owners later.
   the trip it checks the next stop's free stalls ~25 min out and switches to the
   backup when it's full, replans when you use more than planned, and coaches
   each charge (countdown, GO, slow-stall warning). Slow sites are remembered.
+  Stops along the way (a restaurant, a friend's house, a hotel) come from saved
+  places, which now say what they are and whether you can charge there; a
+  night on Level 2 at a friend's counts.
   The demo has a factory pickup preset: Warsaw, IN to home. Contract: "Road trips".
 - **Truck payoff goal (2026-11-05):** "pay off the truck with gas savings",
   tracked for good in a day-by-day SQLite ledger (closed months frozen;

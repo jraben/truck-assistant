@@ -68,6 +68,7 @@ export function openDb(dataDir: string, opts: { sim?: boolean } = {}): Db {
   const hadSimTrips = hasColumn(db, 'trips', 'simulated'), hadSimSessions = hasColumn(db, 'charge_sessions', 'simulated');
   addColumns(db, 'trips', { driver_id: 'TEXT', source: "TEXT NOT NULL DEFAULT 'truck'", start_stop_id: 'INTEGER', end_stop_id: 'INTEGER', city_miles: 'REAL', highway_miles: 'REAL', city_kwh: 'REAL', highway_kwh: 'REAL' });
   addColumns(db, 'charge_sessions', { driver_id: 'TEXT' });
+  addColumns(db, 'places', { kind: 'TEXT', charge_kw: 'REAL', note: 'TEXT' });
   addColumns(db, 'trips', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
   addColumns(db, 'charge_sessions', { simulated: 'INTEGER NOT NULL DEFAULT 0' });
   // Rows from before the flag existed carry no mark. There is no reliable way to

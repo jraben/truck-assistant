@@ -503,3 +503,15 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 .tripbanner { background: color-mix(in srgb, var(--warn) 18%, var(--panel)); }
 .tripbanner.bad { background: color-mix(in srgb, var(--bad) 18%, var(--panel)); }
 .tripbanner.ok { background: color-mix(in srgb, var(--ok) 18%, var(--panel)); }
+.rtplaces { display: grid; gap: 6px; }
+.rtplace { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: var(--radius); background: var(--panel-2); }
+.rtvia { display: grid; gap: 6px; padding: 10px; border-radius: var(--radius); border: 1px dashed var(--line); }
+.rtviarow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rtviarow input { width: 72px; min-height: 36px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); font: 500 15px var(--body); }
+.rtnum.sm { width: 28px; height: 28px; font-size: 14px; }
+.rtnum.via { color: var(--warn); font-size: 14px; }
+.rtviastop { border-left: 4px solid var(--warn); }
+.rtsave { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; align-items: end; padding: 10px; border-radius: var(--radius); background: var(--panel-2); }
+.rtsave input, .rtsave select { min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 500 15px var(--body); }
+.rttime .seg-stay, .rttimekey i.seg-stay { background: color-mix(in srgb, var(--warn) 45%, var(--panel-2)); }
+.tfpaused { aspect-ratio: 16 / 9; display: grid; place-items: center; background: var(--panel); color: var(--dim); font-size: 13px; }

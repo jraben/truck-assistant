@@ -111,6 +111,10 @@ export const DEMO_DESTINATIONS = [
   { name: 'Flagstaff, AZ', lat: 35.1983, lon: -111.6513 },
   { name: 'Tucson, AZ', lat: 32.2226, lon: -110.9747 },
   { name: 'Los Angeles, CA', lat: 34.0522, lon: -118.2437 },
+  // Saved places to add as stops (invented): a diner, a friend with a charger, a hotel.
+  { name: 'Cordes Lakes Diner', lat: 34.3290, lon: -112.1140, placeId: 9001, kind: 'restaurant', chargeKw: null },
+  { name: 'Sam’s place, Flagstaff', lat: 35.2100, lon: -111.6300, placeId: 9002, kind: 'friend', chargeKw: 7.2 },
+  { name: 'Desert Rest Inn, Quartzsite', lat: 33.6640, lon: -114.2170, placeId: 9003, kind: 'hotel', chargeKw: 1.4 },
 ];
 export const DEMO_HIGHWAYS: { to: string; from?: [number, number]; via: [number, number][] }[] = [
   { to: 'Home', from: [PICKUP_FROM.lat, PICKUP_FROM.lon], via: [...PICKUP_VIA.map(([, lat, lon]) => [lat, lon] as [number, number]), [DEMO_PLACES[0].lat, DEMO_PLACES[0].lon]] },

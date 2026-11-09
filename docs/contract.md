@@ -1218,6 +1218,22 @@ defaults to GPS, `startSoc` to the current charge level. Returns `TripPlan`.
 - Infeasible plans say where the gap is ("No charger in reach between mile X
   and mile Y").
 
+### Stops along the way (`via`)
+
+- `POST /api/roadtrip/plan` takes `via: [{lat, lon, name, placeId?, kind?, stayMin?, chargeKw?}]`
+  (up to 8, in order). `stayMin` defaults by kind: restaurant 60, friend 180,
+  hotel and home 600, work 60, other 30.
+- The route is fetched leg by leg (OSRM) and joined; each leg is planned on its
+  own (`planLegs()`), arriving at every stop above the driver's minimum. At a
+  stop the truck waits its stay; `chargeKw` (a wall outlet ~1.4, Level 2 ~7.2)
+  adds `kW × 0.9 × hours` to the pack, up to 90%. A charger within 2 miles of a
+  stop can be used on the leg that starts there.
+- `TripPlan.via` lists each stop with `routeMi`, `arriveAt`/`departAt`,
+  `arriveSoc`/`departSoc`; the screen shows them between the charging stops.
+- **Saved places** (`/api/places`) carry `kind` (home, restaurant, friend,
+  hotel, work, other), `chargeKw` and `note`; they are the Road trip screen's
+  destinations and stops, and a searched address can be saved from there.
+
 ### Following the trip
 
 `POST /api/roadtrip/start {planId}`, `/stop`, `/discard`, `/replan`;
@@ -1304,6 +1320,8 @@ added once to saved layouts after Road trip), settings `ui/src/settings/TrafficS
   ~17-mile cell, kept a week. Police don't publish live cameras.
 - **Banner (`State.traffic`):** an enforcement camera within 0.8 mi while moving,
   else a crash or closure within 25 mi ahead.
+- **While driving** (the drive lockout, over `lockoutMph`): camera pictures pause and show
+  their place and distance only, like video; incidents and the banner stay.
 - **Routes:** `GET /api/traffic` → `TrafficView`, `POST /api/traffic/refresh`.
 - **Demo:** an invented AZ511 feed along the simulated drive (placeholder
   pictures from `/api/traffic/demo-cam/<id>`, or `DEMO_FOOTAGE/traffic-<id>.jpg`).

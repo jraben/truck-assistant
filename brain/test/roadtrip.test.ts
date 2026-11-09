@@ -334,3 +334,39 @@ describe('layout upgrade', () => {
     expect(migrateRoadTripLayout(removed).views.map((v) => v.id)).toEqual(['drive', 'charge', 'trips']);
   });
 });
+
+describe('stops along the way', () => {
+  it('plans each leg, waits the stay, and counts charging there', async () => {
+    const { planLegs } = await import('../src/roadtrip/planner.ts');
+    const base = input({ startSoc: 80 });
+    const noCharge = planLegs(base, [{ name: 'Lunch', lat: 33, lon: -112 + 120 / 53.3, placeId: null, kind: 'restaurant', stayMin: 60, chargeKw: null, routeMi: 120 }]);
+    expect(noCharge.result.feasible).toBe(true);
+    expect(noCharge.via).toHaveLength(1);
+    const lunch = noCharge.via[0];
+    expect(lunch.departSoc).toBe(lunch.arriveSoc);
+    expect(Date.parse(lunch.departAt) - Date.parse(lunch.arriveAt)).toBe(60 * 60_000);
+    // A friend's house with a 7.2 kW charger and a night's stay: leaves nearly full, needs fewer fast stops.
+    const friend = planLegs(base, [{ name: 'Sam’s', lat: 33, lon: -112 + 120 / 53.3, placeId: 3, kind: 'friend', stayMin: 600, chargeKw: 7.2, routeMi: 120 }]);
+    expect(friend.via[0].departSoc).toBe(90);
+    expect(friend.result.chargeMin).toBeLessThan(noCharge.result.chargeMin);
+    expect(friend.result.totalMin).toBeGreaterThan(600);
+  });
+
+  it('says which leg cannot be done', async () => {
+    const { planLegs } = await import('../src/roadtrip/planner.ts');
+    const r = planLegs(input({ startSoc: 30, candidates: [] }), [{ name: 'Far café', lat: 0, lon: 0, placeId: null, kind: 'restaurant', stayMin: 30, chargeKw: null, routeMi: 200 }]);
+    expect(r.result.feasible).toBe(false);
+    expect(r.result.note).toMatch(/^On the way to Far café: /);
+  });
+});
+
+describe('a charger beside a stop', () => {
+  it('can be used on the leg that starts at the stop', async () => {
+    const { planLegs } = await import('../src/roadtrip/planner.ts');
+    // Lunch at mile 100; the only charger is beside the diner, a hair past it on the route (out of the first leg).
+    const r = planLegs(input({ startSoc: 75, candidates: [charger('beside', 100.3), charger('later', 200)] }), [{ name: 'Diner', lat: 33, lon: -112 + 100 / 53.3, placeId: null, kind: 'restaurant', stayMin: 45, chargeKw: null, routeMi: 100 }]);
+    expect(r.result.feasible).toBe(true);
+    expect(r.result.stops[0].id).toBe('beside');
+    expect(Date.parse(r.result.stops[0].arriveAt)).toBeGreaterThanOrEqual(Date.parse(r.via[0].departAt));
+  });
+});

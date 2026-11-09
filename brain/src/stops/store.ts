@@ -81,7 +81,7 @@ export class StopStore {
   }
 }
 
-type PlaceRow = { id: number; name: string; lat: number; lon: number; radius_m: number; created_at: string; created_by: string | null };
+type PlaceRow = { id: number; name: string; lat: number; lon: number; radius_m: number; created_at: string; created_by: string | null; kind?: string | null; charge_kw?: number | null; note?: string | null };
 
 export class PlaceStore {
   private db: Db;
@@ -95,7 +95,10 @@ export class PlaceStore {
       .run(p.name, p.lat, p.lon, p.radiusM, new Date().toISOString(), p.createdBy);
     return this.get(Number(res.lastInsertRowid))!;
   }
-  update(id: number, p: { name?: string; radiusM?: number }) {
+  update(id: number, p: { name?: string; radiusM?: number; kind?: string | null; chargeKw?: number | null; note?: string | null }) {
+    if (p.kind !== undefined) this.db.prepare('UPDATE places SET kind = ? WHERE id = ?').run(p.kind, id);
+    if (p.chargeKw !== undefined) this.db.prepare('UPDATE places SET charge_kw = ? WHERE id = ?').run(p.chargeKw, id);
+    if (p.note !== undefined) this.db.prepare('UPDATE places SET note = ? WHERE id = ?').run(p.note, id);
     if (p.name !== undefined) this.db.prepare('UPDATE places SET name = ? WHERE id = ?').run(p.name, id);
     if (p.radiusM !== undefined) this.db.prepare('UPDATE places SET radius_m = ? WHERE id = ?').run(p.radiusM, id);
     return this.get(id);
@@ -107,6 +110,6 @@ export class PlaceStore {
     const sql = `SELECT p.*, COUNT(s.id) AS visits, MAX(s.arrived_at) AS last_visit FROM places p
       LEFT JOIN stops s ON s.place_id = p.id ${driver ? 'AND s.driver_id = ?' : ''} GROUP BY p.id ORDER BY visits DESC, p.name`;
     const rows = (driver ? this.db.prepare(sql).all(driver) : this.db.prepare(sql).all()) as (PlaceRow & { visits: number; last_visit: string | null })[];
-    return rows.map((r) => ({ id: r.id, name: r.name, lat: r.lat, lon: r.lon, radiusM: r.radius_m, visits: Number(r.visits), lastVisit: r.last_visit }));
+    return rows.map((r) => ({ id: r.id, name: r.name, lat: r.lat, lon: r.lon, radiusM: r.radius_m, visits: Number(r.visits), lastVisit: r.last_visit, kind: (r.kind ?? null) as Place['kind'], chargeKw: r.charge_kw ?? null, note: r.note ?? null }));
   }
 }

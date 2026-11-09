@@ -348,7 +348,10 @@ export function osrmAnswer(u: URL): Response {
   const near = (p: { lat: number; lon: number }, q: [number, number]) => metersBetween(p, { lat: q[0], lon: q[1] }) < 50_000;
   const hw = DEMO_HIGHWAYS.find((h) => near(to, h.via[h.via.length - 1]) && (!h.from || near(from, h.from)))
     ?? DEMO_HIGHWAYS.find((h) => !h.from && near(to, h.via[h.via.length - 1]));
-  const knots = [from, ...(hw ? hw.via.map(([lat, lon]) => ({ lat, lon })) : []), to];
+  // Join the highway at the knot nearest the start (a trip that starts partway up it doesn't go back to its beginning).
+  let via = hw ? hw.via.map(([lat, lon]) => ({ lat, lon })) : [];
+  if (via.length) { let k = 0; via.forEach((p, i) => { if (metersBetween(from, p) < metersBetween(from, via[k])) k = i; }); via = via.slice(metersBetween(from, via[k]) < 3000 ? k + 1 : k); }
+  const knots = [from, ...via, to];
   const coords: [number, number][] = [];
   let meters = 0;
   for (let i = 0; i < knots.length - 1; i++) {

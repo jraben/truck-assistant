@@ -9,10 +9,10 @@ import type { FinderSettings, ChargerFinder } from '../chargers/finder.ts';
 import { scoreCharger, type Station } from '../chargers/score.ts';
 import type { ChargerAvailability } from '../types.ts';
 import { coach, type Coach } from './coach.ts';
-import { plan, energyModel, type Candidate, type PlanResult, type PlanStop } from './planner.ts';
-import { addElevation, fetchRoute, locate, samplePoints, type LatLon, type Route } from './route.ts';
+import { planLegs, energyModel, type Candidate, type PlanResult, type PlanStop } from './planner.ts';
+import { addElevation, fetchRouteVia, locate, samplePoints, type LatLon, type Route } from './route.ts';
 import { rateKw, type SampleStore } from './samples.ts';
-import type { RoadTripBrief, RoadTripView, TripAlert, TripPlan, TripPreset, TripProgress } from './types.ts';
+import type { Destination, PlannedWaypoint, RoadTripBrief, RoadTripView, TripAlert, TripPlan, TripPreset, TripProgress, TripWaypoint } from './types.ts';
 export type { RoadTripBrief, RoadTripView, TripAlert, TripPlan, TripProgress } from './types.ts';
 
 /** Search for chargers around a route point every this many miles. */
@@ -48,7 +48,7 @@ export type RoadTripDeps = {
   /** SIM: how much faster than real time charging runs (1 on a real truck). Rates are divided by it. */
   timeScale?: () => number;
   /** Places to offer as a destination (saved places; the demo's towns). */
-  destinations?: () => { name: string; lat: number; lon: number }[];
+  destinations?: () => Destination[];
   /** The gas vehicle to compare with (highway mpg) and today's price per gallon, if known. */
   gasCompare?: () => { label: string; mpg: number; pricePerGallon: number } | null;
   /** Ready-made trips (from, to, starting charge), e.g. the demo's factory pickup. */
@@ -58,6 +58,11 @@ export type RoadTripDeps = {
 };
 
 type Active = { plan: TripPlan; route: Route; candidates: Candidate[]; avoid: string[]; startedAt: string; done: string[]; lastLive: number; lastReplan: number; startMi?: number; maxMi?: number };
+
+/** At most this many stops along the way (each is its own router call). */
+export const MAX_VIA = 8;
+
+export type PlanRequest = { to: LatLon & { name?: string }; from?: (LatLon & { name?: string }) | null; startSoc?: number | null; via?: TripWaypoint[] };
 
 export class PlanError extends Error {}
 
@@ -89,20 +94,23 @@ export class RoadTripService {
 
   // ---- planning -------------------------------------------------------------
 
-  async planTrip(req: { to: LatLon & { name?: string }; from?: (LatLon & { name?: string }) | null; startSoc?: number | null }): Promise<TripPlan> {
+  async planTrip(req: PlanRequest): Promise<TripPlan> {
     if (this.planning) throw new PlanError('Already planning a trip; one moment.');
     this.planning = this.doPlan(req).finally(() => { this.planning = null; });
     return this.planning;
   }
 
-  private async doPlan(req: { to: LatLon & { name?: string }; from?: (LatLon & { name?: string }) | null; startSoc?: number | null }): Promise<TripPlan> {
+  private async doPlan(req: PlanRequest): Promise<TripPlan> {
     const from = req.from ?? this.d.gps();
     if (!from) throw new PlanError('No GPS fix yet: pick where the trip starts.');
     const startSoc = req.startSoc ?? this.d.soc();
     if (startSoc === null || startSoc === undefined) throw new PlanError('Charge level unknown: set it on the Charge screen first.');
     const s = this.d.settings();
     const warnings: string[] = [];
-    const route = await addElevation(await fetchRoute(from, req.to, { router: this.d.router, fetchFn: this.d.fetchFn }), this.d.fetchFn);
+    const via = (req.via ?? []).slice(0, MAX_VIA);
+    const { route: joined, legEnds } = await fetchRouteVia([from, ...via, req.to], { router: this.d.router, fetchFn: this.d.fetchFn });
+    const route = await addElevation(joined, this.d.fetchFn);
+    const stopsAt = via.map((w, i) => ({ ...w, routeMi: legEnds[i] }));
     if (route.source === 'straight') warnings.push('No road route (router unreachable): distances are a straight line plus 25%.');
     if (!route.elevation) warnings.push('No elevation data: climbs are not counted.');
 
@@ -119,13 +127,13 @@ export class RoadTripService {
     const candidates = this.candidates([...seen.values()], route, s);
     if (!candidates.length) warnings.push('No fast chargers found near this route.');
 
-    const result = this.runPlan(route, candidates, 0, startSoc, new Set());
+    const { result, via: planned } = this.runPlan(route, candidates, 0, startSoc, new Set(), stopsAt);
     const plan: TripPlan = {
       id: `${Date.now().toString(36)}`, createdAt: new Date().toISOString(),
       from: { lat: from.lat, lon: from.lon, name: (req.from as { name?: string } | undefined)?.name ?? null },
       to: { lat: req.to.lat, lon: req.to.lon, name: req.to.name || 'Destination' },
       startSoc: Math.round(startSoc), routeMiles: Math.round(route.miles), routeMinutes: Math.round(route.minutes), routeSource: route.source, elevation: route.elevation,
-      candidates: candidates.length, warnings, result, gas: this.gasFor(route.miles),
+      candidates: candidates.length, warnings, via: planned, result, gas: this.gasFor(route.miles),
     };
     this.draft = { plan, route, candidates };
     this.changed();
@@ -152,13 +160,14 @@ export class RoadTripService {
     return out;
   }
 
-  private runPlan(route: Route, candidates: Candidate[], startMi: number, startSoc: number, avoid: Set<string>): PlanResult {
+  /** Plan leg by leg through the stops still ahead (charging done while staying at one counts). */
+  private runPlan(route: Route, candidates: Candidate[], startMi: number, startSoc: number, avoid: Set<string>, via: (TripWaypoint & { routeMi: number })[]): { result: PlanResult; via: PlannedWaypoint[] } {
     const s = this.d.settings();
-    return plan({
+    return planLegs({
       route, startMi, startSoc, packKwh: s.packKwh, effMiPerKwh: this.d.highwayEff() || s.efficiencyMiPerKwh, tempF: this.d.tempF(),
       curve: this.d.samples.curve(), candidates, arriveMinSoc: s.charging.arriveMinSoc, destMinSoc: s.charging.arriveMinSoc,
       avoid, now: Date.now(),
-    });
+    }, via);
   }
 
   start(planId: string): TripPlan {
@@ -194,8 +203,10 @@ export class RoadTripService {
     if (soc === null) return a.plan;
     const at = gps ? locate(a.route, gps) : null;
     const mi = at && at.offMi <= ON_ROUTE_MI ? at.mi : (a.maxMi ?? 0);
-    const result = this.runPlan(a.route, a.candidates, mi, soc, new Set(a.avoid));
-    a.plan = { ...a.plan, result, startSoc: Math.round(soc) };
+    // Stops already reached keep their times; the rest are planned again.
+    const done = (a.plan.via ?? []).filter((w) => w.routeMi <= mi + 0.2);
+    const { result, via } = this.runPlan(a.route, a.candidates, mi, soc, new Set(a.avoid), (a.plan.via ?? []).filter((w) => w.routeMi > mi + 0.2));
+    a.plan = { ...a.plan, result, via: [...done, ...via], startSoc: Math.round(soc) };
     a.lastReplan = Date.now();
     if (reason) this.alert('replanned', reason);
     this.changed();

@@ -1,6 +1,7 @@
 // Road-trip HTTP routes (docs/contract.md "Road trips").
 import type { FastifyInstance } from 'fastify';
-import { PlanError, type RoadTripService } from './service.ts';
+import { MAX_VIA, PlanError, type RoadTripService } from './service.ts';
+import { STAY_BY_KIND, type TripWaypoint } from './types.ts';
 import type { SampleStore } from './samples.ts';
 
 const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi ? v : null);
@@ -27,9 +28,23 @@ export function registerRoadTripRoutes(app: FastifyInstance, trips: RoadTripServ
     if (!to) return reply.code(400).send({ error: 'to must be {lat, lon, name?}' });
     const from = b.from === undefined || b.from === null ? null : point(b.from);
     if (b.from && !from) return reply.code(400).send({ error: 'from must be {lat, lon, name?} or left out (GPS)' });
+    let via: TripWaypoint[] = [];
+    if (b.via !== undefined && b.via !== null) {
+      if (!Array.isArray(b.via) || b.via.length > MAX_VIA) return reply.code(400).send({ error: `via is a list of up to ${MAX_VIA} stops` });
+      for (const [i, w] of (b.via as unknown[]).entries()) {
+        const p = point(w);
+        if (!p) return reply.code(400).send({ error: `via[${i}] needs lat and lon` });
+        const o = w as Record<string, unknown>;
+        const kind = typeof o.kind === 'string' ? o.kind : null;
+        const stay = o.stayMin === undefined || o.stayMin === null ? STAY_BY_KIND[kind ?? 'other'] ?? 30 : num(o.stayMin, 0, 24 * 60);
+        if (stay === null) return reply.code(400).send({ error: `via[${i}].stayMin is 0 to 1440 minutes` });
+        const kw = o.chargeKw === undefined || o.chargeKw === null || o.chargeKw === 0 ? null : num(o.chargeKw, 0.5, 350);
+        via.push({ name: p.name ?? `Stop ${i + 1}`, lat: p.lat, lon: p.lon, placeId: typeof o.placeId === 'number' ? o.placeId : null, kind, stayMin: Math.round(stay), chargeKw: kw });
+      }
+    }
     const startSoc = b.startSoc === undefined || b.startSoc === null ? null : num(b.startSoc, 0, 100);
     if (b.startSoc !== undefined && b.startSoc !== null && startSoc === null) return reply.code(400).send({ error: 'startSoc must be 0 to 100' });
-    try { return await trips.planTrip({ to, from, startSoc }); } catch (e) { return fail(reply, e); }
+    try { return await trips.planTrip({ to, from, startSoc, via }); } catch (e) { return fail(reply, e); }
   });
 
   app.post('/api/roadtrip/start', async (req, reply) => {

@@ -216,3 +216,21 @@ describe('driver suggestion from phone presence', () => {
     expect(driversAtTruck(drivers, presence, HOME, now).map((d) => d.id)).toEqual(['jeff', 'jordan']);
   });
 });
+
+describe('saved places as trip stops', () => {
+  const svc = () => new StopService(openDb(mkdtempSync(path.join(tmpdir(), 'slate-places-'))), new HaClient(() => defaultSettings()), () => defaultSettings(), null);
+
+  it('keeps what a place is, any charging there, and a note', () => {
+    const s = svc();
+    const { place } = s.createPlace({ name: 'Sam’s house', lat: 35.21, lon: -111.63, kind: 'friend', chargeKw: 7.2, note: 'Park in the driveway' }, 'jeff');
+    expect(place).toMatchObject({ kind: 'friend', chargeKw: 7.2, note: 'Park in the driveway' });
+    expect(s.updatePlace(place.id, { chargeKw: null, kind: 'restaurant' })).toMatchObject({ kind: 'restaurant', chargeKw: null, note: 'Park in the driveway' });
+    const plain = s.createPlace({ name: 'Gym', lat: 33.5, lon: -112 }, 'jeff').place;
+    expect(plain).toMatchObject({ kind: null, chargeKw: null, note: null });
+  });
+
+  it('refuses a kind or charger it does not know', () => {
+    expect(() => svc().createPlace({ name: 'X', lat: 1, lon: 1, kind: 'castle' }, null)).toThrow(/kind is one of/);
+    expect(() => svc().createPlace({ name: 'X', lat: 1, lon: 1, chargeKw: 9999 }, null)).toThrow(/chargeKw/);
+  });
+});

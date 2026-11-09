@@ -9,6 +9,16 @@ export type { CurvePoint } from './curve.ts';
 
 export type LatLon = { lat: number; lon: number };
 
+/** How long a stop lasts unless you say (minutes): a meal, a visit, a night. */
+export const STAY_BY_KIND: Record<string, number> = { restaurant: 60, friend: 180, hotel: 600, home: 600, work: 60, other: 30 };
+
+/** A stop along the way: a restaurant, a friend's house, a hotel. Charging there while you stay counts. */
+export type TripWaypoint = { name: string; lat: number; lon: number; placeId: number | null; kind: string | null; stayMin: number; chargeKw: number | null };
+/** The same stop in a plan: when you get there and leave, and the charge in and out. */
+export type PlannedWaypoint = TripWaypoint & { routeMi: number; arriveAt: string; departAt: string; arriveSoc: number; departSoc: number };
+
+export type Destination = { name: string; lat: number; lon: number; placeId?: number; kind?: string | null; chargeKw?: number | null };
+
 export type TripPreset = { name: string; from: LatLon & { name: string }; to: LatLon & { name: string }; startSoc: number };
 
 /** One charging-rate reading (charge_samples). */
@@ -26,6 +36,8 @@ export type TripPlan = {
   elevation: boolean;
   candidates: number;
   warnings: string[];
+  /** Stops along the way, in order (empty for a straight trip). */
+  via: PlannedWaypoint[];
   result: PlanResult;
   /** The same trip in the driver's gas comparison vehicle (the payoff tracker's), at today's gas price; null when unknown. */
   gas: { label: string; mpg: number; pricePerGallon: number; gallons: number; cost: number } | null;
@@ -40,7 +52,8 @@ export type RoadTripView = {
   progress: TripProgress | null;
   coach: Coach | null;
   alerts: TripAlert[];
-  destinations: { name: string; lat: number; lon: number }[];
+  /** Saved places (and the demo's towns), with what they are and any charging there: destinations and stops. */
+  destinations: Destination[];
   presets: TripPreset[];
   curve: { learnedBins: number; samples: number; points: CurvePoint[] };
 };

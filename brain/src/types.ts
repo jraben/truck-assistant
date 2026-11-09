@@ -267,7 +267,15 @@ export type Stop = {
   placeId: number | null;
 };
 
-export type Place = { id: number; name: string; lat: number; lon: number; radiusM: number; visits: number; lastVisit: string | null };
+export type PlaceKind = 'home' | 'restaurant' | 'friend' | 'hotel' | 'work' | 'other';
+export type Place = {
+  id: number; name: string; lat: number; lon: number; radiusM: number; visits: number; lastVisit: string | null;
+  /** What it is (trip stops use it for the default stay); null = not said. */
+  kind: PlaceKind | null;
+  /** Charging there while you stay (kW: 1.4 a wall outlet, 7.2 a Level 2 charger); null = none. */
+  chargeKw: number | null;
+  note: string | null;
+};
 export type PlaceSuggestion = { lat: number; lon: number; visits: number; suggestedName: string | null; stopIds: number[] };
 export type TimelineItem = ({ kind: 'stop' } & Stop) | ({ kind: 'trip' } & Trip);
 

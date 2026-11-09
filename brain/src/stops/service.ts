@@ -9,6 +9,8 @@ import { DEFAULT_RADIUS_M, parseFeed, resolveName, type Area } from '../places/n
 import type { Place, PlaceSuggestion, Settings, Stop } from '../types.ts';
 import { PlaceStore, StopStore } from './store.ts';
 
+export const PLACE_KINDS = ['home', 'restaurant', 'friend', 'hotel', 'work', 'other'];
+
 export class PlaceInputError extends Error {}
 
 export const SUGGEST_MIN_VISITS = 3;
@@ -147,7 +149,7 @@ export class StopService extends EventEmitter {
   // ---- places ----------------------------------------------------------------
 
   private checkPlace(b: Record<string, unknown>, partial: boolean) {
-    const out: { name?: string; lat?: number; lon?: number; radiusM?: number } = {};
+    const out: { name?: string; lat?: number; lon?: number; radiusM?: number; kind?: string | null; chargeKw?: number | null; note?: string | null } = {};
     if (b.name !== undefined || !partial) {
       if (typeof b.name !== 'string' || !b.name.trim()) throw new PlaceInputError('name is required');
       out.name = b.name.trim().slice(0, 80);
@@ -157,6 +159,15 @@ export class StopService extends EventEmitter {
       if (!Number.isFinite(r) || r < 20 || r > 2000) throw new PlaceInputError('radiusM must be 20 to 2000');
       out.radiusM = r;
     }
+    if (b.kind !== undefined) {
+      if (b.kind !== null && !PLACE_KINDS.includes(b.kind as string)) throw new PlaceInputError(`kind is one of ${PLACE_KINDS.join(', ')}, or null`);
+      out.kind = (b.kind as string | null) ?? null;
+    }
+    if (b.chargeKw !== undefined) {
+      if (b.chargeKw === null || b.chargeKw === '' || b.chargeKw === 0) out.chargeKw = null;
+      else { const k = Number(b.chargeKw); if (!Number.isFinite(k) || k < 0.5 || k > 350) throw new PlaceInputError('chargeKw is 0.5 to 350 (kW), or empty for none'); out.chargeKw = k; }
+    }
+    if (b.note !== undefined) out.note = typeof b.note === 'string' && b.note.trim() ? b.note.trim().slice(0, 300) : null;
     if (!partial) {
       const lat = Number(b.lat), lon = Number(b.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) throw new PlaceInputError('lat and lon are required');
@@ -171,6 +182,7 @@ export class StopService extends EventEmitter {
     if (!body || typeof body !== 'object') throw new PlaceInputError('body must be a JSON object');
     const p = this.checkPlace(body as Record<string, unknown>, false);
     const row = this.places.create({ name: p.name!, lat: p.lat!, lon: p.lon!, radiusM: p.radiusM ?? DEFAULT_RADIUS_M, createdBy });
+    if (p.kind !== undefined || p.chargeKw !== undefined || p.note !== undefined) this.places.update(row.id, { kind: p.kind, chargeKw: p.chargeKw, note: p.note });
     const renamed = this.renameNear(row.lat, row.lon, row.radius_m);
     return { place: this.placesWithVisits().find((x) => x.id === row.id)!, renamed };
   }
