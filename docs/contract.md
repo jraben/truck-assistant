@@ -1325,3 +1325,91 @@ added once to saved layouts after Road trip), settings `ui/src/settings/TrafficS
 - **Routes:** `GET /api/traffic` → `TrafficView`, `POST /api/traffic/refresh`.
 - **Demo:** an invented AZ511 feed along the simulated drive (placeholder
   pictures from `/api/traffic/demo-cam/<id>`, or `DEMO_FOOTAGE/traffic-<id>.jpg`).
+
+## Contacts (address books, synced)
+
+Code: `brain/src/contacts/` (`vcard.ts`, `types.ts` pure; `sources.ts`, `service.ts`,
+`routes.ts`), settings `ui/src/settings/ContactsSection.tsx`.
+
+- **Sources:** Outlook / Microsoft 365 (Graph `/me/contacts`, `Contacts.Read`,
+  signed in with the device-code flow: the user's own app registration, public
+  client), Google (People API `contacts.readonly`, the user's own "Desktop app"
+  OAuth client, redirect `http://127.0.0.1:<port>/api/contacts/google/callback`
+  pasted back like Spotify's), and CardDAV (iCloud `https://contacts.icloud.com`,
+  Fastmail, Nextcloud…: discovery from the server address via
+  `current-user-principal` → `addressbook-home-set` → address books, then a
+  `REPORT addressbook-query` for every vCard). Demo: an invented address book.
+- **Sync, not import:** every 30 minutes and on demand, each address book's list
+  replaces that source's contacts (new in, changed updated, removed gone).
+  Addresses are looked up on the map (OpenStreetMap, rate-limited) only when they
+  change. Secrets (OAuth tokens, CardDAV passwords) in `DATA_DIR/contacts.json`
+  (0600), never sent to the UI; contacts in SQLite `contacts`.
+- **Uses:** located contacts are Road trip destinations and stops (`contactId`,
+  phones); the planner's search finds your places and contacts before the map.
+  **Call:** "Call here" is a `tel:` link on the tablet; "Ring my phone"
+  (`POST /api/contacts/:id/call {number}`) sends a phone notification (Settings ›
+  Alerts) whose tap opens the dialer.
+- **Routes:** `GET /api/contacts?q=`, `GET /api/contacts/status`,
+  `PUT /api/contacts/settings`, `POST /api/contacts/sync`,
+  `DELETE /api/contacts/source/:id`, `POST /api/contacts/outlook/start`,
+  `POST /api/contacts/google/start|finish`, `GET /api/contacts/google/callback`,
+  `POST /api/contacts/carddav`, `POST /api/contacts/:id/call`.
+
+## Airport pickup
+
+Code: `brain/src/pickup/` (`flight.ts` pure), UI `ui/src/components/pickup.tsx`
+(Road trip screen's side column), banner from `State.pickup`.
+
+- Flight numbers in any common form (`AA 1234`, `AAL1234`, `Southwest 2510`),
+  IATA → ICAO callsign table. Position: adsb.fi open data
+  `/api/v2/callsign/<CALLSIGN>` (keyless, 1 request/s, personal use); route:
+  adsbdb `/v0/callsign/<CALLSIGN>`. ADS-B gives position, not the gate, official
+  arrival or carousel.
+- Phases: waiting, en-route, approach (< 40 mi), taxiing (on the ground within 5
+  mi of the destination), at-gate (stopped 90 s). Landing estimate = distance /
+  (85% of ground speed) + approach allowance; out front = touchdown + 10 min taxi +
+  15 min deplane (+25 with checked bags); leave = out front − OSRM drive time − 5.
+- Polled every 30 s only while a pickup is set. Phone alerts once each: leave
+  now, landed, at the gate (tap opens Waze to the airport). A flight number in
+  WOPR's next calendar event is offered as a suggestion.
+- Routes: `GET/POST/DELETE /api/pickup`. Demo: any flight is a simulated arrival
+  from Dallas landing at PHX 25 minutes after it's first asked about.
+
+## Hazards ahead (weather, wind, fires)
+
+Code: `brain/src/hazards/` (`route.ts` pure, `service.ts`), the Traffic screen's
+"Weather and fires ahead" card, the banner via `State.hazard`.
+
+- On a trip: points every 40 miles along the rest of the route, with when the
+  truck gets there. Otherwise: the truck's own position. Every 15 minutes.
+- NWS `/alerts/active?point=` per point: driving-relevant events only (dust storm,
+  severe thunderstorm, tornado, flash flood, winter storm, high wind, dense fog,
+  red flag, extreme heat). Open-Meteo hourly forecast for the hour the truck is at
+  each point (several points per request): thunderstorm codes 95–99, heavy
+  rain/snow, gusts ≥ 45 mph, visibility < 1 mile.
+- NASA FIRMS (`Settings.keys.firms`, free MAP_KEY): VIIRS S-NPP hotspots from the
+  last day in the route's box, grouped into fires within 10 miles of the route
+  (CSV read by column name). Fire perimeters (NIFC) aren't used: their service
+  address couldn't be confirmed.
+- Routes: `GET /api/hazards`, `POST /api/hazards/refresh`.
+
+## Camp mode's sky
+
+`brain/src/sky/sky.ts`, the Parked › Camp tab. ISS passes for the next 24 hours
+above 10°, from CelesTrak's orbit (`gp.php?CATNR=25544&FORMAT=TLE`, refreshed
+daily) propagated with SGP4 (`satellite.js`); a pass is "visible" when the
+station is sunlit and the sun is more than 6° below the truck's horizon. "What's
+that plane?": the nearest airborne aircraft from adsb.fi
+`/api/v3/lat/<lat>/lon/<lon>/dist/15`, with its listed route from adsbdb (which
+can be out of date). `GET /api/sky/passes`, `GET /api/sky/overhead`.
+
+## God's Eye View scenes
+
+`brain/src/globe/scene.ts`. A planned or active road trip
+(`GET /api/roadtrip/scene.gevbundle.json`) or any logged trip
+(`GET /api/trips/:id/scene.gevbundle.json`, heights from Open-Meteo) as a God's
+Eye scene bundle (bundle version 1, scene document version 5): the route and
+stops as one GeoJSON data pack (`scene-bundle` source, exact `byteLength` and
+`sha256`), an overview shot and a shot at each stop (or a fly-along for a driven
+trip). IMPORT it in God's Eye's Scenes panel. Checked against God's Eye's own
+`parseSceneShare`.

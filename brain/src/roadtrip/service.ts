@@ -339,6 +339,23 @@ export class RoadTripService {
     });
   }
 
+  /** The active trip (else the draft) for a God's Eye scene: its route with heights, and its stops in order. */
+  sceneData(): { title: string; route: { lat: number; lon: number; elevM: number | null }[]; stops: { id: string; name: string; lat: number; lon: number; elevM: number | null; kind: 'start' | 'charge' | 'stop' | 'end'; note: string | null }[] } | null {
+    const t = this.active ?? this.draft;
+    if (!t) return null;
+    const p = t.plan, route = t.route;
+    const elev = (lat: number, lon: number) => { const at = locate(route, { lat, lon }); return route.points[at.index]?.elevM ?? null; };
+    const charge = p.result.stops.map((s) => ({ at: Date.parse(s.arriveAt), id: `charge-${s.id}`, name: s.name, lat: s.lat, lon: s.lon, elevM: elev(s.lat, s.lon), kind: 'charge' as const, note: `Arrive ${s.arriveSoc}%, charge to ${s.departSoc}% (${s.chargeMin} min)` }));
+    const via = (p.via ?? []).map((w, i) => ({ at: Date.parse(w.arriveAt), id: `stop-${i}`, name: w.name, lat: w.lat, lon: w.lon, elevM: elev(w.lat, w.lon), kind: 'stop' as const, note: `Stay ${w.stayMin} min` }));
+    const first = route.points[0], last = route.points[route.points.length - 1];
+    const stops = [
+      { id: 'start', name: p.from.name ?? 'Start', lat: first.lat, lon: first.lon, elevM: first.elevM, kind: 'start' as const, note: `Leave at ${p.startSoc}%` },
+      ...[...charge, ...via].sort((a, b) => a.at - b.at).map(({ at: _a, ...s }) => s),
+      { id: 'end', name: p.to.name, lat: last.lat, lon: last.lon, elevM: last.elevM, kind: 'end' as const, note: p.result.feasible ? `Arrive ${p.result.arriveSoc}%` : null },
+    ];
+    return { title: `Road trip to ${p.to.name}`, route: route.points.map((x) => ({ lat: x.lat, lon: x.lon, elevM: x.elevM })), stops };
+  }
+
   /** The active trip's route and where the truck is on it (for traffic ahead), or null. */
   routeNow(): { route: Route; mi: number } | null {
     const a = this.active;

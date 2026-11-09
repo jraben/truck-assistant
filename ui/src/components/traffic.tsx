@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api } from '../lib/brain.ts';
 import type { TrafficView } from '../../../brain/src/types.ts';
+import type { HazardView } from '../../../brain/src/hazards/service.ts';
 import { fmtTime } from '../lib/fmt.ts';
 import { Card } from './common.tsx';
 import type { WP } from './drive.tsx';
@@ -71,6 +72,7 @@ export function TrafficAhead({ s }: WP) {
             ))}
           </div>
         </Card>
+        <HazardsCard />
         <Card label="Enforcement cameras">
           {!v.enforcement.length && <div class="dimtxt">None mapped ahead.</div>}
           <div class="list">
@@ -82,5 +84,33 @@ export function TrafficAhead({ s }: WP) {
         <div class="attrib">Cameras and incidents: {keyedNames || 'state 511 services'} (state DOT data, via each state’s 511 developer API). Enforcement camera locations: © OpenStreetMap contributors; coverage varies. Police don’t publish live cameras.</div>
       </div>
     </div>
+  );
+}
+
+const HZ_LABEL = { warning: 'Warning', storm: 'Storms', rain: 'Rain', wind: 'Wind', fog: 'Visibility', fire: 'Fire' } as const;
+
+/** NWS warnings, the forecast for when you'll be there, and fires near the route (or around you). */
+function HazardsCard() {
+  const [v, setV] = useState<HazardView | null>(null);
+  useEffect(() => {
+    const load = async () => { try { setV(await api<HazardView>('/api/hazards')); } catch { /* keep */ } };
+    void load(); const id = setInterval(() => void load(), 60_000); return () => clearInterval(id);
+  }, []);
+  return (
+    <Card label="Weather and fires ahead" right={<span class="dimtxt" style="font-size:13px">{v?.following === 'route' ? 'along your trip' : 'around you'}</span>}>
+      {!v?.checkedAt && <div class="dimtxt">Checking…</div>}
+      {v?.checkedAt && !v.hazards.length && <div class="dimtxt">Nothing to watch for{v.following === 'route' ? ' on the rest of the trip' : ' nearby'}.</div>}
+      <div class="list">
+        {v?.hazards.slice(0, 8).map((h) => (
+          <div class={`item tfev ${h.severity === 'high' ? 'crash' : 'roadwork'}`}>
+            <div class="row between"><b>{HZ_LABEL[h.kind]}: {h.title}</b>{v.following === 'route' && <span class="num">mile {h.mi}</span>}</div>
+            {(h.detail || h.at) && <div class="dimtxt" style="font-size:13px">{h.detail ?? ''}{h.detail && h.at ? ' · ' : ''}{h.at ? (h.kind === 'warning' ? `until ${fmtTime(h.at)}` : h.kind === 'fire' ? `seen ${fmtTime(h.at)}` : `around ${fmtTime(h.at)}`) : ''}</div>}
+          </div>
+        ))}
+      </div>
+      {v && !v.firesOn && <div class="dimtxt" style="font-size:13px">Add a free NASA FIRMS key on the settings page to see fires near the route.</div>}
+      {v?.errors.length ? <div class="dimtxt" style="font-size:12px">{v.errors.join(' · ')}</div> : null}
+      <div class="attrib">Warnings: National Weather Service. Forecast: Open-Meteo. Fires: NASA FIRMS (satellite hotspots, a few hours old).</div>
+    </Card>
   );
 }

@@ -194,6 +194,7 @@ export function App() {
       <PeakBanner s={s} />
       <TripBanner s={s} go={go} />
       <TrafficBanner s={s} go={go} />
+      <PickupBanner s={s} go={go} />
       <ChargePrompt />
       <WeatherOverlay s={s} />
       <TrackBOverlays />
@@ -237,11 +238,18 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
 
 export type { State };
 
+/** Airport pickup: time to leave, landed, at the gate. */
+function PickupBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
+  const p = s?.pickup;
+  if (!p || !(p.leaveNow || p.phase === 'taxiing' || p.phase === 'at-gate')) return null;
+  return <button type="button" class={`banner ${p.leaveNow ? '' : 'ok'} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>{p.leaveNow ? 'Leave now' : 'Pickup'}</b><span>{p.line}</span></button>;
+}
+
 /** A crash or closure close ahead, or an enforcement camera coming up. */
 function TrafficBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
-  const t = s?.traffic;
+  const t = s?.traffic ?? (s?.hazard ? { kind: 'hazard' as const, text: s.hazard.text } : null);
   if (!t || s?.roadTrip?.alert || (s?.roadTrip?.coach && (s.roadTrip.coach.state === 'go' || s.roadTrip.coach.state === 'slow'))) return null;
-  return <button type="button" class={`banner ${t.kind === 'camera' ? '' : 'bad'} peakbanner tripbanner`} role="status" onClick={() => go('traffic')}><b>{t.kind === 'camera' ? 'Camera' : 'Traffic'}</b><span>{t.text}</span></button>;
+  return <button type="button" class={`banner ${t.kind === 'camera' ? '' : 'bad'} peakbanner tripbanner`} role="status" onClick={() => go('traffic')}><b>{t.kind === 'camera' ? 'Camera' : t.kind === 'hazard' ? 'Ahead' : 'Traffic'}</b><span>{t.text}</span></button>;
 }
 
 /**

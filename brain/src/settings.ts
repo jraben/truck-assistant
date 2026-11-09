@@ -103,7 +103,7 @@ export function maskKey(k: string | undefined): string | undefined {
   return MASK.repeat(4) + k.slice(-4);
 }
 
-const KEY_NAMES = ['afdc', 'openChargeMap', 'placesFeed', 'googlePlaces'] as const;
+const KEY_NAMES = ['afdc', 'openChargeMap', 'placesFeed', 'googlePlaces', 'firms'] as const;
 
 const maskWifi = (w: WifiNet | null): WifiNet | null => (w ? (w.password ? { ssid: w.ssid, password: maskKey(w.password) } : { ssid: w.ssid }) : null);
 

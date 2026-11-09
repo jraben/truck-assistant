@@ -15,6 +15,8 @@ export function TrafficSection({ settings }: { settings: Settings }) {
       settingsStore.set(n); setKeys({}); setMsg({ ok: true, text: 'Saved.' });
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };
+  const [firms, setFirms] = useState('');
+  const saveFirms = async (v: string) => { try { const n = await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ keys: { firms: v } }) }); settingsStore.set(n); setFirms(''); setMsg({ ok: true, text: v ? 'Saved.' : 'Removed.' }); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } };
   const typed = Object.fromEntries(Object.entries(keys).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()]));
   return (
     <section class="card" id="traffic">
@@ -36,6 +38,15 @@ export function TrafficSection({ settings }: { settings: Settings }) {
       <div class="row wrap">
         <button class="btn primary" type="button" disabled={!Object.keys(typed).length} onClick={() => void put(typed)}>Save 511 keys</button>
         {msg && <span class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</span>}
+      </div>
+      <h3 class="sub">Fires near the route (NASA FIRMS)</h3>
+      <p class="help">Satellite fire hotspots near your trip's route (or around you). Free key: firms.modaps.eosdis.nasa.gov/api/map_key. Weather warnings and the forecast need no key.</p>
+      <div class="fields form">
+        <label class="f"><span>FIRMS MAP_KEY</span><input type="password" autocomplete="off" value={firms} placeholder={settings.keys.firms ? `set (${settings.keys.firms}); type to replace` : 'not set'} onInput={(e) => setFirms((e.target as HTMLInputElement).value)} /></label>
+      </div>
+      <div class="row wrap">
+        <button class="btn" type="button" disabled={!firms.trim()} onClick={() => void saveFirms(firms.trim())}>Save FIRMS key</button>
+        {settings.keys.firms && <button class="btn sm danger" type="button" onClick={() => void saveFirms('')}>Remove</button>}
       </div>
     </section>
   );

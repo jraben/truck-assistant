@@ -59,6 +59,13 @@ Built for Jeff's truck first, published for other Slate owners later.
   `home-<name>.jpg`, or a folder `home-<name>/` of numbered frames shown one a
   second (front_lawn, garage, doorbell). Keep stock clips in that folder, never
   in the repo.
+- **Contacts, pickup, hazards, sky, God's Eye (2026-11-09):** address books
+  synced from Outlook, Google and iCloud/CardDAV (contacts become trip places,
+  with call buttons); airport pickup that follows a flight live and says when to
+  leave; NWS warnings, the forecast for when you'll be there, and NASA fire
+  hotspots along a trip; ISS passes and "what's that plane?" in camp mode; any
+  trip as a God's Eye View scene. Contract: "Contacts", "Airport pickup",
+  "Hazards ahead", "Camp mode's sky", "God's Eye View scenes".
 - **Traffic (2026-11-08):** a Traffic screen with state 511 cameras ahead
   (along the trip route, else the way you're heading), crashes, closures and
   roadwork ahead, and speed / red-light camera locations from OpenStreetMap;

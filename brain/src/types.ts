@@ -43,6 +43,10 @@ export type State = {
   roadTrip?: RoadTripBrief;
   /** A crash or closure close ahead, or an enforcement camera coming up (511 feeds, OpenStreetMap). */
   traffic?: TrafficBrief;
+  /** An airport pickup in progress: the flight's line and whether it's time to leave. */
+  pickup?: { phase: string; line: string; leaveNow: boolean } | null;
+  /** A serious hazard ahead (a warning, storms, strong gusts, a fire near the route). */
+  hazard?: { kind: string; text: string } | null;
 };
 
 export type NetworkStatus = {
@@ -119,7 +123,7 @@ export type Settings = {
   relayWatts: Record<string, number>;
   /** The dash tablet's draw from the truck while it charges, watts (estimate). */
   tabletWatts: number;
-  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
+  keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** NASA FIRMS MAP_KEY (fire hotspots). */ firms?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {
     flatPerKwh: number | null;

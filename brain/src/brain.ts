@@ -21,7 +21,10 @@ import { ChargeStore } from './charges/store.ts';
 import { SampleStore } from './roadtrip/samples.ts';
 import { RoadTripService } from './roadtrip/service.ts';
 import { TrafficService } from './traffic/service.ts';
-import { DEMO_DESTINATIONS, DEMO_TRIPS } from './demo/world.ts';
+import { ContactService, SYNC_MS as CONTACT_SYNC_MS } from './contacts/service.ts';
+import { PickupService } from './pickup/service.ts';
+import { HazardService } from './hazards/service.ts';
+import { DEMO_CONTACTS, DEMO_DESTINATIONS, DEMO_TRIPS } from './demo/world.ts';
 import { genericCurve, kwAt } from './roadtrip/curve.ts';
 import { sameNowPlaying } from './media.ts';
 import { StopDetector, type StopEvent } from './stops/detector.ts';
@@ -78,6 +81,18 @@ export class Brain extends EventEmitter {
   readonly roadTrip: RoadTripService;
   /** 511 cameras and incidents ahead, and enforcement cameras (OpenStreetMap). */
   readonly traffic: TrafficService;
+  /** Address books (Outlook, Google, CardDAV), synced: trip destinations and call buttons. */
+  readonly contacts: ContactService;
+  /** Airport pickup: one flight followed by ADS-B, and when to leave. */
+  readonly pickup: PickupService;
+  /** Sends a notification to the driver's phone (set by Track C at start-up). */
+  pushToPhone: ((title: string, message: string, clickUrl: string | null) => Promise<void>) | null = null;
+  private lastPickupTick = 0;
+  /** Warnings, storms, wind and fires along the trip (or around the truck). */
+  readonly hazards: HazardService;
+  private lastHazardTick = 0;
+  private lastContactSync = 0;
+  private lastGeocode = 0;
   private lastTrafficTick = 0;
   private lastTripTick = 0;
   private goalTimer: NodeJS.Timeout | null = null;
@@ -186,7 +201,10 @@ export class Brain extends EventEmitter {
         const price = g.today?.price ?? g.manualPrice;
         return v && v.mpgHighway > 0 && price > 0 ? { label: v.label, mpg: v.mpgHighway, pricePerGallon: price } : null;
       },
-      destinations: () => (config.demo ? DEMO_DESTINATIONS : this.stops.placesWithVisits(null).map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, placeId: p.id, kind: p.kind, chargeKw: p.chargeKw }))),
+      destinations: () => [
+        ...(config.demo ? DEMO_DESTINATIONS : this.stops.placesWithVisits(null).map((p) => ({ name: p.name, lat: p.lat, lon: p.lon, placeId: p.id, kind: p.kind, chargeKw: p.chargeKw }))),
+        ...this.contacts.places(),
+      ],
       settings: () => this.finderSettings(),
       soc: () => this.soc.value,
       gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
@@ -198,6 +216,26 @@ export class Brain extends EventEmitter {
       timeScale: () => { const p = this.sim?.status().charging; return p ? p.timeScale * config.simSpeedup : 1; },
     });
     this.roadTrip.onChange(() => this.changed());
+    this.contacts = new ContactService({
+      db, dataDir: config.dataDir,
+      online: () => this.net.status?.link !== 'offline',
+      geocode: (q) => this.stops.searchAddress(q),
+      demo: config.demo ? DEMO_CONTACTS.map((c) => ({ sourceId: c.sourceId, name: c.name, org: c.org, phones: c.phones, address: c.address })) : null,
+      demoPlaces: config.demo ? DEMO_CONTACTS : undefined,
+    });
+    this.pickup = new PickupService({
+      db, router: config.routerUrl,
+      gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
+      online: () => this.net.status?.link !== 'offline',
+      notify: async (title, message, clickUrl) => { if (this.pushToPhone) await this.pushToPhone(title, message, clickUrl); },
+    });
+    this.hazards = new HazardService({
+      route: () => this.roadTrip.routeNow(),
+      gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
+      online: () => this.net.status?.link !== 'offline',
+      firmsKey: () => this.settings.get().keys.firms ?? null,
+      userAgent: `truck-assistant/${config.version} (DIY dash)`,
+    });
     this.traffic = new TrafficService({
       db, settings: () => this.settings.get(),
       gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
@@ -558,6 +596,21 @@ export class Brain extends EventEmitter {
   private tick() {
     const now = Date.now();
     if (this.sim) { try { this.simChargeTick(); } catch (e) { console.error('[sim] charge', e); } }
+    if (now - this.lastContactSync >= CONTACT_SYNC_MS) {
+      this.lastContactSync = now;
+      void this.contacts.syncAll().catch((e) => console.error('[contacts]', e));
+    } else if (now - this.lastGeocode >= 60_000) {
+      this.lastGeocode = now;
+      void this.contacts.geocodePass().catch((e) => console.error('[contacts] geocode', e));
+    }
+    if (now - this.lastHazardTick >= 60_000) {
+      this.lastHazardTick = now;
+      void this.hazards.tick(now).catch((e) => console.error('[hazards]', e));
+    }
+    if (now - this.lastPickupTick >= 10_000) {
+      this.lastPickupTick = now;
+      void this.pickup.tick(now).catch((e) => console.error('[pickup]', e));
+    }
     if (now - this.lastTrafficTick >= (this.sim ? 20_000 : 60_000)) {
       this.lastTrafficTick = now;
       void this.traffic.tick(now).catch((e) => console.error('[traffic]', e));
@@ -682,6 +735,8 @@ export class Brain extends EventEmitter {
       driver: { id: d.id, name: d.name, initials: d.initials, color: d.color },
       roadTrip: this.roadTrip.brief(),
       traffic: this.traffic.brief(),
+      pickup: this.pickup.brief(),
+      hazard: this.hazards.brief(),
       driverSuggestion: this.s.driverSuggestion ? { ...this.s.driverSuggestion } : null,
       place: this.s.place ? { ...this.s.place } : null,
       network: { ...this.net.status, bytesThisMonth: { ...this.net.status.bytesThisMonth } },

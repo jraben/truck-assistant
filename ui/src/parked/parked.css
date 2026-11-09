@@ -20,3 +20,6 @@
 .pet-msg { font-size: 44px; font-family: var(--display); max-width: 1500px; }
 .camp-screen { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: 12px; background: #000; color: #555; border: 0; font-size: 20px; }
 .camp-clock { font-size: 120px; color: #7a2a2a; }
+.sky { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+.skypass { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; padding: 6px 10px; border-radius: var(--radius); background: var(--panel-2); }
+.skypass.vis { border-left: 4px solid var(--ok); }

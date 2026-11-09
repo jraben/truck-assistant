@@ -17,7 +17,9 @@ export type TripWaypoint = { name: string; lat: number; lon: number; placeId: nu
 /** The same stop in a plan: when you get there and leave, and the charge in and out. */
 export type PlannedWaypoint = TripWaypoint & { routeMi: number; arriveAt: string; departAt: string; arriveSoc: number; departSoc: number };
 
-export type Destination = { name: string; lat: number; lon: number; placeId?: number; kind?: string | null; chargeKw?: number | null };
+export type Destination = { name: string; lat: number; lon: number; placeId?: number; kind?: string | null; chargeKw?: number | null;
+  /** From a synced address book: the contact, their numbers and address. */
+  contactId?: number; phones?: { number: string; label: string }[]; address?: string | null };
 
 export type TripPreset = { name: string; from: LatLon & { name: string }; to: LatLon & { name: string }; startSoc: number };
 

@@ -15,6 +15,9 @@ import type { ChargeSession } from './types.ts';
 import { mediaSourceOf, NowPlayingHub, parseMediaMessage } from './media.ts';
 import { registerTrackB } from './trackb.ts';
 import { registerRoadTripRoutes } from './roadtrip/routes.ts';
+import { SkyService } from './sky/sky.ts';
+import { tripBundle } from './globe/scene.ts';
+import { addElevation, withMiles } from './roadtrip/route.ts';
 import { PlaceInputError } from './stops/service.ts';
 import { ImportError } from './import/phone.ts';
 import { VehicleError, type MenuLevel } from './gas/vehicles.ts';
@@ -290,6 +293,42 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   registerDriveRoutes(app, brain.drive);
   registerRoadTripRoutes(app, brain.roadTrip, brain.samples);
   app.get('/api/traffic', async () => brain.traffic.view());
+  const sky = new SkyService();
+  // God's Eye View scene bundles: IMPORT in God's Eye's Scenes panel.
+  const sendBundle = (reply: { header: (k: string, v: string) => unknown; type: (t: string) => { send: (b: string) => unknown } }, name: string, b: unknown) => {
+    reply.header('content-disposition', `attachment; filename="${name.replace(/[^a-z0-9-]+/gi, '-').toLowerCase()}.gevbundle.json"`);
+    return reply.type('application/json').send(JSON.stringify(b));
+  };
+  app.get('/api/roadtrip/scene.gevbundle.json', async (_req, reply) => {
+    const d = brain.roadTrip.sceneData();
+    if (!d) return reply.code(404).send({ error: 'Plan a trip first.' });
+    return sendBundle(reply, d.title, tripBundle({ title: d.title, route: d.route, stops: d.stops, attribution: 'Truck Assistant road-trip plan' }));
+  });
+  app.get<{ Params: { id: string } }>('/api/trips/:id/scene.gevbundle.json', async (req, reply) => {
+    const t = brain.trips.get(Number(req.params.id));
+    if (!t) return reply.code(404).send({ error: 'no such trip' });
+    const pts = brain.trips.points(t.id).map((p) => ({ lat: p.lat, lon: p.lon }));
+    if (pts.length < 2) return reply.code(409).send({ error: 'This trip has no GPS track to replay.' });
+    // Heights from Open-Meteo so the line sits on the ground in hilly country (none: at 0 m).
+    const r = await addElevation({ points: withMiles(pts.length > 2000 ? pts.filter((_, i) => i % Math.ceil(pts.length / 2000) === 0) : pts), miles: 0, minutes: 0, source: 'osrm', elevation: false });
+    const route = r.points.map((p) => ({ lat: p.lat, lon: p.lon, elevM: p.elevM }));
+    const name = `Trip ${new Date(t.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}${t.from?.name && t.to?.name ? `: ${t.from.name} to ${t.to.name}` : ''}`;
+    const stops = [{ id: 'start', name: t.from?.name ?? 'Start', ...route[0], kind: 'start' as const }, { id: 'end', name: t.to?.name ?? 'End', ...route[route.length - 1], kind: 'end' as const }];
+    return sendBundle(reply, name, tripBundle({ title: name, route, stops, attribution: 'Truck Assistant trip log', flyAlong: true }));
+  });
+  app.get('/api/hazards', async () => brain.hazards.view());
+  // Camp mode's sky: ISS passes over the truck, and the plane overhead.
+  app.get('/api/sky/passes', async (_req, reply) => {
+    const g = brain.getState().gps;
+    if (!g?.fix) return reply.code(409).send({ error: 'No GPS fix yet.' });
+    try { return { passes: await sky.passes(g.lat, g.lon) }; } catch (e) { return reply.code(502).send({ error: (e as Error).message }); }
+  });
+  app.get('/api/sky/overhead', async (_req, reply) => {
+    const g = brain.getState().gps;
+    if (!g?.fix) return reply.code(409).send({ error: 'No GPS fix yet.' });
+    try { return { aircraft: await sky.overhead(g.lat, g.lon) }; } catch (e) { return reply.code(502).send({ error: (e as Error).message }); }
+  });
+  app.post('/api/hazards/refresh', async () => { await brain.hazards.tick(Date.now(), true); return brain.hazards.view(); });
   // DEMO: the invented AZ511 cameras' pictures (DEMO_FOOTAGE/traffic-<id>.jpg, else a drawn placeholder).
   app.get<{ Params: { id: string } }>('/api/traffic/demo-cam/:id', async (req, reply) => {
     const id = String(req.params.id).replace(/\.svg$/, '').replace(/[^0-9]/g, '');

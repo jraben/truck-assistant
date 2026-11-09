@@ -263,6 +263,42 @@ function CampTab() {
       <RelayPick value={m.camp.relays} multi onChange={(v) => void patch({ camp: { relays: v } })} />
       <label class="f" style="max-width:260px"><span>Switch them off below (V)</span><input type="number" step="0.1" value={m.camp.cutoffV} onChange={(e) => void patch({ camp: { cutoffV: Number((e.target as HTMLInputElement).value) } })} /></label>
       <div class="attrib">Camp mode dims the screen to a clock, mutes chimes, runs the relays you pick (bed lights, fan, fridge) and protects the 12V battery. It ends when you drive. The truck's own heat and A/C can't be run from here.</div>
+      <SkyCard />
+    </div>
+  );
+}
+
+type Pass = { start: string; peak: string; end: string; maxElevationDeg: number; startDir: string; endDir: string; visible: boolean };
+type Overhead = { callsign: string | null; type: string | null; registration: string | null; altFt: number | null; distMi: number; bearing: string; origin: { city: string | null; iata: string | null } | null; destination: { city: string | null; iata: string | null } | null };
+
+/** Camp sky: the ISS passes tonight, and "what's that plane?". */
+function SkyCard() {
+  const [passes, setPasses] = useState<Pass[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [plane, setPlane] = useState<Overhead | null | undefined>(undefined);
+  const [looking, setLooking] = useState(false);
+  useEffect(() => { void api<{ passes: Pass[] }>('/api/sky/passes').then((r) => setPasses(r.passes)).catch((e) => setErr((e as Error).message)); }, []);
+  const t = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const what = async () => { setLooking(true); try { setPlane((await api<{ aircraft: Overhead | null }>('/api/sky/overhead')).aircraft); } catch (e) { toast((e as Error).message); } finally { setLooking(false); } };
+  const place = (a: Overhead['origin']) => (a ? a.city ?? a.iata ?? '?' : '?');
+  return (
+    <div class="sky">
+      <div class="lbl">Space station passes (next 24 hours)</div>
+      {err && <div class="dimtxt">{err}</div>}
+      {passes && !passes.length && <div class="dimtxt">No passes above 10° in the next day.</div>}
+      {passes?.map((p) => (
+        <div class={`skypass ${p.visible ? 'vis' : ''}`}>
+          <b class="num">{t(p.peak)}</b>
+          <span>{p.startDir} → {p.endDir}, up to {p.maxElevationDeg}°</span>
+          <span class={p.visible ? 'okmsg' : 'dimtxt'}>{p.visible ? 'Visible: a bright, steady moving star' : 'Not visible (daylight or in Earth’s shadow)'}</span>
+        </div>
+      ))}
+      <div class="row wrap" style="align-items:center">
+        <button class="btn" type="button" disabled={looking} onClick={() => void what()}>{looking ? 'Looking…' : 'What’s that plane?'}</button>
+        {plane === null && <span class="dimtxt">No aircraft within 15 nautical miles.</span>}
+        {plane && <span><b>{plane.callsign ?? plane.registration ?? 'Aircraft'}</b>{plane.type ? ` · ${plane.type}` : ''} · {plane.distMi} mi {plane.bearing}{plane.altFt !== null ? ` at ${plane.altFt.toLocaleString()} ft` : ''}{plane.origin || plane.destination ? <span class="dimtxt"> · listed route {place(plane.origin)} → {place(plane.destination)}</span> : ''}</span>}
+      </div>
+      <div class="attrib">Orbit: CelesTrak. Aircraft: adsb.fi open data (personal use; adsb.fi.org). Routes: adsbdb, sometimes out of date.</div>
     </div>
   );
 }

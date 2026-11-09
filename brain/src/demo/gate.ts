@@ -31,6 +31,7 @@ export const PUBLIC_HOSTS = [
   'overpass-api.de', 'maps.mail.ru', // OpenStreetMap speed limits
   'opml.radiotime.com',         // AM/FM station directory
   'www.fueleconomy.gov',        // gas-vehicle picker
+  'celestrak.org',              // the ISS orbit (camp mode's sky)
 ];
 /** Suffixes: radio-browser.info runs several mirrors. */
 const PUBLIC_SUFFIXES = ['.api.radio-browser.info'];

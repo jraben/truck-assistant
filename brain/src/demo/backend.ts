@@ -322,6 +322,33 @@ export function ocmAnswer(u: URL): Response {
   })));
 }
 
+// ---- Flights: a simulated arrival into Phoenix -------------------------------------------
+
+const DFW = { lat: 32.8998, lon: -97.0403 }, PHX = { lat: 33.4343, lon: -112.0116 };
+const flightStart = new Map<string, number>();
+/** Any flight lands at PHX 25 minutes after it was first asked about, taxis 8 minutes, then parks. */
+export function demoFlight(callsign: string, now = Date.now()) {
+  const t0 = flightStart.get(callsign) ?? (flightStart.set(callsign, now), now);
+  const landAt = t0 + 25 * 60_000;
+  if (now >= landAt) {
+    const taxi = now - landAt < 8 * 60_000;
+    return { flight: callsign, lat: PHX.lat + 0.003, lon: PHX.lon + 0.01, alt_baro: 'ground', gs: taxi ? 14 : 0, track: 260, seen: 1 };
+  }
+  const milesOut = ((landAt - now) / 60_000) * 8.6, total = 868;
+  const f = Math.min(1, milesOut / total);
+  return { flight: callsign, lat: PHX.lat + (DFW.lat - PHX.lat) * f, lon: PHX.lon + (DFW.lon - PHX.lon) * f, alt_baro: milesOut < 30 ? Math.round(milesOut * 330) : 36000, gs: milesOut < 30 ? 180 : 450, track: 265, seen: 1 };
+}
+export function adsbAnswer(u: URL): Response {
+  const cs = decodeURIComponent(u.pathname.split('/').pop() ?? '').toUpperCase();
+  return json({ ac: cs ? [demoFlight(cs)] : [], now: Date.now() });
+}
+export function adsbdbAnswer(u: URL): Response {
+  const cs = decodeURIComponent(u.pathname.split('/').pop() ?? '').toUpperCase();
+  return json({ response: { flightroute: { callsign: cs,
+    origin: { iata_code: 'DFW', icao_code: 'KDFW', name: 'Dallas/Fort Worth International Airport', municipality: 'Dallas-Fort Worth', latitude: DFW.lat, longitude: DFW.lon },
+    destination: { iata_code: 'PHX', icao_code: 'KPHX', name: 'Phoenix Sky Harbor International Airport', municipality: 'Phoenix', latitude: PHX.lat, longitude: PHX.lon } } } });
+}
+
 // ---- AZ511: cameras and incidents --------------------------------------------------------
 
 export function az511Answer(u: URL): Response {
@@ -383,6 +410,8 @@ export function demoBackend(svc: DemoServices) {
     if (h === 'api.openchargemap.io') return ocmAnswer(u);
     if (h === 'router.project-osrm.org') return osrmAnswer(u);
     if (h === 'az511.com' || h === 'www.az511.com') return az511Answer(u);
+    if (h === 'opendata.adsb.fi') return adsbAnswer(u);
+    if (h === 'api.adsbdb.com') return adsbdbAnswer(u);
     return null;
   };
 }

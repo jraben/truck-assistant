@@ -7,8 +7,9 @@ import { api, toast, type State } from '../lib/brain.ts';
 import type { Coach, CurvePoint, PlannedWaypoint, PlanStop, RoadTripView, TripPlan, TripWaypoint } from '../../../brain/src/types.ts';
 import { STAY_BY_KIND } from '../../../brain/src/roadtrip/types.ts';
 import { fmtTime } from '../lib/fmt.ts';
-import { Card } from './common.tsx';
+import { Card, Modal } from './common.tsx';
 import { WazeModal } from './charge.tsx';
+import { PickupCard } from './pickup.tsx';
 import type { WP } from './drive.tsx';
 
 const EMPTY: RoadTripView = { draft: null, active: null, progress: null, coach: null, alerts: [], destinations: [], presets: [], curve: { learnedBins: 0, samples: 0, points: [] } };
@@ -37,6 +38,7 @@ export function RoadTrip({ s }: WP) {
       <div class="rtgrid">
         <ActiveTrip v={v} busy={busy} onReplan={() => void run('replan', () => post('/api/roadtrip/replan'))} onEnd={() => void run('end', () => post('/api/roadtrip/stop').then(setV))} />
         <div class="rtside">
+          <PickupCard />
           {v.coach && <CoachCard c={v.coach} />}
           <CurveCard v={v} />
         </div>
@@ -53,6 +55,7 @@ export function RoadTrip({ s }: WP) {
           onDiscard={() => void run('discard', () => post('/api/roadtrip/discard'))} />}
       </div>
       <div class="rtside">
+        <PickupCard />
         {v.coach && <CoachCard c={v.coach} />}
         <CurveCard v={v} />
       </div>
@@ -60,7 +63,7 @@ export function RoadTrip({ s }: WP) {
   );
 }
 
-type Dest = { name: string; lat: number; lon: number; placeId?: number; kind?: string | null; chargeKw?: number | null };
+type Dest = { name: string; lat: number; lon: number; placeId?: number; kind?: string | null; chargeKw?: number | null; contactId?: number; phones?: { number: string; label: string }[]; address?: string | null };
 type Stop = TripWaypoint;
 
 const KINDS: { id: string; label: string }[] = [
@@ -77,12 +80,16 @@ function Planner({ s, v, busy, onPlan }: { s: State | null; v: RoadTripView; bus
   const [soc, setSoc] = useState<number | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
   const [saving, setSaving] = useState<Dest | null>(null);
+  const [calling, setCalling] = useState<Dest | null>(null);
   const cur = s?.soc ?? null;
   const startSoc = soc ?? (cur === null ? null : Math.round(cur));
   const search = async () => {
     setSearchErr(null);
-    try { const r = await api<{ results: Dest[] }>(`/api/geocode/search?q=${encodeURIComponent(q)}`); setHits(r.results); if (!r.results.length) setSearchErr('Nothing found.'); }
-    catch (e) { setHits(null); setSearchErr((e as Error).message); }
+    // Your own places and contacts first, then the map.
+    const s = q.trim().toLowerCase();
+    const mine = v.destinations.filter((d) => d.name.toLowerCase().includes(s) || (d.address ?? '').toLowerCase().includes(s));
+    try { const r = await api<{ results: Dest[] }>(`/api/geocode/search?q=${encodeURIComponent(q)}`); setHits([...mine, ...r.results]); if (!mine.length && !r.results.length) setSearchErr('Nothing found.'); }
+    catch (e) { setHits(mine); setSearchErr(mine.length ? null : (e as Error).message); }
   };
   const go = (d: Dest) => onPlan({ to: d, startSoc: soc, via: stops });
   const addStop = (d: Dest) => setStops([...stops, { name: d.name, lat: d.lat, lon: d.lon, placeId: d.placeId ?? null, kind: d.kind ?? null, stayMin: STAY_BY_KIND[d.kind ?? 'other'] ?? 30, chargeKw: d.chargeKw ?? null }].slice(0, 8));
@@ -105,8 +112,9 @@ function Planner({ s, v, busy, onPlan }: { s: State | null; v: RoadTripView; bus
       <div class="rtplaces">
         {list.map((d) => (
           <div class="rtplace">
-            <div class="grow"><b>{d.name}</b>{(kindLabel(d.kind) || d.chargeKw) && <span class="dimtxt"> · {[kindLabel(d.kind), d.chargeKw ? `charging ${d.chargeKw} kW` : null].filter(Boolean).join(' · ')}</span>}</div>
-            {hits && !d.placeId && <button type="button" class="btn sm" onClick={() => setSaving(d)}>Save</button>}
+            <div class="grow"><b>{d.name}</b>{(kindLabel(d.kind) || d.chargeKw || d.contactId) && <span class="dimtxt"> · {[d.contactId ? 'contact' : null, kindLabel(d.kind), d.chargeKw ? `charging ${d.chargeKw} kW` : null].filter(Boolean).join(' · ')}</span>}</div>
+            {d.phones && d.phones.length > 0 && <button type="button" class="btn sm" onClick={() => setCalling(d)}>Call</button>}
+            {hits && !d.placeId && !d.contactId && <button type="button" class="btn sm" onClick={() => setSaving(d)}>Save</button>}
             <button type="button" class="btn sm" disabled={planning || stops.length >= 8} onClick={() => addStop(d)} title="Stop here on the way">+ Stop</button>
             <button type="button" class="btn sm primary" disabled={planning || startSoc === null} onClick={() => go(d)} title={`Plan a trip to ${d.name}`}>Go</button>
           </div>
@@ -114,6 +122,7 @@ function Planner({ s, v, busy, onPlan }: { s: State | null; v: RoadTripView; bus
         {!hits && !v.destinations.length && <span class="dimtxt" style="font-size:14px">Search for a place, or save places (restaurants, friends' houses) to find them here.</span>}
       </div>
       {saving && <SavePlace d={saving} onDone={(saved) => { setSaving(null); if (saved) setHits(null); }} />}
+      {calling && <CallModal d={calling} onClose={() => setCalling(null)} />}
       {stops.length > 0 && (
         <div class="rtvia">
           <div class="lbl">Stops along the way, in order</div>
@@ -139,6 +148,32 @@ function Planner({ s, v, busy, onPlan }: { s: State | null; v: RoadTripView; bus
       </div>
       <div class="dimtxt" style="font-size:13px">Plans the fastest set of charging stops from the truck's charging curve, the climbs, the heat and your charging preferences, around your stops, arriving everywhere above your minimum charge.</div>
     </Card>
+  );
+}
+
+/** Call a contact: on this tablet (if it can make calls), or a tap-to-call notification on your phone. */
+function CallModal({ d, onClose }: { d: Dest; onClose: () => void }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const ring = async (number: string) => {
+    try { await api(`/api/contacts/${d.contactId}/call`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ number }) }); setMsg('Sent to your phone: tap the notification to call.'); }
+    catch (e) { setMsg((e as Error).message); }
+  };
+  return (
+    <Modal title={`Call ${d.name}`} onClose={onClose}>
+      <div class="list">
+        {(d.phones ?? []).map((p) => (
+          <div class="item row between">
+            <span><b class="num">{p.number}</b> <span class="dimtxt">{p.label}</span></span>
+            <span class="row" style="gap:8px">
+              <a class="btn" href={`tel:${p.number.replace(/[^\d+*#,]/g, '')}`}>Call here</a>
+              {d.contactId !== undefined && <button class="btn primary" type="button" onClick={() => void ring(p.number)}>Ring my phone</button>}
+            </span>
+          </div>
+        ))}
+      </div>
+      {msg && <div class="dimtxt">{msg}</div>}
+      <div class="dimtxt" style="font-size:13px">“Call here” uses the tablet's own dialer (a tablet with a phone plan, or one linked to your phone). “Ring my phone” sends a notification to your phone (Settings › Alerts) that opens its dialer. With CarPlay, saying “call {d.name}” to Siri works too.</div>
+    </Modal>
   );
 }
 
@@ -217,6 +252,7 @@ function PlanCard({ p, busy, onStart, onDiscard }: { p: TripPlan; busy: string |
       <div class="row wrap">
         <button class="btn primary" type="button" disabled={!r.feasible || !!busy} onClick={onStart}>{busy === 'start' ? 'Starting…' : 'Start trip'}</button>
         <button class="btn" type="button" disabled={!!busy} onClick={onDiscard}>Discard</button>
+        <a class="btn" href="/api/roadtrip/scene.gevbundle.json" download title="A God's Eye View scene: IMPORT it in God's Eye's Scenes panel">Fly it in God's Eye</a>
       </div>
       <div class="attrib">Route: {p.routeSource === 'osrm' ? 'OpenStreetMap via OSRM' : 'straight line (no router)'}{p.elevation ? '; elevation: Open-Meteo' : ''}. {p.candidates} fast chargers near the route. Navigation stays in Waze.</div>
       {waze && <WazeModal ch={waze as never} onClose={() => setWaze(null)} />}
@@ -311,6 +347,7 @@ function ActiveTrip({ v, busy, onReplan, onEnd }: { v: RoadTripView; busy: strin
         <div class="row wrap">
           <button class="btn" type="button" disabled={!!busy} onClick={onReplan}>{busy === 'replan' ? 'Replanning…' : 'Replan from here'}</button>
           <button class="btn" type="button" disabled={!!busy} onClick={onEnd}>End trip</button>
+          <a class="btn" href="/api/roadtrip/scene.gevbundle.json" download>Fly it in God's Eye</a>
         </div>
       </Card>
       <Card label="Stops">

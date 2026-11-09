@@ -193,3 +193,10 @@ export const DEMO_TRAFFIC_EVENTS = [
   { ID: 88002, RoadwayName: 'Loop 202', DirectionOfTravel: 'Eastbound', EventType: 'roadwork', EventSubType: 'Lane restriction', Description: 'Right lane closed for paving overnight', LanesAffected: '1 right lane', Latitude: 33.4280, Longitude: -111.9600, IsFullClosure: false },
   { ID: 88003, RoadwayName: 'I-17', DirectionOfTravel: 'Northbound', EventType: 'closures', EventSubType: 'Ramp closure', Description: 'Exit 229 off-ramp closed', LanesAffected: 'Ramp', Latitude: 33.7100, Longitude: -112.1120, IsFullClosure: false },
 ];
+
+/** An invented address book for demo mode (already on the map: no lookups from a demo truck). */
+export const DEMO_CONTACTS = [
+  { sourceId: 'demo-1', name: 'Sam Rivera', org: null, phones: [{ number: '+1 602 555 0134', label: 'mobile' as const }], address: '1200 N Beaver St, Flagstaff, AZ 86001', lat: 35.2063, lon: -111.6510 },
+  { sourceId: 'demo-2', name: 'Jordan Lee', org: null, phones: [{ number: '+1 520 555 0177', label: 'mobile' as const }], address: '400 N 4th Ave, Tucson, AZ 85705', lat: 32.2290, lon: -110.9670 },
+  { sourceId: 'demo-3', name: 'Desert Bloom Café', org: 'Desert Bloom Café', phones: [{ number: '+1 928 555 0110', label: 'work' as const }], address: 'Main St, Camp Verde, AZ 86322', lat: 34.5640, lon: -111.8540 },
+];

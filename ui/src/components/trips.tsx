@@ -129,6 +129,7 @@ export function Trips({ s }: WP) {
         : <span class="dimtxt num" style="font-size:13px">SoC <V v={detail.startSoc?.toFixed(0)} why="Charge level unknown at start" />% → <V v={detail.endSoc?.toFixed(0)} why={detail.endedAt ? 'Charge level unknown at end' : 'Trip in progress'} />%</span>)}>
         {detail && <ModeSplit t={detail} kwh />}
         {detail ? <RoutePlot pts={detail.points} /> : <div class="dimtxt">Pick a trip.</div>}
+        {detail && detail.points.length > 1 && <a class="btn sm" href={`/api/trips/${detail.id}/scene.gevbundle.json`} download title="A God's Eye View scene: IMPORT it in God's Eye's Scenes panel">Replay in God's Eye</a>}
       </Card>
       {naming && <NameStop stopId={naming.stopId} initial={naming.name} onClose={(saved) => { setNaming(null); if (saved) void load(); }} />}
     </div>

@@ -7,6 +7,8 @@ import { buildServer } from './server.ts';
 import { SettingsStore } from './settings.ts';
 import { RemoteService } from './remote/service.ts';
 import { registerRemote } from './remote/routes.ts';
+import { registerContacts } from './contacts/routes.ts';
+import { registerPickup } from './pickup/routes.ts';
 import { applyPendingRestore } from './ops/backup.ts';
 import { registerParked } from './parkedRoutes.ts';
 import { registerSim } from './simRoutes.ts';
@@ -29,6 +31,11 @@ async function main() {
   await registerRemote(app, remote);
   registerParked(app, brain, db, remote, (app as unknown as { trackb: { plex: import('./media/plex.ts').PlexService } }).trackb.plex);   // video/games/karaoke, camp/pet, trailers, light show
   registerSim(app, brain, remote);   // the test panel (SIM=1 only)
+  registerContacts(app, brain.contacts, config.port, (o) => remote.notifier.send(o, brain.settings.get(), remote.store.get().alerts));
+  brain.pushToPhone = async (title, message, clickUrl) => { const r = await remote.notifier.send({ kind: 'pickup', title, message, priority: 'high', clickUrl }, brain.settings.get(), remote.store.get().alerts); if (r.error && !r.delivered.length) throw new Error(r.error); };
+  const wopr = (app as unknown as { trackb: { wopr: import('./wopr/service.ts').WoprService } }).trackb.wopr;
+  brain.pickup.setNextAppointment(() => { const n = wopr.getNext().next; return n ? { title: n.title, location: n.location } : null; });
+  registerPickup(app, brain.pickup);
   brain.start();
   await app.listen({ port: config.port, host: config.host });
   await remote.start();
