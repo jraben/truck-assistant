@@ -23,6 +23,8 @@ export type TruckContext = {
   payoff?: string | null;
   /** WOPR's own /api/mobile/context text (calendar, tasks, dinner), or ''. */
   woprContext: string;
+  /** The channel instructions; WOPR's (TRUCK_INSTRUCTIONS) unless another assistant answers. */
+  instructions?: string;
 };
 
 export type ChatMsg = { role: 'user' | 'assistant'; content: string };
@@ -45,6 +47,12 @@ export const TRUCK_INSTRUCTIONS = 'Jeff is talking to you by voice from the dash
   + 'so do not embed action JSON and never say you added, changed or removed something; if he asks for a change, say it needs the app or his phone. '
   + 'Answering from his calendar, archive, records and memory works as normal. The truck block below is live; anything marked unknown, say you do not know.';
 
+/** For any other assistant (ChatGPT, Claude, Gemini...): the same rules without WOPR's archive and memory. */
+export const GENERIC_INSTRUCTIONS = 'The driver is talking to you by voice from the dash of their Slate truck, usually while driving. '
+  + 'Keep replies short and spoken: one to three sentences, nothing they have to read, no lists or markdown. '
+  + 'You cannot change anything in the truck or on their accounts from here, so never say you did; if they ask for a change, say it needs the app or their phone. '
+  + 'The truck block below is live; anything marked unknown, say you do not know.';
+
 /** The [TRUCK] block. Unknown values are said to be unknown, never guessed. */
 export function truckBlock(c: TruckContext): string {
   const lines: string[] = [];
@@ -66,7 +74,7 @@ export function truckBlock(c: TruckContext): string {
 
 export function buildPrimer(c: TruckContext): string {
   const ctx = stripIds(c.woprContext ?? '').trim();
-  return `Current time: ${nowLine(c.now)}\n\n${TRUCK_INSTRUCTIONS}\n\n${truckBlock(c)}${ctx ? `\n\n${ctx}` : ''}`;
+  return `Current time: ${nowLine(c.now)}\n\n${c.instructions ?? TRUCK_INSTRUCTIONS}\n\n${truckBlock(c)}${ctx ? `\n\n${ctx}` : ''}`;
 }
 
 /** The most messages of history sent with a turn (WOPR's phone page sends 20). */

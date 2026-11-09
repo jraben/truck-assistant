@@ -1,3 +1,4 @@
+import type { AssistantSettings } from '../assistant/types.ts';
 // Track B shapes shared by the brain and the cockpit UI (docs/contract.md,
 // "Track B: Media and WOPR"). Types only: no Node APIs, so the UI can import it.
 
@@ -35,6 +36,8 @@ export type MediaSettings = {
   fm: { presets: FmPreset[]; ppm: number; gain: number | null; source: FmSource };
   local: { folder: string | null };  // null = DATA_DIR/music
   receipts: { autoImport: boolean };
+  /** Which AI answers the voice button (WOPR by default), and speech in/out. Keys masked like the rest. */
+  assistant: AssistantSettings;
 };
 
 /** What GET /api/media/settings returns: secrets masked, Spotify tokens reduced to who is connected. */

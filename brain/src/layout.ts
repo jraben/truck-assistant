@@ -14,6 +14,20 @@ export function migrateChargeLayout(l: Layout): Layout {
   return { ...l, views };
 }
 
+/**
+ * Layouts saved before the Road trip screen existed get it, once, right after
+ * Charge. A layout that already has a roadTrip widget anywhere is left alone,
+ * and one that has `roadTripAdded` set was given it before (so removing it sticks). Pure.
+ */
+export function migrateRoadTripLayout(l: Layout): Layout {
+  if (l.roadTripAdded || l.views.some((v) => v.widgets.some((w) => w.type === 'roadTrip'))) return l.roadTripAdded ? l : { ...l, roadTripAdded: true };
+  const def = DEFAULT_LAYOUT.views.find((v) => v.id === 'roadtrip')!;
+  const views = l.views.slice();
+  const at = views.findIndex((v) => v.id === 'charge');
+  views.splice(at >= 0 ? at + 1 : views.length, 0, structuredClone(def));
+  return { ...l, views, roadTripAdded: true };
+}
+
 /** 12 columns x 2 rows on the 1920x720 bar, unless a view says otherwise. */
 export const DEFAULT_LAYOUT: Layout = {
   views: [
@@ -36,6 +50,10 @@ export const DEFAULT_LAYOUT: Layout = {
       { type: 'costSummary', col: 10, row: 1, w: 3, h: 1 },
       { type: 'costSessions', col: 7, row: 2, w: 3, h: 1 },
       { type: 'payoffGoal', col: 10, row: 2, w: 3, h: 1 },
+    ] },
+    // Road trips: plan charging stops, follow the trip, the charging coach (ui/src/components/roadtrip.tsx).
+    { id: 'roadtrip', label: 'Road trip', widgets: [
+      { type: 'roadTrip', col: 1, row: 1, w: 12, h: 2 },
     ] },
     { id: 'trips', label: 'Trips', widgets: [
       { type: 'trips', col: 1, row: 1, w: 12, h: 2 },

@@ -440,3 +440,50 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 .loadicon { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; color: var(--dim); }
 .tile.on .loadicon, .tile.on .tilehead .lbl { color: var(--accent-ink); }
 .tile.on .loadicon { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-ink) 40%, transparent)); }
+
+/* ---- Road trip (components/roadtrip.tsx) ---- */
+.rtgrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--gap); height: 100%; min-height: 0; }
+.rtmain, .rtside { display: grid; gap: var(--gap); align-content: start; min-height: 0; overflow-y: auto; }
+.rtinput { min-height: var(--tap); padding: 0 var(--s2); border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); font: 500 16px var(--body); }
+.rtdests { display: flex; flex-wrap: wrap; gap: 8px; }
+.rtstart input[type=range] { width: 180px; accent-color: var(--accent); }
+.rtsum { display: flex; flex-wrap: wrap; gap: var(--s3); }
+.rtsum > div { display: grid; }
+.rtsum b { font-family: var(--display); font-size: 28px; font-weight: 600; line-height: 1.1; }
+.rtsum small { color: var(--dim); font-size: 13px; }
+.rtstops { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rtstop h4 { font-family: var(--body); font-size: 17px; font-weight: 600; line-height: 1.25; }
+.rtstop.done { opacity: .5; }
+.rtnum { flex: none; width: 40px; height: 40px; border-radius: 999px; display: grid; place-items: center; background: var(--panel); color: var(--accent); font: 700 18px var(--display); }
+.rtcharge { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 15px; }
+.rtcharge b { font-size: 17px; }
+.rtarrow { color: var(--dim); }
+.rtbackup { font-size: 13px; }
+.rtnext { display: grid; gap: 6px; padding: var(--s2); border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 10%, var(--panel-2)); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.rtnextname { font-family: var(--display); font-size: 30px; font-weight: 600; line-height: 1.1; }
+.coachmsg { font-family: var(--display); font-size: 26px; font-weight: 600; line-height: 1.2; display: flex; gap: 12px; align-items: center; }
+.coachmsg.ok { color: var(--ok); } .coachmsg.bad { color: var(--bad); }
+.gobig { font-size: 44px; font-weight: 800; padding: 0 14px; border-radius: var(--radius); background: var(--ok); color: var(--bg); }
+.rtcurve { width: 100%; height: 150px; }
+.rtcurve rect { fill: color-mix(in srgb, var(--accent) 35%, var(--panel-2)); }
+.rtcurve rect.learned { fill: var(--accent); }
+.rtcurve text { fill: var(--dim); font: 11px var(--body); }
+.tripbanner { cursor: pointer; text-align: left; font: inherit; font-size: 18px; }
+@media (max-width: 900px) { .rtgrid { grid-template-columns: 1fr; height: auto; } }
+.peakbanner + .tripbanner { top: 76px; }
+
+.rtsummary { display: grid; gap: 10px; }
+.rttime { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--panel-2); }
+.rttime span { display: block; height: 100%; }
+.rttime .seg-drive, .rttimekey i.seg-drive { background: var(--accent); }
+.rttime .seg-charge, .rttimekey i.seg-charge { background: var(--ok); }
+.rttime .seg-stops, .rttimekey i.seg-stops { background: var(--warn); }
+.rttimekey { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; align-items: center; }
+.rttimekey i { display: inline-block; flex: none; width: 10px; height: 10px; padding: 0; border-radius: 3px; margin-right: 6px; }
+.rtcost { font-size: 14px; }
+/* Settings: the assistant picker (settings/AssistantSection.tsx) */
+.form .f.radio { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; cursor: pointer; }
+.form .f.radio input { width: auto; min-height: 0; margin-top: 4px; accent-color: var(--accent); }
+.form .f.radio .help { display: block; margin: 2px 0 0; }
+.asst-choices { display: grid; gap: 8px; margin: 8px 0 12px; }
+.form .f.radio > span { font-family: var(--body); font-size: 15px; letter-spacing: 0; text-transform: none; color: var(--fg); }

@@ -8,25 +8,28 @@ import { CarPlayWazeHint } from '../components/carplay.tsx';
 import type { WP } from '../components/drive.tsx';
 import type { NextStatus } from '../../../brain/src/wopr/calendar.ts';
 import type { GateStatus } from '../../../brain/src/wopr/gate.ts';
-import { voice, voiceStore, type Phase } from './voice.ts';
+import { assistantStore, voice, voiceStore, type Phase } from './voice.ts';
 import '../media/media.css';
 
 const MIC = 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3';
-const PHASE: Record<Phase, string> = { idle: 'WOPR', listening: 'Listening', transcribing: 'Hearing', thinking: 'Thinking', speaking: 'Speaking', error: 'WOPR' };
+const PHASE: Record<Phase, string> = { idle: '', listening: 'Listening', transcribing: 'Hearing', thinking: 'Thinking', speaking: 'Speaking', error: '' };
 
 /** The rail button: tap to talk (it stops when you do), hold to talk, tap again to stop. */
 export function WoprButton() {
   const v = useStore(voiceStore);
   const s = useStore(stateStore);
-  const offline = s?.network?.link === 'offline';
+  const a = useStore(assistantStore);
+  const name = a?.name ?? 'WOPR';
+  const offline = s?.network?.link === 'offline' && !a?.online;
   useEffect(() => { void voice.checkConfigured(); }, []);
+  const label = PHASE[v.phase] || name;
   return (
-    <button type="button" class={`voice wopr-${v.phase} ${offline ? 'wopr-off' : ''}`} aria-label={`WOPR voice: ${PHASE[v.phase]}`}
-      title={offline ? 'WOPR needs the internet (the truck is offline)' : 'Tap and talk, or hold while talking'}
+    <button type="button" class={`voice wopr-${v.phase} ${offline ? 'wopr-off' : ''}`} aria-label={`${name} voice: ${label}`}
+      title={offline ? `${name} needs the internet (the truck is offline)` : 'Tap and talk, or hold while talking'}
       onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); voice.press(); }}
       onPointerUp={() => voice.release()} onPointerCancel={() => voice.release()}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!e.repeat) { voice.press(); setTimeout(() => voice.release(), 0); } } }}>
-      <Icon d={MIC} />{offline ? 'WOPR' : PHASE[v.phase]}
+      <Icon d={MIC} />{offline ? name : label}
     </button>
   );
 }

@@ -18,6 +18,7 @@ import { LocalError, LocalService } from './media/local.ts';
 import { FmService } from './media/fm.ts';
 import { AirStreams, type AirStation } from './media/airstreams.ts';
 import { WoprError, woprJson } from './wopr/client.ts';
+import { AssistantError, AssistantService } from './assistant/service.ts';
 import { WoprService } from './wopr/service.ts';
 import type { ChatMsg } from './wopr/primer.ts';
 import { ReceiptError, ReceiptService } from './receipts/service.ts';
@@ -29,6 +30,7 @@ type Reply = FastifyReply;
 /** Known errors -> their status and message; anything else is rethrown for the generic handler. */
 function fail(reply: Reply, e: unknown) {
   if (e instanceof WoprError) return reply.code(e.status).send({ error: e.message, kind: e.kind });
+  if (e instanceof AssistantError) return reply.code(e.status).send({ error: e.message, kind: e.kind, ...(e.status === 501 ? { tablet: true } : {}) });
   if (e instanceof SpotifyError || e instanceof PlexError || e instanceof LocalError || e instanceof ReceiptError) return reply.code(e.status).send({ error: e.message });
   if (e instanceof MediaSettingsError) return reply.code(400).send({ error: e.message });
   const st = (e as { status?: number }).status;
@@ -58,6 +60,7 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
     return t.state === 'present' || t.state === 'busy' ? 'tuner' : 'internet';
   };
   const wopr = new WoprService(brain, media);
+  const assistant = new AssistantService(wopr, media, brain.ha, brain);
   const receipts = new ReceiptService(brain.db, brain.charges, driverId);
 
   // ---- background ---------------------------------------------------------------
@@ -262,20 +265,23 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
   app.post('/api/wopr/usps/collected', async (_req, reply) => {
     try { return await woprJson(media.get().wopr, '/api/usps', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ack: true }), timeoutMs: 10_000 }); } catch (e) { return fail(reply, e); }
   });
-  app.post('/api/wopr/tts', async (req, reply) => {
+  // The voice button's assistant (WOPR or another; see assistant/). The /api/wopr/ paths stay as aliases.
+  app.get('/api/assistant/status', async () => assistant.status());
+  app.post('/api/assistant/test', async () => assistant.test());
+  for (const base of ['/api/wopr', '/api/assistant']) app.post(`${base}/tts`, async (req, reply) => {
     const text = q((req.body as { text?: string } | null)?.text);
     if (!text) return reply.code(400).send({ error: 'text is required' });
-    try { const r = await wopr.tts(text); reply.header('content-type', r.headers.get('content-type') ?? 'audio/mpeg'); return reply.send(r.body ? Readable.fromWeb(r.body as never) : ''); }
+    try { const r = await assistant.tts(text); reply.header('content-type', r.headers.get('content-type') ?? 'audio/mpeg'); return reply.send(r.body ? Readable.fromWeb(r.body as never) : ''); }
     catch (e) { return fail(reply, e); }
   });
-  app.post('/api/wopr/chat', async (req, reply) => {
+  for (const base of ['/api/wopr', '/api/assistant']) app.post(`${base}/chat`, async (req, reply) => {
     const b = (req.body ?? {}) as { text?: unknown; history?: unknown };
     const text = q(b.text);
     if (!text) return reply.code(400).send({ error: 'text is required' });
     const history = Array.isArray(b.history) ? b.history.filter((m): m is ChatMsg => !!m && typeof m === 'object' && ((m as ChatMsg).role === 'user' || (m as ChatMsg).role === 'assistant') && typeof (m as ChatMsg).content === 'string') : [];
     const ac = new AbortController();
     reply.raw.on('close', () => { if (!reply.raw.writableFinished) ac.abort(); });
-    const gen = wopr.chat(text, history, ac.signal);
+    const gen = assistant.chat(text, history, ac.signal);
     async function* ndjson() { for await (const ev of gen) yield JSON.stringify(ev) + '\n'; }
     reply.header('content-type', 'application/x-ndjson; charset=utf-8').header('cache-control', 'no-store').header('x-accel-buffering', 'no');
     return reply.send(Readable.from(ndjson()));
@@ -283,10 +289,10 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
   // Audio from the cockpit's mic, as recorded (webm/opus, mp4 or ogg), up to 8 MB.
   await app.register(async (scope) => {
     scope.addContentTypeParser(/^(audio\/|application\/octet-stream)/, { parseAs: 'buffer', bodyLimit: 8 * 1024 * 1024 }, (_req, body, done) => done(null, body));
-    scope.post('/api/wopr/stt', async (req, reply) => {
+    for (const base of ['/api/wopr', '/api/assistant']) scope.post(`${base}/stt`, async (req, reply) => {
       const buf = req.body as Buffer | undefined;
       if (!Buffer.isBuffer(buf) || buf.length < 200) return reply.code(400).send({ error: 'No audio: send the recording as the body (Content-Type audio/webm).' });
-      try { return await wopr.stt(buf, String(req.headers['content-type'] ?? 'audio/webm')); } catch (e) { return fail(reply, e); }
+      try { return await assistant.stt(buf, String(req.headers['content-type'] ?? 'audio/webm')); } catch (e) { return fail(reply, e); }
     });
   });
 
@@ -314,5 +320,5 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
     return { ...receipts.mail, autoImport: media.get().receipts.autoImport, woprConfigured: wopr.configured() };
   });
 
-  return { media, wopr, receipts, spotify, radio, fm, plex, local };
+  return { media, wopr, assistant, receipts, spotify, radio, fm, plex, local };
 }

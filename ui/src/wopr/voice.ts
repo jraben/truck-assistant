@@ -42,11 +42,19 @@ function pickMime(): string | undefined {
   return undefined;
 }
 
+/** What the brain says about the chosen assistant (GET /api/assistant/status). */
+export type AssistantInfo = { name: string; configured: boolean; online: boolean; tabletVoice: boolean; message: string | null };
+
+/** The assistant's name, for the voice button ("WOPR", "Claude", "ChatGPT"...). */
+export const assistantStore = store<AssistantInfo | null>(null);
+
 /** Why voice can't start right now, or null. Pure (exported for tests). */
-export function blockedReason(s: { network?: { link: string } | null } | null, woprConfigured: boolean | null): string | null {
+export function blockedReason(s: { network?: { link: string } | null } | null, configured: boolean | null, info: AssistantInfo | null = null): string | null {
   if (!s) return 'Not connected to the brain.';
-  if (s.network?.link === 'offline') return 'WOPR needs the internet: the truck is offline. Join home Wi-Fi or turn on a phone hotspot.';
-  if (woprConfigured === false) return 'WOPR isn\'t set up: add its address and login on the settings page (Media and WOPR).';
+  if (info?.message) return info.message;
+  const name = info?.name ?? 'WOPR';
+  if (s.network?.link === 'offline' && (!info || !info.online)) return `${name} needs the internet: the truck is offline. Join home Wi-Fi or turn on a phone hotspot.`;
+  if (configured === false) return `${name} isn't set up: pick and set up the assistant on the settings page (Media and WOPR).`;
   return null;
 }
 
@@ -66,14 +74,19 @@ class Voice {
   private lastTurn = 0;
   private abort: AbortController | null = null;
   private audio: HTMLAudioElement | null = null;
-  private queue: { url: string | null; dead: boolean; ctl: AbortController }[] = [];
+  /** One sentence: an audio clip from the brain, or (tablet voice) text the browser speaks. */
+  private queue: { url: string | null; say: string | null; dead: boolean; ctl: AbortController }[] = [];
   private cursor = 0;
   private playingTts = false;
   private streamDone = false;
   configured: boolean | null = null;
 
   async checkConfigured() {
-    try { this.configured = (await api<{ configured: boolean }>('/api/wopr/status')).configured; } catch { /* keep */ }
+    try {
+      const st = await api<AssistantInfo>('/api/assistant/status');
+      this.configured = st.configured;
+      assistantStore.set(st);
+    } catch { /* keep */ }
   }
 
   // ---- the button ------------------------------------------------------------------
@@ -113,8 +126,8 @@ class Voice {
   // ---- listening ----------------------------------------------------------------------
 
   private async startListening() {
-    if (this.configured === null) await this.checkConfigured();
-    const why = blockedReason(stateStore.get(), this.configured);
+    await this.checkConfigured();
+    const why = blockedReason(stateStore.get(), this.configured, assistantStore.get());
     if (why) { set({ phase: 'error', error: why, you: null, reply: '', note: null }); return; }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') { set({ phase: 'error', error: 'This browser has no microphone access (the Pi kiosk allows it for localhost:8080).' }); return; }
     if (Date.now() - this.lastTurn > FORGET_MS) this.history = [];
@@ -192,7 +205,7 @@ class Voice {
     set({ phase: 'transcribing' });
     this.abort = new AbortController();
     try {
-      const r = await fetch('/api/wopr/stt', { method: 'POST', headers: { 'content-type': mime.split(';')[0] }, body: blob, signal: this.abort.signal });
+      const r = await fetch('/api/assistant/stt', { method: 'POST', headers: { 'content-type': mime.split(';')[0] }, body: blob, signal: this.abort.signal });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error ?? `speech-to-text failed (${r.status})`);
       const text = String(j.text ?? '').trim();
@@ -216,8 +229,8 @@ class Voice {
     this.queue = []; this.cursor = 0; this.streamDone = false;
     let acc = '', spokenIdx = 0;
     try {
-      const r = await fetch('/api/wopr/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, history: this.history }), signal: ctl.signal });
-      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); throw new Error(j.error ?? `WOPR answered ${r.status}`); }
+      const r = await fetch('/api/assistant/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, history: this.history }), signal: ctl.signal });
+      if (!r.ok || !r.body) { const j = await r.json().catch(() => ({})); throw new Error(j.error ?? `${assistantStore.get()?.name ?? 'The assistant'} answered ${r.status}`); }
       const reader = r.body.getReader();
       const dec = new TextDecoder();
       let buf = '';
@@ -232,7 +245,7 @@ class Voice {
           let ev: { t: string; v?: string; message?: string };
           try { ev = JSON.parse(line); } catch { continue; }
           if (ev.t === 'searching') set({ searching: true });
-          else if (ev.t === 'error') throw new Error(ev.message ?? 'WOPR failed');
+          else if (ev.t === 'error') throw new Error(ev.message ?? 'The assistant failed');
           else if (ev.t === 'text' && ev.v) {
             acc += ev.v;
             const shown = splitActions(stripMarkers(acc)).clean;
@@ -269,11 +282,14 @@ class Voice {
   private speak(sentence: string) {
     const text = speakable(sentence);
     if (!text) return;
-    const item = { url: null as string | null, dead: false, ctl: new AbortController() };
+    const item = { url: null as string | null, say: null as string | null, dead: false, ctl: new AbortController() };
     this.queue.push(item);
-    fetch('/api/wopr/tts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }), signal: item.ctl.signal })
+    // The tablet's own voice: nothing to fetch.
+    if (assistantStore.get()?.tabletVoice && typeof speechSynthesis !== 'undefined') { item.say = text; this.pump(); return; }
+    fetch('/api/assistant/tts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }), signal: item.ctl.signal })
       .then(async (r) => {
         if (item.dead) return;
+        if (r.status === 501 && typeof speechSynthesis !== 'undefined') { item.say = text; this.pump(); return; }
         if (!r.ok) { item.dead = true; this.pump(); return; }
         const b = await r.blob();
         if (item.dead) return;
@@ -288,12 +304,20 @@ class Voice {
     const it = this.queue[this.cursor];
     if (!it) { if (this.streamDone) this.done(); return; }
     if (it.dead) { this.cursor++; this.pump(); return; }
-    if (!it.url) return;
+    if (!it.url && it.say === null) return;
     this.playingTts = true;
     if (voiceStore.get().phase !== 'speaking') set({ phase: 'speaking' });
+    if (it.say !== null) {
+      let finished = false;
+      const next = () => { if (finished) return; finished = true; it.say = null; this.playingTts = false; this.cursor++; this.pump(); };
+      const u = new SpeechSynthesisUtterance(it.say);
+      u.onend = next; u.onerror = next;
+      try { speechSynthesis.speak(u); } catch { next(); }
+      return;
+    }
     const a = this.audio ?? (this.audio = new Audio());
     a.muted = false;
-    a.src = it.url;
+    a.src = it.url!;
     let advanced = false;
     const advance = () => {
       if (advanced) return;
@@ -310,6 +334,7 @@ class Voice {
     for (const it of this.queue) { it.dead = true; try { it.ctl.abort(); } catch { /* ignore */ } if (it.url) URL.revokeObjectURL(it.url); }
     this.queue = []; this.cursor = 0; this.playingTts = false; this.streamDone = false;
     if (this.audio) { this.audio.onended = null; this.audio.onerror = null; this.audio.pause(); }
+    try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); } catch { /* ignore */ }
   }
 
   private done() {

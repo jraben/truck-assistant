@@ -7,8 +7,8 @@ import { Card, Modal, V, whySoc } from './common.tsx';
 import { socLabel, type WP } from './drive.tsx';
 import { CarPlayWazeHint } from './carplay.tsx';
 
-const NEG = /below|past your|avoid|unknown|No .* plug|needs an adapter|not checked|busy|out of service/i;
-const POS = /^You paid|stalls free/;
+const NEG = /below|past your|avoid|unknown|No .* plug|needs an adapter|not checked|busy|out of service|Slow last time/i;
+const POS = /^You paid|stalls free|full speed last time/;
 
 export function Chargers({ s }: WP) {
   const c = useChargers();

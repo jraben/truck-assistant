@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, type Settings } from '../lib/brain.ts';
 import type { FmPreset, MaskedMediaSettings, MediaStatus } from '../../../brain/src/media/types.ts';
 import { ReceiptImport } from '../receipts/Receipts.tsx';
+import { AssistantSection } from './AssistantSection.tsx';
 
 type Msg = { ok: boolean; text: string } | null;
 
@@ -45,6 +46,7 @@ export function TrackBSections({ settings }: { settings: Settings }) {
   };
   return (
     <>
+      <AssistantSection m={m} put={put} />
       <WoprSection m={m} put={put} />
       <SpotifySection m={m} put={put} settings={settings} status={status} reload={load} />
       <PlexSection m={m} put={put} />
@@ -69,7 +71,7 @@ function WoprSection({ m, put }: SP) {
   const save = async () => { setMsg(await put({ wopr: { url: url.trim() || null, username: user.trim(), ...(pw ? { password: pw } : {}) } })); setPw(''); };
   const run = async () => { setTest(null); try { const r = await api<{ ok: boolean; message: string }>('/api/wopr/test', { method: 'POST' }); setTest({ ok: r.ok, text: r.message }); } catch (e) { setTest({ ok: false, text: (e as Error).message }); } };
   return (
-    <Section id="wopr" title="WOPR" help="Jeff's home AI. The WOPR button on the rail talks to it (speech in, WOPR's answer spoken back), the next calendar appointment comes from it, and so do gate codes when the truck stops somewhere it knows. Needs the internet; the login stays on the truck.">
+    <Section id="wopr" title="WOPR" help="Jeff's home AI. When it's the assistant (above), the voice button on the rail talks to it (speech in, WOPR's answer spoken back), the next calendar appointment comes from it, and so do gate codes when the truck stops somewhere it knows. Needs the internet; the login stays on the truck.">
       <div class="fields form">
         <label class="f"><span>WOPR address</span><input type="url" value={url} placeholder="https://wopr.example.com" onInput={(e) => setUrl((e.target as HTMLInputElement).value)} /></label>
         <label class="f"><span>Username</span><input type="text" autocomplete="off" value={user} onInput={(e) => setUser((e.target as HTMLInputElement).value)} /></label>

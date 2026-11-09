@@ -94,6 +94,30 @@ export class HaClient {
     return { type: res.headers.get('content-type') ?? 'image/jpeg', body: new Uint8Array(await res.arrayBuffer()) };
   }
 
+  /**
+   * POST /api/conversation/process: one turn with HA's Assist (whichever
+   * conversation agent HA has: its built-in one, or an OpenAI/Gemini/Claude
+   * agent set up in HA). Returns what it said and the conversation id to keep
+   * the thread going.
+   */
+  async converse(text: string, opts: { agentId?: string | null; conversationId?: string | null; language?: string } = {}): Promise<{ speech: string; conversationId: string | null }> {
+    const ha = this.getSettings().homeAssistant;
+    if (!ha.url || !ha.token) throw new HaError(NOT_CONFIGURED);
+    let res: Response;
+    try {
+      res = await fetch(`${ha.url}/api/conversation/process`, {
+        method: 'POST', headers: { authorization: `Bearer ${ha.token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ text, language: opts.language ?? 'en', ...(opts.agentId ? { agent_id: opts.agentId } : {}), ...(opts.conversationId ? { conversation_id: opts.conversationId } : {}) }),
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (e) { throw new HaError(`Home Assistant not reachable (${(e as Error).name === 'TimeoutError' ? 'timed out' : (e as Error).message})`); }
+    if (res.status === 401 || res.status === 403) throw new HaError('Home Assistant refused the token (check it on the settings page)', res.status);
+    if (!res.ok) throw new HaError(`Home Assistant Assist answered ${res.status}`, 502);
+    const j = await res.json() as { conversation_id?: string; response?: { speech?: { plain?: { speech?: string } } } };
+    this.lastOkAt = Date.now(); this.lastError = null;
+    return { speech: String(j.response?.speech?.plain?.speech ?? '').trim(), conversationId: j.conversation_id ?? null };
+  }
+
   /** POST /api/services/<domain>/<service>. For the Home screen; HaPanel decides what may be called. */
   async call(domain: string, service: string, data: Record<string, unknown>): Promise<void> {
     const ha = this.getSettings().homeAssistant;

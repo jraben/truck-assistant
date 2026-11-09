@@ -13,7 +13,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { metersBetween } from '../geo.ts';
 import {
-  coverArt, DEMO_CHARGERS, DEMO_DRIVERS, DEMO_HA_HOST, DEMO_PLAYLISTS, DEMO_TRACKS, DEMO_WOPR_HOST, place,
+  coverArt, DEMO_CHARGERS, DEMO_DRIVERS, DEMO_HA_HOST, DEMO_HIGHWAYS, DEMO_PLAYLISTS, DEMO_TRACKS, DEMO_WOPR_HOST, place,
 } from './world.ts';
 
 type Json = unknown;
@@ -322,6 +322,30 @@ export function ocmAnswer(u: URL): Response {
   })));
 }
 
+// ---- OSRM: road routes for the trip planner ---------------------------------------------
+
+/** A route along the demo highway that ends nearest the destination (else a straight line), ~62 mph. */
+export function osrmAnswer(u: URL): Response {
+  const m = u.pathname.match(/\/route\/v1\/driving\/([-\d.]+),([-\d.]+);([-\d.]+),([-\d.]+)/);
+  if (!m) return json({ code: 'InvalidUrl' }, 400);
+  const from = { lat: Number(m[2]), lon: Number(m[1]) }, to = { lat: Number(m[4]), lon: Number(m[3]) };
+  const near = (p: { lat: number; lon: number }, q: [number, number]) => metersBetween(p, { lat: q[0], lon: q[1] }) < 50_000;
+  const hw = DEMO_HIGHWAYS.find((h) => near(to, h.via[h.via.length - 1]) && (!h.from || near(from, h.from)))
+    ?? DEMO_HIGHWAYS.find((h) => !h.from && near(to, h.via[h.via.length - 1]));
+  const knots = [from, ...(hw ? hw.via.map(([lat, lon]) => ({ lat, lon })) : []), to];
+  const coords: [number, number][] = [];
+  let meters = 0;
+  for (let i = 0; i < knots.length - 1; i++) {
+    const a = knots[i], b = knots[i + 1];
+    const d = metersBetween(a, b);
+    meters += d * 1.08;   // roads wander a little
+    const n = Math.max(1, Math.ceil(d / 1600));
+    for (let k = 0; k < n; k++) coords.push([a.lon + (b.lon - a.lon) * (k / n), a.lat + (b.lat - a.lat) * (k / n)]);
+  }
+  coords.push([to.lon, to.lat]);
+  return json({ code: 'Ok', routes: [{ distance: meters, duration: meters / 27.7, geometry: { type: 'LineString', coordinates: coords } }] });
+}
+
 // ---- the dispatcher the gate calls --------------------------------------------------
 
 export type DemoServices = { house: DemoHouse; wopr: DemoWopr; spotify: DemoSpotify };
@@ -338,6 +362,7 @@ export function demoBackend(svc: DemoServices) {
     if (h === DEMO_WOPR_HOST) return svc.wopr.handle(u, init);
     if (h === 'api.spotify.com' || h === 'accounts.spotify.com') return svc.spotify.handle(u, init);
     if (h === 'api.openchargemap.io') return ocmAnswer(u);
+    if (h === 'router.project-osrm.org') return osrmAnswer(u);
     return null;
   };
 }

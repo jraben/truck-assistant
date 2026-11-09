@@ -29,6 +29,8 @@ export const config = {
    *  default, so a simulated truck's "cabin hot" / "moved" alerts don't reach Jeff. */
   simAlerts: !demo && flag(process.env.SIM_ALERTS),
   simSpeedup: Math.max(1, Number(process.env.SIM_SPEEDUP ?? 1) || 1),
+  /** OSRM server for road-trip routes (default: OSRM's public demo server, light use only). */
+  routerUrl: process.env.ROUTER_URL || undefined,
   mqttUrl: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
   mqttDisabled: demo || flag(process.env.MQTT_DISABLED),
   gpsdHost: process.env.GPSD_HOST ?? '127.0.0.1',

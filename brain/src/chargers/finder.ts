@@ -8,7 +8,7 @@
 // last-paid price is joined on every request, never cached.
 import type { Db } from '../db.ts';
 import { haversineMi, metersBetween } from '../geo.ts';
-import type { Charger, ChargingPrefs, Settings } from '../types.ts';
+import type { Charger, ChargingPrefs, Settings, SitePerformance } from '../types.ts';
 
 /** Truck settings plus the active driver's charging prefs. */
 export type FinderSettings = Pick<Settings, 'keys' | 'packKwh' | 'efficiencyMiPerKwh'> & { charging: ChargingPrefs };
@@ -38,6 +38,15 @@ export class ChargerFinder {
 
   private db: Db;
   private fetchFn: FetchFn;
+  private perf: ((lat: number, lon: number) => SitePerformance | null) | null = null;
+
+  /** How each site charged the truck before (road trip samples), joined onto every station. */
+  setPerformance(fn: (lat: number, lon: number) => SitePerformance | null) { this.perf = fn; }
+  withPerf(stations: Station[]): Station[] {
+    const f = this.perf;
+    if (!f) return stations;
+    return stations.map((s) => { try { const p = f(s.lat, s.lon); return p ? { ...s, performance: p } : s; } catch { return s; } });
+  }
 
   constructor(db: Db, fetchFn: FetchFn = fetch) { this.db = db; this.fetchFn = fetchFn; }
 
@@ -70,8 +79,52 @@ export class ChargerFinder {
     const partial = this.lastErr.get(key);
     if (!message && partial) message = partial;
     if (!message && this.googleErr) message = `Live stall counts unavailable: ${this.googleErr}`;
-    const stations = withLastPaid(mergeGoogle(entry?.stations ?? [], google), this.paidSessions());
+    const stations = this.withPerf(withLastPaid(mergeGoogle(entry?.stations ?? [], google), this.paidSessions()));
     return { chargers: rankChargers(stations, { lat, lon }, soc, s, haversineMi), message };
+  }
+
+  /**
+   * Stations around any point (a trip planner's sample along a route), from the
+   * same cache as find(), with what you paid joined in. Unscored. A failed fetch
+   * with nothing cached is [] plus the reason.
+   */
+  async stationsAround(lat: number, lon: number, radiusMi: number, s: FinderSettings): Promise<{ stations: Station[]; error: string | null }> {
+    const key = `${(Math.round(lat / GRID) * GRID).toFixed(2)},${(Math.round(lon / GRID) * GRID).toFixed(2)},${radiusMi}`;
+    let entry = this.mem.get(key) ?? this.fromDb(key);
+    let error: string | null = null;
+    if ((s.keys.afdc || s.keys.openChargeMap) && (!entry || Date.now() - entry.at > CACHE_TTL_MS)) {
+      try {
+        const stations = await this.fetchOnce(key, lat, lon, radiusMi, s);
+        entry = { at: Date.now(), stations };
+        this.mem.set(key, entry);
+        this.db.prepare('INSERT INTO charger_cache (key, fetched_at, body) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET fetched_at = excluded.fetched_at, body = excluded.body')
+          .run(key, entry.at, JSON.stringify(stations));
+      } catch (e) { error = (e as Error).message; }
+    } else if (!s.keys.afdc && !s.keys.openChargeMap) error = 'No charger API keys yet (settings page).';
+    return { stations: this.withPerf(withLastPaid(entry?.stations ?? [], this.paidSessions())), error };
+  }
+
+  private live = new Map<string, { at: number; stations: Station[] }>();
+  /**
+   * Live stall counts right around one stop (Google Places), for the trip's
+   * check before arriving. Billed, so each spot is asked at most every
+   * GOOGLE_MIN_INTERVAL_MS. [] without a key or on failure.
+   */
+  async liveAround(lat: number, lon: number, s: FinderSettings): Promise<Station[]> {
+    const k = s.keys.googlePlaces;
+    if (!k) return [];
+    const key = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+    const hit = this.live.get(key);
+    if (hit && Date.now() - hit.at < GOOGLE_MIN_INTERVAL_MS) return hit.stations;
+    try {
+      const stations = await fetchGoogle(k, lat, lon, 2, this.fetchFn);
+      this.live.set(key, { at: Date.now(), stations });
+      return stations;
+    } catch (e) {
+      console.warn('[chargers] Google (trip check):', (e as Error).message);
+      this.live.set(key, { at: Date.now(), stations: hit?.stations ?? [] });
+      return hit?.stations ?? [];
+    }
   }
 
   /** The Google layer, refreshed at most every GOOGLE_MIN_INTERVAL_MS; [] without a key. */

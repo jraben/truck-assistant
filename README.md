@@ -59,6 +59,21 @@ Built for Jeff's truck first, published for other Slate owners later.
   `home-<name>.jpg`, or a folder `home-<name>/` of numbered frames shown one a
   second (front_lawn, garage, doorbell). Keep stock clips in that folder, never
   in the repo.
+- **Pick your assistant (2026-11-08):** the voice button can talk to WOPR
+  (default), Claude, any OpenAI-compatible service (ChatGPT, Gemini, Groq,
+  OpenRouter, or a model on your own computer through Ollama or LM Studio), or
+  Home Assistant Assist. Speech in and out can come from WOPR, an
+  OpenAI-compatible audio service, or the tablet's own voice. Settings >
+  Media & WOPR > Assistant. Contract: "Assistant".
+- **Road trips (2026-11-08):** a Road trip screen that plans the fastest
+  charging stops for a drive (from the truck's charging curve, learned from its
+  own DC charging, plus climbs, heat and speed), says how much to charge at each
+  stop and when to leave, picks a backup for each, estimates the charging cost
+  (and the same trip in your gas vehicle), and splits drive vs charge time. On
+  the trip it checks the next stop's free stalls ~25 min out and switches to the
+  backup when it's full, replans when you use more than planned, and coaches
+  each charge (countdown, GO, slow-stall warning). Slow sites are remembered.
+  The demo has a factory pickup preset: Warsaw, IN to home. Contract: "Road trips".
 - **Truck payoff goal (2026-11-05):** "pay off the truck with gas savings",
   tracked for good in a day-by-day SQLite ledger (closed months frozen;
   Recalculate on /settings). Charge view card, a Drive card when parked,

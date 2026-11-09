@@ -6,7 +6,7 @@ export type { NextStatus } from './calendar.ts';
 import { WoprError, woprFetch, woprJson, NOT_CONFIGURED_MSG, type WoprConfig } from './client.ts';
 import { parseWhere, type GateStatus } from './gate.ts';
 export type { GateStatus } from './gate.ts';
-import { buildMessages, buildPrimer, type ChatMsg } from './primer.ts';
+import { buildMessages, buildPrimer, GENERIC_INSTRUCTIONS, type ChatMsg } from './primer.ts';
 import { MarkerStripper } from './stream.ts';
 
 /** What the service needs from the brain (a subset, so tests can fake it). */
@@ -169,7 +169,8 @@ export class WoprService {
     } catch { return this.ctx?.text ?? ''; }
   }
 
-  async primer(driver: string | null): Promise<string> {
+  /** `forOther`: another assistant answers, so no WOPR context (calendar, tasks: private) and the generic instructions. */
+  async primer(driver: string | null, forOther = false): Promise<string> {
     const s = this.brain.getState();
     return buildPrimer({
       now: new Date(), driver, place: s.place?.name ?? null,
@@ -178,7 +179,8 @@ export class WoprService {
       next: this.nextStatus.next, nowPlaying: s.nowPlaying, network: s.network?.label ?? null,
       payoff: this.brain.goalLine?.() ?? null,
       chargePeak: s.chargePeak?.onPeak ? s.chargePeak.message : s.chargePeak?.headsUp ?? null,
-      woprContext: await this.woprContext(),
+      woprContext: forOther ? '' : await this.woprContext(),
+      instructions: forOther ? GENERIC_INSTRUCTIONS : undefined,
     });
   }
 

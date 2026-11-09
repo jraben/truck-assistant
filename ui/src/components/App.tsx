@@ -28,6 +28,7 @@ const ICONS: Record<string, string> = {
   carplay: 'M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8 12h8M12 8v8',
   control: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 8a4 4 0 1 1 0 8a4 4 0 1 1 0-8',
   charge: 'M13 2 4 14h7l-1 8 9-12h-7z',
+  roadtrip: 'M4 20l4-16M20 20l-4-16M12 6v2M12 11v2M12 16v2',
   trips: 'M5 19a2 2 0 1 0 0-.01M19 5a2 2 0 1 0 0-.01M7 19h7a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h7',
   cams: 'M5 7h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM16 11l5-3v8l-5-3',
   media: MEDIA_ICON,
@@ -190,6 +191,7 @@ export function App() {
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <PeakBanner s={s} />
+      <TripBanner s={s} go={go} />
       <ChargePrompt />
       <WeatherOverlay s={s} />
       <TrackBOverlays />
@@ -232,6 +234,21 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
 }
 
 export type { State };
+
+/**
+ * Road trip: a stop that was full and switched, a replan, or the coach saying
+ * GO / slow stall, on every view for a while (the Road trip screen has the rest).
+ */
+function TripBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
+  const rt = s?.roadTrip;
+  if (!rt) return null;
+  const c = rt.coach;
+  if (c && (c.state === 'go' || c.state === 'slow')) {
+    return <button type="button" class={`banner ${c.state === 'slow' ? 'bad' : 'ok'} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>{c.state === 'go' ? 'GO' : 'Slow stall'}</b><span>{c.message.replace(/^GO:\s*/, '')}</span></button>;
+  }
+  if (rt.alert) return <button type="button" class={`banner ${rt.alert.kind === 'full' ? 'bad' : ''} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>Road trip</b><span>{rt.alert.message}</span></button>;
+  return null;
+}
 
 /** Charging at home during on-peak (red), or plugged in just before it (amber). Every view. */
 function PeakBanner({ s }: { s: State | null }) {

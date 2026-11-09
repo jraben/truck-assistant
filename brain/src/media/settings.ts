@@ -4,6 +4,7 @@
 // keys and never returned in full.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { defaultAssistant, OPENAI_PRESETS, type AssistantSettings } from '../assistant/types.ts';
 
 import type { FmPreset, MaskedMediaSettings, MediaSettings, RadioStation, SpotifyToken } from './types.ts';
 export type { FmPreset, MaskedMediaSettings, MediaSettings, RadioStation, SpotifyToken } from './types.ts';
@@ -21,6 +22,7 @@ export function defaultMediaSettings(): MediaSettings {
     fm: { presets: [], ppm: 0, gain: null, source: 'auto' },
     local: { folder: null },
     receipts: { autoImport: true },
+    assistant: defaultAssistant(),
   };
 }
 
@@ -37,7 +39,9 @@ export function maskMedia(s: MediaSettings): MaskedMediaSettings {
   const plex = { ...s.plex, token: mask(s.plex.token) };
   if (!plex.token) delete plex.token;
   const { tokens, ...sp } = s.spotify;
-  return { ...structuredClone(s), wopr, plex, spotify: { ...sp, connected: Object.fromEntries(Object.entries(tokens).map(([k, t]) => [k, { user: t.user }])) } };
+  const assistant = structuredClone(s.assistant);
+  for (const part of [assistant.openai, assistant.claude, assistant.voice]) { const m = mask(part.apiKey); if (m) part.apiKey = m; else delete part.apiKey; }
+  return { ...structuredClone(s), assistant, wopr, plex, spotify: { ...sp, connected: Object.fromEntries(Object.entries(tokens).map(([k, t]) => [k, { user: t.user }])) } };
 }
 
 const secret = (patch: unknown, cur: string | undefined): string | undefined => {
@@ -123,6 +127,46 @@ export function mergeMedia(base: MediaSettings, patch: unknown): MediaSettings {
     else n.local.folder = fo.trim();
   }
   if (isObj(patch.receipts) && 'autoImport' in patch.receipts) n.receipts.autoImport = patch.receipts.autoImport === true;
+  if (isObj(patch.assistant)) n.assistant = mergeAssistant(base.assistant ?? defaultAssistant(), patch.assistant);
+  return n;
+}
+
+const text = (v: unknown, name: string, max = 120): string => {
+  if (typeof v !== 'string') throw new MediaSettingsError(`${name} must be text`);
+  return v.trim().slice(0, max);
+};
+
+/** The assistant block: provider, each provider's own fields (keys write-only, masked back), and voice. */
+export function mergeAssistant(base: AssistantSettings, p: Record<string, unknown>): AssistantSettings {
+  const n = structuredClone(base);
+  if ('provider' in p) {
+    if (!['wopr', 'openai', 'claude', 'homeassistant'].includes(p.provider as string)) throw new MediaSettingsError('assistant.provider is wopr, openai, claude or homeassistant');
+    n.provider = p.provider as AssistantSettings['provider'];
+  }
+  if (isObj(p.openai)) {
+    const o = p.openai;
+    if ('preset' in o) { if (!OPENAI_PRESETS.some((x) => x.id === o.preset)) throw new MediaSettingsError('assistant.openai.preset is not one of the listed services'); n.openai.preset = o.preset as string; }
+    if ('baseUrl' in o) n.openai.baseUrl = optUrl(o.baseUrl, 'assistant.openai.baseUrl') ?? '';
+    if ('model' in o) n.openai.model = text(o.model, 'assistant.openai.model');
+    const k = secret(o.apiKey, base.openai.apiKey); if (k) n.openai.apiKey = k; else delete n.openai.apiKey;
+  }
+  if (isObj(p.claude)) {
+    const c = p.claude;
+    if ('model' in c) { const m = text(c.model, 'assistant.claude.model'); if (m && !/^claude-[a-z0-9.-]+$/.test(m)) throw new MediaSettingsError('assistant.claude.model is a Claude model id like claude-opus-5-5'); n.claude.model = m || defaultAssistant().claude.model; }
+    const k = secret(c.apiKey, base.claude.apiKey); if (k) n.claude.apiKey = k; else delete n.claude.apiKey;
+  }
+  if (isObj(p.homeassistant) && 'agentId' in p.homeassistant) {
+    const a = p.homeassistant.agentId;
+    n.homeassistant.agentId = a === null || a === '' ? null : text(a, 'assistant.homeassistant.agentId', 100);
+  }
+  if (isObj(p.voice)) {
+    const v = p.voice;
+    if ('stt' in v) { if (v.stt !== 'wopr' && v.stt !== 'openai') throw new MediaSettingsError('assistant.voice.stt is wopr or openai'); n.voice.stt = v.stt; }
+    if ('tts' in v) { if (v.tts !== 'wopr' && v.tts !== 'openai' && v.tts !== 'tablet') throw new MediaSettingsError('assistant.voice.tts is wopr, openai or tablet'); n.voice.tts = v.tts; }
+    if ('baseUrl' in v) n.voice.baseUrl = optUrl(v.baseUrl, 'assistant.voice.baseUrl') ?? '';
+    for (const f of ['sttModel', 'ttsModel', 'ttsVoice'] as const) if (f in v) n.voice[f] = text(v[f], `assistant.voice.${f}`, 80);
+    const k = secret(v.apiKey, base.voice.apiKey); if (k) n.voice.apiKey = k; else delete n.voice.apiKey;
+  }
   return n;
 }
 

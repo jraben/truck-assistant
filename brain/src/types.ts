@@ -1,5 +1,7 @@
 // The shapes in docs/contract.md, verbatim. Change the contract first.
 import type { ThemeSettings } from './themes.ts';
+import type { RoadTripBrief } from './roadtrip/types.ts';
+export type * from './roadtrip/types.ts';
 import type { DriveSettings, DriveState, DriverDrive, TruckLook } from './drive/types.ts';
 export type * from './drive/types.ts';
 export type { Theme, ThemeSettings } from './themes.ts';
@@ -35,6 +37,8 @@ export type State = {
   chargePeak: ChargePeak | null;    // charging during on-peak (null until the brain has looked)
   /** DEMO=1 only: the neighbourhood or road for the top bar ("Arcadia, Phoenix"); null otherwise. */
   area?: string | null;
+  /** The active road trip, briefly (next stop, latest alert, the coach's line); null when none. */
+  roadTrip?: RoadTripBrief;
 };
 
 export type NetworkStatus = {
@@ -223,8 +227,12 @@ export type Charger = {
   availability?: ChargerAvailability | null;
   /** The newest logged session with a cost at this site (any driver: the price is the site's). */
   lastPaid?: LastPaid | null;
+  /** How fast this site charged the truck before vs the charging curve (road-trip samples); null = no history. */
+  performance?: SitePerformance | null;
   score: number; reasons: string[];
 };
+
+export type SitePerformance = { ratio: number; kwSeen: number; kwExpected: number; samples: number; at: string };
 
 export type ChargerAvailability = { available: number; total: number; outOfService: number; updatedAt: string | null };
 export type LastPaid = { sessionId: number; at: string; cost: number; kwh: number | null; perKwh: number | null; sessions: number };
@@ -314,6 +322,8 @@ export type ChargeSummary = {
 export type LayoutWidget = { type: string; col: number; row: number; w: number; h: number; props?: Record<string, unknown> };
 export type Layout = {
   views: { id: string; label: string; widgets: LayoutWidget[] }[];
+  /** Set once the Road trip screen has been added to a saved layout (so deleting it sticks). */
+  roadTripAdded?: boolean;
 };
 
 export type Health = { ok: boolean; version: string; mqtt: string; gps: string; ha: string; uptimeS: number };

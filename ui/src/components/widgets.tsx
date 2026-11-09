@@ -2,6 +2,7 @@ import type { ComponentType } from 'preact';
 import { Aux12v, Cabin, LiveStrip, NextCharger, Soc, Speed, Tilt, TripW, type WP } from './drive.tsx';
 import { FiveSwitch, Relays, Tpms } from './control.tsx';
 import { Chargers, SocSlider } from './charge.tsx';
+import { RoadTrip } from './roadtrip.tsx';
 import { CostSessions, CostSummary } from './costs.tsx';
 import { PayoffGoalCard } from './goal.tsx';
 import { Trips } from './trips.tsx';
@@ -30,5 +31,6 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   ...HOME_WIDGETS,   // garage, haPanel, homeCams
   ...PARKED_WIDGETS, // parked: watch, games, karaoke, camp, pet, tow, lights
   maintenance: MaintWidget, mileage: MileageWidget,
+  roadTrip: RoadTrip,
 };
 export const widgetFor = (t: string) => WIDGETS[t] ?? Unknown;

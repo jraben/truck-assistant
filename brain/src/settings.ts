@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { validateRailOrder } from './rail.ts';
 import type { ChargingPrefs, CompareVehicle, Driver, Layout, PayoffGoal, Settings, WifiNet } from './types.ts';
-import { DEFAULT_LAYOUT, migrateChargeLayout } from './layout.ts';
+import { DEFAULT_LAYOUT, migrateChargeLayout, migrateRoadTripLayout } from './layout.ts';
 import { defaultAlertOn } from './charges/peak.ts';
 import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
 import { defaultThemeSettings, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
@@ -232,6 +232,8 @@ export function mergeDriver(base: Driver, patch: unknown): Driver {
   let layout: Layout = base.layout;
   if ('layout' in p) {
     layout = p.layout === null ? structuredClone(DEFAULT_LAYOUT) : (structuredClone(p.layout) as Layout);
+    // The settings page may not send the marker back; a layout that had the Road trip screen offered keeps it offered.
+    if (base.layout.roadTripAdded && layout && typeof layout === 'object') layout.roadTripAdded = true;
     delete p.layout;
   }
   const hotspot = 'hotspot' in p ? mergeWifi(base.hotspot, p.hotspot) : base.hotspot;
@@ -479,6 +481,10 @@ export class SettingsStore {
     }
     try {
       this.s = loadSettings(migrateSettings(raw));
+      // Once, at load: saved layouts get the Road trip screen (a layout saved later without it keeps that choice).
+      const before = JSON.stringify(this.s.drivers.map((d) => d.layout));
+      for (const d of this.s.drivers) d.layout = migrateRoadTripLayout(d.layout);
+      if (JSON.stringify(this.s.drivers.map((d) => d.layout)) !== before) { console.log('[settings] added the Road trip screen to saved layouts'); this.write(); }
       if (isPreDriverFile(raw)) {
         writeFileSync(this.file + '.pre-drivers.bak', JSON.stringify(raw, null, 2), { mode: 0o600 });
         console.log('[settings] moved settings.json to driver profiles (old copy kept as settings.json.pre-drivers.bak)');

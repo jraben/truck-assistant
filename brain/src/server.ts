@@ -14,6 +14,7 @@ import { sessionOnPeak } from './charges/peak.ts';
 import type { ChargeSession } from './types.ts';
 import { mediaSourceOf, NowPlayingHub, parseMediaMessage } from './media.ts';
 import { registerTrackB } from './trackb.ts';
+import { registerRoadTripRoutes } from './roadtrip/routes.ts';
 import { PlaceInputError } from './stops/service.ts';
 import { ImportError } from './import/phone.ts';
 import { VehicleError, type MenuLevel } from './gas/vehicles.ts';
@@ -287,6 +288,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
 
   registerGoalRoutes(app, brain.goal, () => brain.refreshGoal());
   registerDriveRoutes(app, brain.drive);
+  registerRoadTripRoutes(app, brain.roadTrip, brain.samples);
   await registerVehiclePhoto(app, brain.settings, config.dataDir);
   // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----
   // Kept on the app for the Parked routes (Plex video shares Track B's Plex connection).

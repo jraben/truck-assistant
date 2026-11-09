@@ -18,6 +18,10 @@ import { ChargerFinder, type FinderSettings } from './chargers/finder.ts';
 import { ChargeService, isHome } from './charges/service.ts';
 import { chargePeakState, powerKw } from './charges/peak.ts';
 import { ChargeStore } from './charges/store.ts';
+import { SampleStore } from './roadtrip/samples.ts';
+import { RoadTripService } from './roadtrip/service.ts';
+import { DEMO_DESTINATIONS, DEMO_TRIPS } from './demo/world.ts';
+import { genericCurve, kwAt } from './roadtrip/curve.ts';
 import { sameNowPlaying } from './media.ts';
 import { StopDetector, type StopEvent } from './stops/detector.ts';
 import { StopService } from './stops/service.ts';
@@ -51,6 +55,9 @@ export function driversAtTruck(drivers: Driver[], presence: Map<string, { lat: n
   });
 }
 
+/** SIM: the simulated truck's own DC curve (peaks at 110 kW, not the generic 120). */
+const SIM_TRUE_CURVE = genericCurve(110);
+
 export class Brain extends EventEmitter {
   readonly startedAt = Date.now();
   readonly trips: TripStore;
@@ -64,6 +71,11 @@ export class Brain extends EventEmitter {
   readonly net: NetManager;
   readonly drive: DriveService;
   readonly goal: GoalService;
+  /** DC charging-rate samples: the learned charging curve and how each site performed. */
+  readonly samples: SampleStore;
+  /** Road-trip planner and the active trip. */
+  readonly roadTrip: RoadTripService;
+  private lastTripTick = 0;
   private goalTimer: NodeJS.Timeout | null = null;
   private goalSoon: NodeJS.Timeout | null = null;
   private netTimer: NodeJS.Timeout | null = null;
@@ -159,6 +171,29 @@ export class Brain extends EventEmitter {
       online: this.net.status?.link !== 'offline' || this.net.status?.backend !== 'nmcli',
     }));
     this.charges.onChange(() => this.drive.refreshSince());
+    this.samples = new SampleStore(db, { sim: config.sim });
+    this.finder.setPerformance((lat, lon) => this.samples.sitePerformance(lat, lon));
+    this.roadTrip = new RoadTripService({
+      db, finder: this.finder, samples: this.samples, router: config.routerUrl,
+      presets: () => (config.demo ? DEMO_TRIPS : []),
+      gasCompare: () => {
+        const v = this.compareVehicle(this.driverId);
+        const g = this.gas.status(v.fuel);
+        const price = g.today?.price ?? g.manualPrice;
+        return v && v.mpgHighway > 0 && price > 0 ? { label: v.label, mpg: v.mpgHighway, pricePerGallon: price } : null;
+      },
+      destinations: () => (config.demo ? DEMO_DESTINATIONS : this.stops.placesWithVisits(null).map((p) => ({ name: p.name, lat: p.lat, lon: p.lon }))),
+      settings: () => this.finderSettings(),
+      soc: () => this.soc.value,
+      gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
+      speedMph: () => this.s.speedMph,
+      charging: () => this.isCharging(),
+      tempF: () => this.drive.weather.report?.current.tempF ?? null,
+      highwayEff: () => this.drive.highwayEff(),
+      sessionId: () => this.openSessionId(),
+      timeScale: () => { const p = this.sim?.status().charging; return p ? p.timeScale * config.simSpeedup : 1; },
+    });
+    this.roadTrip.onChange(() => this.changed());
     this.goal = new GoalService(db, () => this.settings.get(), () => this.gas.rows());
     this.charges.onChange(() => this.goalChanged());
     this.on('trip', () => this.goalChanged());
@@ -213,6 +248,21 @@ export class Brain extends EventEmitter {
     try { await this.stops.refreshZones(); } catch (e) { console.error('[stops] zones', e); }
     try { await this.stops.refreshFeed(); } catch (e) { console.error('[stops] feed', e); }
     try { if (await this.gas.poll()) this.emit('gas'); } catch (e) { console.error('[gas] poll', e); }
+  }
+
+  /** Plugged in and taking charge: the truck's signal (or the sim's plug), else the wall charger drawing power. */
+  isCharging(): boolean {
+    if (this.canCharging === true) return true;
+    const fresh = Date.now() - this.haPower.at < 120_000;
+    return fresh && (this.haPower.kw ?? 0) > 0.5;
+  }
+
+  /** The charge session still growing (detected within the last 15 minutes), for the coach's live rate. */
+  private openSessionId(): number | null {
+    const last = this.charges.store.latest();
+    if (!last) return null;
+    const end = Date.parse(last.endedAt ?? last.startedAt);
+    return Date.now() - end < 15 * 60_000 ? last.id : null;
   }
 
   // ---- charging on-peak ---------------------------------------------------------
@@ -480,8 +530,8 @@ export class Brain extends EventEmitter {
     const st = this.settings.get();
     const soc = this.soc.value ?? 0;
     if (soc >= plug.targetPct) { this.sim!.unplug(); return; }
-    // DC fast tapers hard past 80%, like the real thing.
-    const kw = plug.kind === 'fast' && soc >= 80 ? plug.kw * 0.25 : plug.kw;
+    // DC fast follows a charging curve (a little below the generic one, so the learned curve has something to learn).
+    const kw = plug.kind === 'fast' ? Math.min(plug.kw, kwAt(SIM_TRUE_CURVE, soc)) : plug.kw;
     this.simChargeOwed += (kw * plug.timeScale * config.simSpeedup) / 3600 / st.packKwh * 100;
     // Anchor every 2 points, but never leave a last step under 2 (ChargeService ignores a rise that small).
     const reached = soc + this.simChargeOwed >= plug.targetPct;
@@ -496,6 +546,10 @@ export class Brain extends EventEmitter {
   private tick() {
     const now = Date.now();
     if (this.sim) { try { this.simChargeTick(); } catch (e) { console.error('[sim] charge', e); } }
+    if (now - this.lastTripTick >= (this.sim ? 10_000 : 30_000)) {
+      this.lastTripTick = now;
+      void this.roadTrip.tick(now).catch((e) => console.error('[roadtrip]', e));
+    }
     // A fix older than 10 s is no fix.
     if (this.s.gps && now - this.lastGpsAt > 10_000) {
       this.s.gps = { ...this.s.gps, fix: false };
@@ -610,6 +664,7 @@ export class Brain extends EventEmitter {
       fiveSwitch: [...this.s.fiveSwitch],
       nowPlaying: this.s.nowPlaying ? { ...this.s.nowPlaying } : null,
       driver: { id: d.id, name: d.name, initials: d.initials, color: d.color },
+      roadTrip: this.roadTrip.brief(),
       driverSuggestion: this.s.driverSuggestion ? { ...this.s.driverSuggestion } : null,
       place: this.s.place ? { ...this.s.place } : null,
       network: { ...this.net.status, bytesThisMonth: { ...this.net.status.bytesThisMonth } },

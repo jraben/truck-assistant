@@ -104,6 +104,13 @@ export function scoreCharger(st: Station, ctx: ScoreContext): Charger {
     if (av.outOfService > 0) reasons.push(`${av.outOfService} out of service`);
   }
 
+  // How fast it actually charged this truck before (charge_samples): a slow site drops.
+  const pf = st.performance;
+  if (pf && pf.samples >= 3) {
+    if (pf.ratio < 0.7) { score -= 15; reasons.push(`Slow last time: ${pf.kwSeen} kW, expected ~${pf.kwExpected}`); }
+    else if (pf.ratio >= 0.9) reasons.push(`Charged at full speed last time (${pf.kwSeen} kW)`);
+  }
+
   if (st.price) reasons.push(`Price: ${st.price}`);
   // What the charge log says was actually paid here: the number to trust.
   const lp = st.lastPaid;

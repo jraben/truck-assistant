@@ -1164,3 +1164,117 @@ not charging, in the 30 minutes before an alert period on a day it applies.
   demand charge (session kW, its `maxKw` or kWh / hours, x `demandPerKw`; a
   day keeps its largest, a month its largest) as
   `GoalDay.possibleDemandCharge`, never subtracting it.
+
+## Road trips
+
+Plan charging stops for a long drive, follow the trip, and coach each charge.
+Code: `brain/src/roadtrip/` (pure: `curve.ts`, `planner.ts`, `coach.ts`, `route.ts`;
+with IO: `samples.ts`, `service.ts`, `routes.ts`), UI `ui/src/components/roadtrip.tsx`
+(the **Road trip** screen, added once to saved layouts after Charge).
+
+### Charging curve (`charge_samples`, `GET /api/charging/curve`)
+
+- Slate hasn't published a curve. It starts generic (`genericCurve()`: 120 kW
+  peak, flat to ~50%, tapering past 80%) and is learned in 5% bins from this
+  truck's own DC charging: while charging, every 1+ point rise in charge level
+  becomes a sample `{socFrom, socTo, kw, stationKw, lat, lon, sessionId}`.
+- A bin is learned after 3 samples (75th percentile kW). Samples from a stall
+  slower than the truck (the stall was the limit) and Level 2 are ignored.
+  Unlearned bins follow the learned ones' scale.
+- Real brains learn from real samples only; a SIM brain learns from its own
+  (the simulated truck's true curve peaks at 110 kW, so the demo shows learning).
+- **Site performance:** a site's median seen/expected kW over 3+ samples is
+  joined onto every charger as `Charger.performance`; below 0.7 the charger
+  list says "Slow last time" and scores it 15 lower; the planner adds minutes.
+
+### Planning (`POST /api/roadtrip/plan`)
+
+Body `{to: {lat, lon, name?}, from?: {lat, lon, name?}, startSoc?}`; `from`
+defaults to GPS, `startSoc` to the current charge level. Returns `TripPlan`.
+
+- **Route:** OSRM (`ROUTER_URL`, default OSRM's public demo server, light use),
+  elevation from Open-Meteo (at most ~300 points per route, paced). With no
+  router, a straight line plus 25%, with a warning; with no elevation, climbs
+  aren't counted, with a warning.
+- **Chargers:** the finder's AFDC/Open Charge Map cache, searched every 25 mi
+  along the route; DC only (≥ 40 kW and the driver's `minKw`), at most 12 mi
+  (and the driver's `maxDetourMi`) off it, scored with the driver's preferences.
+- **Energy:** the learned highway efficiency, adjusted for average speed (drag),
+  heat/cold (A/C, cabin heat), climbs (1,900 kg, 90% drivetrain) and 60% regen
+  on descents.
+- **Search:** each charger is a node; the truck may leave it at any level on a
+  5% grid up to 90%, adding at least 10 points. A forward pass keeps the
+  quickest way to leave each charger at each level: driving + detour + charging
+  (the curve, the stall's kW, its past performance) + 10 min per stop + a small
+  penalty for a poorly scored, slow, full or tiny (≤2 stalls) site. Every
+  arrival stays at or above the driver's `arriveMinSoc`, the destination too.
+- **Backups:** for each stop, the first stop of the best plan that skips it,
+  from the state before it, with the extra minutes. `null` means nothing else is
+  in reach (the screen says to charge a little extra at the stop before).
+- **Cost:** kWh bought = pack gain × 1.08 (charging losses), priced at what you
+  paid there before, else the listed per-kWh price, else a typical $0.48/kWh
+  (counted in `typicalPriceStops`). `TripPlan.gas` is the same trip in the
+  driver's gas comparison vehicle at today's gas price.
+- Infeasible plans say where the gap is ("No charger in reach between mile X
+  and mile Y").
+
+### Following the trip
+
+`POST /api/roadtrip/start {planId}`, `/stop`, `/discard`, `/replan`;
+`GET /api/roadtrip` → `RoadTripView {draft, active, progress, coach, alerts,
+destinations, presets, curve}`; `State.roadTrip: RoadTripBrief` drives the
+top banner on every screen. Every 30 s (10 s on SIM) the brain:
+
+- places the truck on the route; progress only counts on the route (≤ 3 mi
+  off) and reachable by driving (never a jump of more than 25 mi ahead), so a
+  truck parked elsewhere never "passes" stops or "arrives";
+- **replans** when the projected arrival at the next stop falls 4+ points below
+  plan (at most every 5 min);
+- **live check:** within ~25 min of the next stop, asks Google Places (billed;
+  each spot at most every 5 min, needs the key) for free stalls there. All full
+  → that stop is avoided and the trip replanned from here, with an alert
+  ("Quartzsite is full (0 of 8). Going to Blythe instead, +6 min."). Nothing else
+  in reach → it stays, with a "full, expect a wait" alert.
+
+### Coach (`RoadTripView.coach`, `State.roadTrip.coach`)
+
+While charging: the planned departure level for the stop, minutes left from the
+curve, **GO** once there (and what each further 10 minutes adds), and **slow
+stall** when the last two readings are under 60% of what the truck should take
+below 78% (above that the taper is the pack's).
+
+### Demo
+
+Destinations Flagstaff, Tucson and Los Angeles, and the preset **Factory pickup:
+Warsaw, IN to home** (from 80%). The demo answers OSRM itself along invented
+highway polylines (I-17, I-10, and I-70/I-44/I-40/I-17 from Warsaw) with
+invented chargers on them; elevation is the real Open-Meteo.
+
+## Assistant (the voice button)
+
+Code: `brain/src/assistant/` (`types.ts` pure, `providers.ts`, `service.ts`),
+settings `ui/src/settings/AssistantSection.tsx`, voice loop `ui/src/wopr/voice.ts`.
+Stored in `media.json` as `MediaSettings.assistant`; keys write-only (masked back).
+
+- **Providers:** `wopr` (default; WOPR's `/api/WOPR` with its private context),
+  `claude` (Anthropic SDK, streamed, `output_config.effort: low`, server-side
+  fallbacks `"default"`; default model `claude-opus-5-5`), `openai` (any
+  OpenAI-compatible `/chat/completions`, streamed: presets ChatGPT, Gemini, Groq,
+  OpenRouter, Ollama, LM Studio, other; the model is typed), `homeassistant`
+  (HA Assist `/api/conversation/process`, its conversation id kept 5 minutes).
+- **Context:** non-WOPR assistants get the truck block with generic
+  instructions as the system prompt, never WOPR's private context. HA Assist
+  gets only the question (its agent has its own prompt).
+- **Offline:** a service on the home network (`localhost`, `192.168.*`,
+  `*.local`…) isn't blocked when the truck is offline; cloud ones are.
+- **Voice:** speech in from WOPR or an OpenAI-compatible `/audio/transcriptions`;
+  speech out from WOPR, an OpenAI-compatible `/audio/speech`, or the tablet
+  (`/api/assistant/tts` answers 501 `{tablet: true}` and the page speaks with
+  `speechSynthesis`).
+- **Routes:** `GET /api/assistant/status` `{provider, name, configured, online,
+  tabletVoice, message}`, `POST /api/assistant/test`, `POST /api/assistant/chat`
+  (NDJSON, same events as WOPR's), `/stt`, `/tts`. The `/api/wopr/chat|stt|tts`
+  paths are aliases. WOPR's calendar, gate codes and mailbox stay on
+  `/api/wopr/*` whichever assistant is picked.
+- Siri and Alexa can't be providers: neither offers an API for asking from
+  another app. Siri works through CarPlay; Alexa through its Android app.

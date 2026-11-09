@@ -106,6 +106,9 @@ export class DriveService {
   }
 
   /** The mi/kWh the SoC estimate should decay by right now. */
+  /** Learned highway efficiency (mi/kWh), for trip planning. */
+  highwayEff(): number { return this.range.eff('highway'); }
+
   efficiencyNow(): number {
     return this.range.eff(this.range.mode(Date.now(), this.d.settings.get().drive.highwayMph));
   }
