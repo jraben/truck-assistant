@@ -117,7 +117,10 @@ Built for Jeff's truck first, published for other Slate owners later.
   the Pi installer), or from an
   [nrsc5-webplayer](https://github.com/wryandginger/nrsc5-webplayer) running
   elsewhere (say at home), which also sends album art. Suggested on the Slate
-  Forums thread. Set the server address on /settings → AM/FM.
+  Forums thread. Set the server address on /settings → AM/FM. On the truck's
+  own tuner, HD1 drops to the station's analog signal when the digital one is
+  lost (and tries HD again later, or on "Back to HD"), and **Check presets** /
+  **Scan the band** find which stations carry HD and what's on HD2-HD4.
 - **Drivers, stops, phone history, gas prices, getting online (2026-11-05):**
   driver profiles (Jeff, Sam, Jordan, Guest) with their own theme, layout,
   charging prefs and gas comparison vehicle; stops named from saved places,

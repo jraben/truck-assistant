@@ -669,7 +669,18 @@ type MediaSettings = {
   its `/stream.mp3`; `GET /api/media/fm/hd/server-art?f=<name>` relays its
   album art (a checked file name, images only). `GET /api/media/fm/hd/now` →
   `{via, mhz, hd, synced, station, slogan, title, artist, album, genre,
-  programs: [{hd, type}], art, merDb, kbps, alert, since} | null`.
+  programs: [{hd, type}], art, merDb, kbps, alert, since, fallback} | null`.
+  Truck tuner, HD1 only: no lock for 15 s, or the lock lost for 8 s, switches
+  the same `/stream` to the analog signal (rtl_fm, re-encoded to the HD
+  stream's 44.1 kHz stereo so the `<audio>` plays on); HD is tried again 2
+  and 10 minutes later, then only on `POST /api/media/fm/hd/retry` (409 when
+  not on a fallback). `fallback: {since, retryAt | null, analog} | null`
+  (`analog` false: trying HD right now). HD2-HD4 never fall back (analog is
+  HD1's programme). `POST /api/media/fm/hd/scan {scope: 'presets'|'band'|'mhz',
+  mhz?}` → 202 `{job}` listens to each FM frequency with nrsc5 (up to ~15 s
+  each; the radio is off meanwhile and a new stream cancels it);
+  `GET /api/media/fm/hd/scan` → `{job: {running, done, total, current, error}
+  | null, found: [{mhz, hd, station, slogan, programs, at}]}`.
   Auto source order: tuner, then the HD Radio server when it answers, then
   internet streams. Presets may carry `hd: 1-4`.
 - Plex (the token stays in the brain): `GET /api/media/plex/sections`,

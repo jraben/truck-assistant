@@ -220,6 +220,21 @@ export async function registerTrackB(app: FastifyInstance, brain: Brain, hub: No
     if (!hdServer.current()) return null;
     try { return await hdServer.now(); } catch (e) { return reply.code(502).send({ error: (e as Error).message }); }
   });
+  // Truck tuner: back to HD now after falling back to the analog signal.
+  app.post('/api/media/fm/hd/retry', async (_req, reply) => (fm.retryHd() ? { ok: true } : reply.code(409).send({ error: 'Not on an analog fallback' })));
+  // Truck tuner: which FM stations carry HD (and what's on HD2-HD4). Runs in the background; GET for progress.
+  app.get('/api/media/fm/hd/scan', async () => fm.hdScan());
+  app.post('/api/media/fm/hd/scan', async (req, reply) => {
+    const b = (req.body ?? {}) as { scope?: string; mhz?: number };
+    try {
+      const list = b.scope === 'band' ? await fm.scan()
+        : b.scope === 'mhz' ? [Number(b.mhz)]
+        : media.get().fm.presets.map((x) => x.mhz);
+      if (b.scope === 'mhz' && !validFm(list[0])) return reply.code(400).send({ error: 'mhz must be an FM frequency 87.5-108.0' });
+      if (!list.length) return reply.code(400).send({ error: b.scope === 'band' ? 'No strong FM stations heard: check the antenna' : 'No FM presets yet: scan the band instead' });
+      return reply.code(202).send({ job: await fm.startHdScan(list) });
+    } catch (e) { return fail(reply, e); }
+  });
   app.get<{ Querystring: { f?: string } }>('/api/media/fm/hd/server-art', async (req, reply) => {
     try {
       const r = await hdServer.art(q(req.query.f));

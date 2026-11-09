@@ -31,8 +31,11 @@ export function nrsc5Args(mhz: number, hd: number, o: { ppm: number; gain: numbe
   return a;
 }
 
-/** nrsc5's raw output: signed 16-bit little-endian, 44.1 kHz, stereo. */
-export const HD_FFMPEG_ARGS = ['-hide_banner', '-loglevel', 'error', '-f', 's16le', '-ar', '44100', '-ac', '2', '-i', 'pipe:0', '-f', 'mp3', '-b:a', '128k', '-flush_packets', '1', 'pipe:1'];
+/** nrsc5's raw output: signed 16-bit little-endian, 44.1 kHz, stereo. No ID3/Xing header: an HD stream can switch to analog mid-way (see HD_ANALOG_FFMPEG_ARGS), and the two halves are joined into one MP3 stream. */
+const MP3_OUT = ['-ar', '44100', '-ac', '2', '-f', 'mp3', '-b:a', '128k', '-id3v2_version', '0', '-write_xing', '0', '-flush_packets', '1', 'pipe:1'];
+export const HD_FFMPEG_ARGS = ['-hide_banner', '-loglevel', 'error', '-f', 's16le', '-ar', '44100', '-ac', '2', '-i', 'pipe:0', ...MP3_OUT];
+/** rtl_fm's analog audio (48 kHz mono) made to match the HD stream, so the cockpit's <audio> plays straight through a switch. */
+export const HD_ANALOG_FFMPEG_ARGS = ['-hide_banner', '-loglevel', 'error', '-f', 's16le', '-ar', '48000', '-ac', '1', '-i', 'pipe:0', ...MP3_OUT];
 
 export type HdProgram = { hd: number; type: string | null };
 export type HdNow = {
@@ -47,10 +50,75 @@ export type HdNow = {
   merDb: number | null; kbps: number | null;
   alert: string | null;
   since: string;
+  /**
+   * Playing the station's analog signal because the digital one was lost
+   * (truck tuner, HD1 only), with when HD is tried again (null: only on request).
+   * `analog` false: trying the digital signal again right now (a few seconds of quiet).
+   */
+  fallback: { since: string; retryAt: string | null; analog: boolean } | null;
 };
 
 /** What nrsc5's log has said so far about one tune. */
-export type HdLog = Omit<HdNow, 'via' | 'art' | 'since'>;
+export type HdLog = Omit<HdNow, 'via' | 'art' | 'since' | 'fallback'>;
+
+// ---- Falling back to analog --------------------------------------------------------
+// An HD radio in a car "blends" to the analog signal when the digital one drops
+// (fringe of range, a ridge, an underpass) and back when it returns. One RTL-SDR
+// can run nrsc5 or rtl_fm, not both, so here a sustained loss switches HD1 to
+// analog, and HD is tried again later: each try is a few seconds without sound,
+// so it is tried twice (2 then 10 minutes on) and after that only on request.
+// HD2-HD4 have no analog version (analog is HD1's programme), so they wait.
+
+/** No lock this long after tuning: there is no usable HD here. */
+export const HD_FIRST_LOCK_MS = 15_000;
+/** Lock lost this long (nrsc5 rides out short dropouts itself). */
+export const HD_LOST_MS = 8_000;
+/** Automatic tries back to HD after falling back. */
+export const HD_RETRY_MS = [120_000, 600_000];
+
+export type HdWatch = {
+  leg: 'hd' | 'analog';
+  hd: number;
+  synced: boolean;
+  /** When the current leg (nrsc5 or rtl_fm) started. */
+  legStart: number;
+  /** Last time HD was seen locked on this leg, or null. */
+  lastSynced: number | null;
+  /** When to try HD again (analog leg), or null. */
+  retryAt: number | null;
+};
+
+/** What to switch to now, if anything. Pure. */
+export function hdWatchStep(w: HdWatch, now: number): 'analog' | 'hd' | null {
+  if (w.leg === 'analog') return w.retryAt !== null && now >= w.retryAt ? 'hd' : null;
+  if (w.hd !== 1 || w.synced) return null;
+  return w.lastSynced === null ? (now - w.legStart > HD_FIRST_LOCK_MS ? 'analog' : null) : (now - w.lastSynced > HD_LOST_MS ? 'analog' : null);
+}
+
+/** When to try HD again after the `tries`-th fallback (0-based), or null. Pure. */
+export const hdRetryAt = (tries: number, now: number) => (tries < HD_RETRY_MS.length ? now + HD_RETRY_MS[tries] : null);
+
+// ---- Finding HD stations -----------------------------------------------------------
+
+/** What a short listen to one FM frequency found. */
+export type HdScanResult = { mhz: number; hd: boolean; station: string | null; slogan: string | null; programs: HdProgram[]; at: string };
+/** Give up on a frequency with no lock after this long. */
+export const HD_SCAN_NO_LOCK_MS = 12_000;
+/** Once locked, wait this long after the last new programme line for the rest. */
+export const HD_SCAN_SETTLE_MS = 3_000;
+/** Never listen to one frequency longer than this. */
+export const HD_SCAN_MAX_MS = 25_000;
+
+/** Is a listen finished? 'hd', 'none', or null to keep listening. Pure. */
+export function hdScanVerdict(log: HdLog, startedAt: number, lastNewAt: number, now: number): 'hd' | 'none' | null {
+  if (!log.synced && !log.programs.length) return now - startedAt > HD_SCAN_NO_LOCK_MS ? 'none' : null;
+  if (log.programs.length && log.station && now - lastNewAt >= HD_SCAN_SETTLE_MS) return 'hd';
+  return now - startedAt > HD_SCAN_MAX_MS ? 'hd' : null;
+}
+
+export const hdScanResult = (log: HdLog, hd: boolean, at: string): HdScanResult => ({
+  mhz: log.mhz, hd, station: log.station, slogan: log.slogan, programs: hd && !log.programs.length ? [{ hd: 1, type: null }] : [...log.programs], at,
+});
 
 export function newHdLog(mhz: number, hd: number): HdLog {
   return { mhz, hd, synced: false, station: null, slogan: null, title: null, artist: null, album: null, genre: null, programs: [], merDb: null, kbps: null, alert: null };
@@ -114,7 +182,7 @@ export function mapServerStatus(j: unknown, tuned: { mhz: number; hd: number } |
   return {
     via: 'server', mhz: tuned.mhz, hd: tuned.hd, synced: !!title || !!str('artist'),
     station: null, slogan: str('slogan'), title, artist: str('artist'), album: str('album'), genre: str('genre'),
-    programs: [], art, merDb: mer ? Number(mer[1]) : null, kbps: kb ? Math.round(Number(kb[1])) : null, alert: null, since,
+    programs: [], art, merDb: mer ? Number(mer[1]) : null, kbps: kb ? Math.round(Number(kb[1])) : null, alert: null, since, fallback: null,
   };
 }
 
