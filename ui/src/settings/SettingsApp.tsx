@@ -83,7 +83,7 @@ function Section({ id, title, help, children }: { id?: string; title: string; he
 
 function SecretField({ label, set, value, placeholder, onInput, onClear }: { label: string; set: string | undefined; value: string; placeholder?: string; onInput: (v: string) => void; onClear: () => void }) {
   return (
-    <div class="form" style="gap:6px">
+    <div class="form" style="gap:var(--s1)">
       <label class="f"><span>{label}</span>
         <input type="password" autocomplete="off" value={value} placeholder={set ? `set (${set}); type to replace` : placeholder ?? 'not set'} onInput={(e) => onInput((e.target as HTMLInputElement).value)} />
       </label>
@@ -319,7 +319,7 @@ export function SettingsApp() {
       <Section title="Relay names & power" help="The six upfit relays in the truck box, and what each load draws when on (from its label or manual). Nothing measures current, so the Control screen's watts are these numbers.">
         <div class="fields form">
           {RELAYS.map((id, i) => (
-            <div class="row" style="gap:10px;align-items:flex-end">
+            <div class="row" style="gap:var(--s1);align-items:flex-end">
               <label class="f grow"><span>Relay {i + 1}</span><input type="text" value={draft.relays[id]} onInput={(e) => set('relays', { ...draft.relays, [id]: (e.target as HTMLInputElement).value })} /></label>
               <label class="f" style="width:120px"><span>Watts</span><input type="number" min={0} max={3000} step={1} value={draft.relayWatts?.[id] ?? 0} onInput={(e) => set('relayWatts', { ...draft.relayWatts, [id]: Number((e.target as HTMLInputElement).value) || 0 })} /></label>
             </div>
@@ -362,7 +362,7 @@ export function SettingsApp() {
         <div class="row wrap">
           <button class="btn sm" type="button" disabled={!haReady} onClick={() => void testHa()}>Test connection</button>
           {haTest && <span class={haTest.reachable ? 'okmsg' : 'err'}>{haTest.reachable ? 'Home Assistant answered.' : haTest.message}</span>}
-          {!haReady && <span class="dimtxt" style="font-size:14px">Enter both, then Save.</span>}
+          {!haReady && <span class="dimtxt" style="font-size:var(--fs-body-sm)">Enter both, then Save.</span>}
         </div>
         <label class="f"><span>Wall charger session-energy entity (optional)</span>
           <input type="text" value={draft.homeAssistant.homeChargerEnergyEntity ?? ''} placeholder="sensor.emporia_charger_session_energy" onInput={(e) => set('homeAssistant', { ...draft.homeAssistant, homeChargerEnergyEntity: (e.target as HTMLInputElement).value || undefined })} />

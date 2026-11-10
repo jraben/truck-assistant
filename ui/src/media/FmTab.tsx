@@ -162,7 +162,7 @@ export function FmTab() {
     <div class={`item row ${isOn(st.id) ? 'sel' : ''}`}>
       <button type="button" class="grow mrow" onClick={() => (isOn(st.id) ? player.toggle() : playStation(st))}>
         <b class="ellip">{st.mhz ? `${fmName(st.mhz)} · ` : ''}{st.name}</b>
-        <span class="dimtxt ellip" style="font-size:13px">{st.slogan ?? ''}</span>
+        <span class="dimtxt ellip" style="font-size:var(--fs-caption)">{st.slogan ?? ''}</span>
       </button>
       <button type="button" class="btn sm" title="Save as a preset" onClick={() => savePreset(st)}>☆</button>
     </div>
@@ -173,7 +173,7 @@ export function FmTab() {
     <div class="mpane">
       {status && !internet && !server && tuner && tuner.state !== 'present' && tuner.state !== 'busy' && <div class="banner">{tuner.message}</div>}
       {playing && p.error && <div class="banner bad">{p.error}</div>}
-      <div class="row wrap" style="gap:18px">
+      <div class="row wrap" style="gap:var(--s2)">
         <div>
           <div class="fmfreq num" aria-live="polite">{mhz < 2 ? Math.round(mhz * 1000) : mhz.toFixed(1)}<small>{mhz < 2 ? 'kHz AM' : 'MHz FM'}</small></div>
           {internet && <div class="dimtxt ellip" style="max-width:380px">{here ? `${here.name}${here.slogan ? ` · ${here.slogan}` : ''}` : loading ? 'Loading local stations…' : 'No stream on this frequency'}</div>}
@@ -209,11 +209,11 @@ export function FmTab() {
       )}
       {onHd && hdNow?.alert && <div class="banner bad">Emergency alert: {hdNow.alert}</div>}
       {onHd && (
-        <div class="row" style="gap:12px;align-items:center">
-          {hdNow?.art && <img src={hdNow.art} alt="" width={64} height={64} style="border-radius:8px;object-fit:cover" />}
+        <div class="row" style="gap:var(--s15);align-items:center">
+          {hdNow?.art && <img src={hdNow.art} alt="" width={64} height={64} style="border-radius:var(--radius);object-fit:cover" />}
           <div class="dimtxt ellip" style="max-width:520px">
             {hdNow?.title ? `${hdNow.title}${hdNow.artist ? ` · ${hdNow.artist}` : ''}` : hdNow?.fallback?.analog ? 'Analog signal: no song titles' : hdNow?.synced ? 'HD signal locked: waiting for the song title…' : 'Looking for the HD signal (a few seconds; it needs a strong station)…'}
-            {hdNow && (hdNow.station || hdNow.slogan || hdNow.merDb !== null) && <div style="font-size:13px">{[hdNow.station, hdNow.slogan, hdNow.merDb !== null ? `signal ${hdNow.merDb} dB` : null].filter(Boolean).join(' · ')}</div>}
+            {hdNow && (hdNow.station || hdNow.slogan || hdNow.merDb !== null) && <div style="font-size:var(--fs-caption)">{[hdNow.station, hdNow.slogan, hdNow.merDb !== null ? `signal ${hdNow.merDb} dB` : null].filter(Boolean).join(' · ')}</div>}
           </div>
         </div>
       )}
@@ -227,7 +227,7 @@ export function FmTab() {
             <button type="button" class={`btn big ${isOn(presetTrack(x, src).id) ? 'primary' : ''}`} onClick={() => { if (x.mhz) setMhz(x.mhz); if (x.hd) { setHd(x.hd); lsSet('slate.fm.hd', String(x.hd)); } player.play(presetTrack(x, src)); }}>{x.name}{x.mhz && x.name !== fmName(x.mhz) ? <small class="dimtxt"> {fmName(x.mhz)}{x.hd ? ` HD${x.hd}` : ''}</small> : null}</button>
             <button type="button" class="btn sm" aria-label={`Remove ${x.name}`} onClick={() => void putSettings({ presets: presets.filter((_, j) => j !== i) }, `Removed ${x.name}`)}>✕</button>
           </span>
-        )) : <span class="dimtxt" style="font-size:14px">No presets yet: pick a station, then Save.</span>}
+        )) : <span class="dimtxt" style="font-size:var(--fs-body-sm)">No presets yet: pick a station, then Save.</span>}
       </div>
       {internet && (
         <>
@@ -246,7 +246,7 @@ export function FmTab() {
         <>
           <div class="row between" style="align-items:center">
             <span class="lbl">HD stations{scan?.found.some((x) => x.hd) ? ` · ${scan.found.filter((x) => x.hd).length} found` : ''}</span>
-            <span class="row" style="gap:6px">
+            <span class="row" style="gap:var(--s1)">
               <button type="button" class="btn sm" disabled={scanning || !presets.some((x) => x.mhz >= 87.5)} onClick={() => void startScan('presets')}>Check presets</button>
               <button type="button" class="btn sm" disabled={scanning} onClick={() => void startScan('band')}>Scan the band</button>
             </span>
@@ -255,7 +255,7 @@ export function FmTab() {
           {!scanning && scan?.job?.error && <div class="dimtxt">{scan.job.error}</div>}
           {scan?.found.some((x) => x.hd) ? (
             <div class="list">{scan.found.filter((x) => x.hd).map((x) => (
-              <div class="item row wrap" style="gap:6px;align-items:center">
+              <div class="item row wrap" style="gap:var(--s1);align-items:center">
                 <b class="grow ellip">{fmName(x.mhz)}{x.station ? ` · ${x.station}` : ''}{x.slogan ? <small class="dimtxt"> {x.slogan}</small> : null}</b>
                 {x.programs.map((g) => {
                   const t = hdTrack(x.mhz, g.hd, 'tuner', x.station ?? undefined);
@@ -263,8 +263,8 @@ export function FmTab() {
                 })}
               </div>
             ))}</div>
-          ) : !scanning && <div class="dimtxt" style="font-size:14px">{scan?.found.length ? `No HD heard on ${scan.found.map((x) => x.mhz.toFixed(1)).join(', ')}.` : 'Find out which stations here broadcast in HD, and what’s on their HD2-HD4.'}</div>}
-          {!scanning && !!scan?.found.length && scan.found.some((x) => x.hd) && scan.found.some((x) => !x.hd) && <div class="dimtxt" style="font-size:13px">No HD on {scan.found.filter((x) => !x.hd).map((x) => x.mhz.toFixed(1)).join(', ')}.</div>}
+          ) : !scanning && <div class="dimtxt" style="font-size:var(--fs-body-sm)">{scan?.found.length ? `No HD heard on ${scan.found.map((x) => x.mhz.toFixed(1)).join(', ')}.` : 'Find out which stations here broadcast in HD, and what’s on their HD2-HD4.'}</div>}
+          {!scanning && !!scan?.found.length && scan.found.some((x) => x.hd) && scan.found.some((x) => !x.hd) && <div class="dimtxt" style="font-size:var(--fs-caption)">No HD on {scan.found.filter((x) => !x.hd).map((x) => x.mhz.toFixed(1)).join(', ')}.</div>}
         </>
       )}
       <div class="row wrap" style="align-items:center">

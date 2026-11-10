@@ -42,8 +42,8 @@ export function VehiclePicker({ value, onChange }: { value: CompareVehicle; onCh
   const num = (v: string) => Math.max(1, Number(v) || 1);
 
   return (
-    <div class="form" style="gap:8px">
-      <div class="dimtxt" style="font-size:14px">Now: <b>{vehicleLine(value)}</b></div>
+    <div class="form" style="gap:var(--s1)">
+      <div class="dimtxt" style="font-size:var(--fs-body-sm)">Now: <b>{vehicleLine(value)}</b></div>
       <div class="row wrap" role="group" aria-label="How to set the vehicle">
         <button type="button" class={`btn sm ${mode === 'lookup' ? 'primary' : ''}`} onClick={() => setMode('lookup')}>Pick a vehicle</button>
         <button type="button" class={`btn sm ${mode === 'custom' ? 'primary' : ''}`} onClick={() => setMode('custom')}>Custom mpg</button>
@@ -64,7 +64,7 @@ export function VehiclePicker({ value, onChange }: { value: CompareVehicle; onCh
           <label class="f"><span>Fuel</span><select value={value.fuel} onChange={(e) => onChange({ ...value, id: null, fuel: (e.target as HTMLSelectElement).value as CompareVehicle['fuel'] })}>{FUELS.map((f) => <option value={f}>{f}</option>)}</select></label>
         </div>
       )}
-      {busy && <span class="dimtxt" style="font-size:13px">Asking fueleconomy.gov…</span>}
+      {busy && <span class="dimtxt" style="font-size:var(--fs-caption)">Asking fueleconomy.gov…</span>}
       {err && <span class="err">{err}</span>}
       <p class="help">Vehicle data: fueleconomy.gov (US DOE/EPA). City mpg is used for city miles and highway mpg for highway miles once trips record that split; until then, combined.</p>
     </div>

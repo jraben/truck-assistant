@@ -37,7 +37,7 @@ export function MileageView({ compact = false }: { compact?: boolean }) {
   const t = data?.totals;
 
   return (
-    <div class="form" style="gap:10px">
+    <div class="form" style="gap:var(--s1)">
       <div class="row wrap">
         <select value={year} onChange={(e) => setYear((e.target as HTMLSelectElement).value)} style="width:auto"><option value="">All years</option>{years.map((y) => <option value={y}>{y}</option>)}</select>
         <select value={driver} onChange={(e) => setDriver((e.target as HTMLSelectElement).value)} style="width:auto"><option value="">Every driver</option>{settings?.drivers.map((d) => <option value={d.id}>{d.name}</option>)}</select>
@@ -53,7 +53,7 @@ export function MileageView({ compact = false }: { compact?: boolean }) {
           <span><span class="lbl">Deduction</span> <b>${t.deduction.toFixed(2)}</b></span>
           <span><span class="lbl">All</span> {t.miles.toFixed(1)} mi · {t.trips} trips</span>
           {t.untaggedTrips > 0 && <span class="tag warn">{t.untaggedTrips} untagged</span>}
-          <span class="dimtxt" style="font-size:13px">Odometer {data?.odometerNow !== null && data?.odometerNow !== undefined ? `≈ ${data.odometerNow.toFixed(0)} (estimated)` : 'not set: add a reading in Mileage settings'}</span>
+          <span class="dimtxt" style="font-size:var(--fs-caption)">Odometer {data?.odometerNow !== null && data?.odometerNow !== undefined ? `≈ ${data.odometerNow.toFixed(0)} (estimated)` : 'not set: add a reading in Mileage settings'}</span>
         </div>
       )}
       <div class="tblwrap" style={compact ? 'max-height:420px' : ''}>
@@ -69,7 +69,7 @@ export function MileageView({ compact = false }: { compact?: boolean }) {
                 <td class="num">{r.date} <span class="dimtxt">{fmtTime(r.startedAt)}</span></td>
                 <td>{r.driver}</td>
                 <td>{r.from || '—'} → {r.to || '—'}</td>
-                <td class="n">{r.miles.toFixed(1)}{r.approximate && <span class="tag dim" title="Replayed from a phone's location history: approximate" style="margin-left:6px">phone</span>}</td>
+                <td class="n">{r.miles.toFixed(1)}{r.approximate && <span class="tag dim" title="Replayed from a phone's location history: approximate" style="margin-left:var(--s1)">phone</span>}</td>
                 <td><PurposeTag p={r.purpose} src={r.purposeSource} /></td>
                 <td>{noteEdit?.id === r.tripId
                   ? <input class="note" type="text" value={noteEdit.text} autoFocus placeholder="e.g. Site visit, Smith job" onInput={(e) => setNoteEdit({ id: r.tripId, text: (e.target as HTMLInputElement).value })} onBlur={() => { void tag([r.tripId], { note: noteEdit.text }); setNoteEdit(null); }} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
@@ -87,7 +87,7 @@ export function MileageView({ compact = false }: { compact?: boolean }) {
         <button class="btn" type="button" disabled={!sel.size} title="Clear the hand-set purpose; the rules decide again" onClick={() => void tag([...sel], { purpose: null })}>Auto</button>
         <button class="btn sm" type="button" onClick={() => setSel(new Set(rows.filter((r) => !r.purpose).map((r) => r.tripId)))}>Select untagged</button>
       </div>
-      <p class="help dimtxt" style="font-size:13px;margin:0">Business automatically: trips ending at a client from the places feed, or at a place you tag business/client below. Phone-imported trips are included but flagged approximate. Odometer readings are estimates until the truck's own odometer can be read (CAN).</p>
+      <p class="help dimtxt" style="font-size:var(--fs-caption);margin:0">Business automatically: trips ending at a client from the places feed, or at a place you tag business/client below. Phone-imported trips are included but flagged approximate. Odometer readings are estimates until the truck's own odometer can be read (CAN).</p>
     </div>
   );
 }

@@ -407,8 +407,8 @@ export function GaragePrompt() {
     <div class="card garage-prompt" role="dialog" aria-label={ask === 'open' ? 'Open the garage?' : 'Close the garage?'}>
       <GarageDoor state={door ?? 'closed'} size={150} />
       <div class="grow">
-        <b style="font-size:24px">{ask === 'open' ? 'Almost home' : 'The garage is still open'}</b>
-        <div class="row wrap" style="margin-top:10px">
+        <b style="font-size:var(--fs-title)">{ask === 'open' ? 'Almost home' : 'The garage is still open'}</b>
+        <div class="row wrap" style="margin-top:var(--s1)">
           <button class="btn big primary" type="button" onClick={() => void go()}>{ask === 'open' ? 'Open the garage' : 'Close the garage'}</button>
           <button class="btn big" type="button" onClick={() => setAsk(null)}>Not now</button>
         </div>

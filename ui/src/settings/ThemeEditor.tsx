@@ -110,7 +110,7 @@ export function ThemeEditor({ driver }: { driver: Driver }) {
       {checks.some((c) => !c.ok) && <div class="banner">Some text will be hard to read, especially in sun. Aim for at least {MIN_CONTRAST}:1.</div>}
 
       {isPreset && <p class="help">Presets can't be changed. Press Duplicate to make your own copy.</p>}
-      <fieldset disabled={isPreset} style="border:0;padding:0;margin:0;display:grid;gap:12px">
+      <fieldset disabled={isPreset} style="border:0;padding:0;margin:0;display:grid;gap:var(--s15)">
         <label class="f"><span>Name</span><input type="text" value={draft.name} onInput={(e) => setDraft({ ...draft, name: (e.target as HTMLInputElement).value })} /></label>
         <div class="colors">
           {COLOR_KEYS.map((k) => (
@@ -159,35 +159,35 @@ export function ThemePreview({ theme }: { theme: Theme }) {
   return (
     <div class="preview-frame" ref={frame} aria-label={`Preview of ${theme.name}`}>
       <div class="scale" style={{ ...vars, transform: `scale(${scale})`, background: 'var(--bg)', color: 'var(--fg)', fontFamily: 'var(--body)', display: 'grid', gridTemplateColumns: '96px 1fr', gridTemplateRows: '44px 1fr' }}>
-        <div style="grid-column:1/-1;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:14px;color:var(--dim)">
-          <span style="font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.14em;color:var(--fg)">SLATE</span>
+        <div style="grid-column:1/-1;display:flex;align-items:center;gap:var(--s2);padding:0 var(--s2);background:var(--panel);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:var(--fs-body-sm);color:var(--dim)">
+          <span style="font-family:var(--display);font-weight:800;font-size:var(--fs-body);letter-spacing:.14em;color:var(--fg)">SLATE</span>
           <span class="pill"><span class="dot ok" />Brain</span><span class="pill"><span class="dot warn" />Truck box offline</span>
-          <span style="flex:1" /><span style="font-family:var(--display);font-size:20px;font-weight:600;color:var(--fg)">4:20 PM</span>
+          <span style="flex:1" /><span style="font-family:var(--display);font-size:var(--fs-section);font-weight:600;color:var(--fg)">4:20 PM</span>
         </div>
-        <div style="display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--panel);border-right:1px solid var(--line)">
+        <div style="display:flex;flex-direction:column;gap:var(--s05);padding:var(--s1);background:var(--panel);border-right:1px solid var(--line)">
           {['DRIVE', 'CARPLAY', 'CONTROL', 'CHARGE', 'TRIPS', 'CAMS'].map((l, i) => (
             <div style={`min-height:60px;border-radius:calc(12px * var(--r));display:grid;place-items:center;font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.1em;${i === 0 ? 'background:var(--accent);color:var(--accent-ink);box-shadow:0 0 calc(18px * var(--glow)) var(--accent)' : 'color:var(--dim)'}`}>{l}</div>
           ))}
         </div>
-        <div style="display:grid;grid-template-columns:1.3fr 1fr 1.2fr;gap:10px;padding:10px;min-height:0">
+        <div style="display:grid;grid-template-columns:1.3fr 1fr 1.2fr;gap:var(--s1);padding:var(--s1);min-height:0">
           <div style={box}>
             <span class="lbl">Speed</span>
-            <div style="font-family:var(--display);font-weight:800;font-size:200px;line-height:.9">43<small style="font-size:36px;color:var(--dim);margin-left:8px">MPH</small></div>
-            <div style="display:flex;gap:10px">{['P', 'R', 'N', 'D'].map((g) => <div style={`flex:1;min-height:56px;border-radius:calc(12px * var(--r));border:1px solid var(--line);display:grid;place-items:center;font-family:var(--display);font-size:26px;font-weight:800;${g === 'D' ? 'background:var(--fg);color:var(--bg)' : 'color:var(--dim)'}`}>{g}</div>)}</div>
+            <div style="font-family:var(--display);font-weight:800;font-size:200px;line-height:.9">43<small style="font-size:36px;color:var(--dim);margin-left:var(--s1)">MPH</small></div>
+            <div style="display:flex;gap:var(--s1)">{['P', 'R', 'N', 'D'].map((g) => <div style={`flex:1;min-height:56px;border-radius:calc(12px * var(--r));border:1px solid var(--line);display:grid;place-items:center;font-family:var(--display);font-size:26px;font-weight:800;${g === 'D' ? 'background:var(--fg);color:var(--bg)' : 'color:var(--dim)'}`}>{g}</div>)}</div>
           </div>
           <div style={box}>
             <span class="lbl">Battery</span>
             <Ring soc={64} size={150} />
-            <div style="font-family:var(--display);font-weight:800;font-size:54px">118<small style="font-size:20px;color:var(--dim)"> mi</small></div>
-            <div style="display:flex;gap:6px"><span class="tag ok">MANUAL</span><span class="tag warn">LOW TIRE</span><span class="tag" style="color:var(--bad)">ALERT</span></div>
+            <div style="font-family:var(--display);font-weight:800;font-size:54px">118<small style="font-size:var(--fs-section);color:var(--dim)"> mi</small></div>
+            <div style="display:flex;gap:var(--s1)"><span class="tag ok">MANUAL</span><span class="tag warn">LOW TIRE</span><span class="tag" style="color:var(--bad)">ALERT</span></div>
           </div>
           <div style={box}>
             <span class="lbl">Next charger</span>
             <div style="font-family:var(--display);font-size:30px;font-weight:600">Tempe Marketplace</div>
-            <div style="color:var(--dim);font-size:16px">Electrify America · 2.1 mi · 150 kW · arrive ~58%</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto">
-              <div style="min-height:96px;border-radius:calc(14px * var(--r));background:var(--accent);color:var(--accent-ink);padding:14px;font-family:var(--display);font-size:22px;font-weight:600">Bed lights<br /><span style="font-family:var(--mono);font-size:13px">ON</span></div>
-              <div style="min-height:96px;border-radius:calc(14px * var(--r));background:var(--panel-2);border:1px solid var(--line);padding:14px;font-family:var(--display);font-size:22px;font-weight:600">Light bar<br /><span style="font-family:var(--mono);font-size:13px;color:var(--dim)">OFF</span></div>
+            <div style="color:var(--dim);font-size:var(--fs-body)">Electrify America · 2.1 mi · 150 kW · arrive ~58%</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s1);margin-top:auto">
+              <div style="min-height:96px;border-radius:calc(14px * var(--r));background:var(--accent);color:var(--accent-ink);padding:var(--s2);font-family:var(--display);font-size:var(--fs-title);font-weight:600">Bed lights<br /><span style="font-family:var(--mono);font-size:var(--fs-caption)">ON</span></div>
+              <div style="min-height:96px;border-radius:calc(14px * var(--r));background:var(--panel-2);border:1px solid var(--line);padding:var(--s2);font-family:var(--display);font-size:var(--fs-title);font-weight:600">Light bar<br /><span style="font-family:var(--mono);font-size:var(--fs-caption);color:var(--dim)">OFF</span></div>
             </div>
           </div>
         </div>

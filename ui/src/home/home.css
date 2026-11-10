@@ -1,8 +1,8 @@
-.garage-card { display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.garage-card { display: flex; flex-direction: column; gap: var(--s15); overflow: hidden; }
 /* The door fills whatever height the card has; the buttons and mailbox sit at the bottom. */
 .garage-btn { flex: 1 1 0; min-height: 90px; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
 .garage-btn .garage-svg { width: 100%; height: 100%; max-width: 360px; max-height: 300px; }
-.garage-actions { display: flex; gap: 10px; }
+.garage-actions { display: flex; gap: var(--s1); }
 .garage-actions .btn { flex: 0 0 auto; }
 .garage-actions .btn:first-child { flex: 1 1 auto; }
 .garage-svg .g-house { fill: var(--panel-2); stroke: var(--line); stroke-width: 2; }
@@ -15,21 +15,21 @@
 .garage-svg.open .g-edge { fill: var(--warn, #f5a524); }
 .garage-svg.moving .g-panel { animation: g-stripe 1s linear infinite; }
 @keyframes g-stripe { 50% { fill: color-mix(in srgb, var(--warn, #f5a524) 35%, var(--panel-2)); } }
-.ha-panel { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
-.ha-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; flex: none; }
+.ha-panel { display: flex; flex-direction: column; gap: var(--s15); overflow-y: auto; }
+.ha-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s1); min-height: 48px; flex: none; }
 .ha-head .lbl { padding-left: 2px; }
 .ha-editbtn { min-height: 48px; margin-left: auto; }
 .ha-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-rows: minmax(72px, auto); gap: var(--s1); }
-.ha-tile { display: grid; grid-template-rows: auto 1fr auto; gap: 2px; text-align: left; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--hairline); background: var(--panel-2); color: var(--fg); min-width: 0; }
-.ha-tile .ha-name { font-family: var(--body); font-size: 15px; font-weight: 600; line-height: 1.15; align-self: end;
+.ha-tile { display: grid; grid-template-rows: auto 1fr auto; gap: 2px; text-align: left; padding: var(--s1) var(--s15); border-radius: var(--radius); border: 1px solid var(--hairline); background: var(--panel-2); color: var(--fg); min-width: 0; }
+.ha-tile .ha-name { font-family: var(--body); font-size: var(--fs-body-sm); font-weight: 600; line-height: 1.15; align-self: end;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.ha-tile .ha-ico { font-size: 18px; line-height: 1; }
+.ha-tile .ha-ico { font-size: var(--fs-section); line-height: 1; }
 .ha-tile.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 /* Sensors only show a reading: flat, so the tappable tiles stand out. */
 .ha-tile.ro { cursor: default; background: transparent; }
 .ha-tile.edit { border-style: dashed; cursor: pointer; }
-.ha-edit { display: grid; gap: 10px; border-top: 1px solid var(--hairline); padding-top: 12px; }
-.ha-edit-row { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) 130px; align-items: center; gap: 10px; }
+.ha-edit { display: grid; gap: var(--s1); border-top: 1px solid var(--hairline); padding-top: var(--s15); }
+.ha-edit-row { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr) 130px; align-items: center; gap: var(--s1); }
 .ha-edit-row .minput, .ha-edit-row > .btn { min-width: 0; width: 100%; }
 .ha-edit-row .check { grid-column: 2 / -1; justify-self: start; min-height: 48px; }
 .ha-edit .btn { min-height: 48px; }
@@ -37,19 +37,19 @@
 /* Home Assistant not connected: one quiet card across the screen instead of two errors. */
 .cell:has(> .ha-off) { display: none; }
 .cell:has(> .home-off) { grid-column: 1 / -1 !important; }
-.home-off { justify-content: center; align-items: center; gap: 18px; }
-.home-off-body { display: grid; justify-items: center; gap: 10px; text-align: center; max-width: 520px; margin: auto; }
-.home-off-body > b { font-family: var(--display); font-size: 22px; font-weight: 600; }
+.home-off { justify-content: center; align-items: center; gap: var(--s2); }
+.home-off-body { display: grid; justify-items: center; gap: var(--s1); text-align: center; max-width: 520px; margin: auto; }
+.home-off-body > b { font-family: var(--display); font-size: var(--fs-title); font-weight: 600; }
 .home-off .garage-svg { opacity: .6; }
 .home-off .mailbox-btn { max-width: 420px; }
-.garage-prompt { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); z-index: 60; display: flex; gap: 18px; align-items: center; padding: 16px 22px; box-shadow: 0 10px 40px rgba(0,0,0,.5); max-width: 760px; }
-.mailbox-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--hit); padding: 6px 14px; flex: none;
-  border: 1px solid var(--hairline); border-radius: calc(12px * var(--r)); background: transparent; color: var(--fg); text-align: left; }
+.garage-prompt { position: fixed; left: 50%; top: 90px; transform: translateX(-50%); z-index: 60; display: flex; gap: var(--s2); align-items: center; padding: var(--s2) var(--s3); box-shadow: 0 10px 40px rgba(0,0,0,.5); max-width: 760px; }
+.mailbox-btn { display: flex; align-items: center; gap: var(--s15); width: 100%; min-height: var(--hit); padding: var(--s1) var(--s2); flex: none;
+  border: 1px solid var(--hairline); border-radius: var(--radius); background: transparent; color: var(--fg); text-align: left; }
 .mailbox-btn:disabled { opacity: 1; cursor: default; }
 .mailbox-btn.has { background: var(--panel-2); border-color: var(--ok, #30a46c); cursor: pointer; }
 .mailbox-txt { display: grid; gap: 2px; min-width: 0; }
-.mailbox-txt b { font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
-.mailbox-txt .dimtxt { font-size: 13px; }
+.mailbox-txt b { font-family: var(--mono); font-size: var(--fs-caption); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.mailbox-txt .dimtxt { font-size: var(--fs-caption); }
 .mailbox-btn .okc { color: var(--ok, #30a46c); }
 .mailbox-btn .warnc { color: var(--warn, #f5a524); }
 
@@ -59,7 +59,7 @@
 .camstill { position: relative; display: block; min-width: 0; min-height: 0; overflow: hidden; border-radius: var(--radius); background: var(--panel-2); padding: 0; }
 .camstill img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .camstill-none { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); font-size: var(--fs-caption); }
-.camstill-cap { position: absolute; left: var(--s1); bottom: var(--s1); padding: 4px 10px; border-radius: var(--radius); font-size: var(--fs-caption);
+.camstill-cap { position: absolute; left: var(--s1); bottom: var(--s1); padding: var(--s05) var(--s1); border-radius: var(--radius); font-size: var(--fs-caption);
   color: #f2f4f5; background: color-mix(in srgb, #101417 62%, transparent); backdrop-filter: blur(6px); }
 .camstill-cap b { font-weight: 600; }
 .camzoom { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s2); padding: var(--s3);

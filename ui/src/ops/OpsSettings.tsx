@@ -42,7 +42,7 @@ export function UpdatesSection() {
       </div>
       <label class="check"><input type="checkbox" checked={s.auto.enabled} disabled={!s.repo} onChange={(e) => void act(() => put('/api/update/config', { auto: { enabled: (e.target as HTMLInputElement).checked } }))} /> Install updates automatically</label>
       {s.auto.enabled && (
-        <div class="row wrap" style="gap:8px;align-items:center">
+        <div class="row wrap" style="gap:var(--s1);align-items:center">
           <span class="lbl">Install when</span>
           {(['parked', 'home-wifi'] as const).map((w) => (
             <button type="button" class={`btn sm ${s.auto.when === w ? 'primary' : ''}`} onClick={() => void act(() => put('/api/update/config', { auto: { when: w } }))}>{w === 'parked' ? 'Parked' : 'Parked on home Wi-Fi'}</button>
@@ -165,7 +165,7 @@ export function AboutPanel() {
   useEffect(() => { void api<{ version: string }>('/api/about').then((a) => setV(a.version)).catch(() => {}); }, []);
   return (
     <div class="about">
-      <h3 style="margin:0;font-family:var(--display);font-size:24px">{PROJECT.name}{v ? ` v${v}` : ''}</h3>
+      <h3 style="margin:0;font-family:var(--display);font-size:var(--fs-title)">{PROJECT.name}{v ? ` v${v}` : ''}</h3>
       <p><b>{PROJECT.notice}</b></p>
       <p>{PROJECT.copyright}. Released under the {PROJECT.license} license: free to use, change and share, with no warranty.</p>
       <p class="dimtxt">Map data © OpenStreetMap contributors. CarPlay is a trademark of Apple Inc.; this project only talks to a Carlinkit dongle.</p>

@@ -30,10 +30,10 @@ function DraftRow({ d, onDone }: { d: ReceiptDraft; onDone: () => void }) {
         <div class="mid num">{money(d.cost) ?? '—'}</div>
       </div>
       <div class="row wrap">
-        {d.cost === null && <label class="row" style="gap:6px">$<input type="number" step="0.01" min="0" style="width:110px" value={cost} placeholder="total" onInput={(e) => setCost((e.target as HTMLInputElement).value)} /></label>}
+        {d.cost === null && <label class="row" style="gap:var(--s1)">$<input type="number" step="0.01" min="0" style="width:110px" value={cost} placeholder="total" onInput={(e) => setCost((e.target as HTMLInputElement).value)} /></label>}
         <button class="btn primary" type="button" disabled={busy || (d.cost === null && !cost.trim())} onClick={() => void confirm()}>Confirm</button>
         <button class="btn" type="button" onClick={() => void dismiss()}>Not mine</button>
-        {d.missing.length > 0 && <span class="dimtxt" style="font-size:13px">Not found: {d.missing.join(', ')}</span>}
+        {d.missing.length > 0 && <span class="dimtxt" style="font-size:var(--fs-caption)">Not found: {d.missing.join(', ')}</span>}
       </div>
     </div>
   );
@@ -42,7 +42,7 @@ function DraftRow({ d, onDone }: { d: ReceiptDraft; onDone: () => void }) {
 export function DraftList() {
   const drafts = useStore(draftsStore);
   useEffect(() => { void loadDrafts(); }, []);
-  if (!drafts.length) return <div class="dimtxt" style="font-size:14px">No receipts waiting.</div>;
+  if (!drafts.length) return <div class="dimtxt" style="font-size:var(--fs-body-sm)">No receipts waiting.</div>;
   return <div class="list">{drafts.map((d) => <DraftRow d={d} onDone={() => void loadDrafts()} />)}</div>;
 }
 

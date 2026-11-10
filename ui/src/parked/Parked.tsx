@@ -343,7 +343,7 @@ function TowTab() {
         </div>
         {active && (
           <>
-            <div class="row wrap"><b style="font-size:22px">{active.name}</b><span class="dimtxt">{[active.lengthFt && `${active.lengthFt} ft`, active.weightLb && `${active.weightLb.toLocaleString()} lb`, active.brakeGain && `brake gain ${active.brakeGain}`].filter(Boolean).join(' · ')}</span><button class="btn sm" type="button" onClick={() => setEdit(active)}>Edit</button></div>
+            <div class="row wrap"><b style="font-size:var(--fs-title)">{active.name}</b><span class="dimtxt">{[active.lengthFt && `${active.lengthFt} ft`, active.weightLb && `${active.weightLb.toLocaleString()} lb`, active.brakeGain && `brake gain ${active.brakeGain}`].filter(Boolean).join(' · ')}</span><button class="btn sm" type="button" onClick={() => setEdit(active)}>Edit</button></div>
             {active.notes && <div class="dimtxt">{active.notes}</div>}
             <div class="lbl">Service</div>
             {active.service.map((s, i) => {
@@ -376,7 +376,7 @@ function TrailerForm({ t, onSave, onCancel, onDelete }: { t: Trailer; onSave: (t
   const f = (k: keyof Trailer) => (e: Event) => setD({ ...d, [k]: (e.target as HTMLInputElement).value || null });
   return (
     <div class="mpane">
-      <div class="fields form" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+      <div class="fields form" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--s1)">
         <label class="f"><span>Name</span><input type="text" value={d.name} onInput={f('name')} placeholder="Utility 5x8" /></label>
         <label class="f"><span>Length (ft)</span><input type="number" value={d.lengthFt ?? ''} onInput={(e) => setD({ ...d, lengthFt: Number((e.target as HTMLInputElement).value) || null })} /></label>
         <label class="f"><span>Loaded weight (lb)</span><input type="number" value={d.weightLb ?? ''} onInput={(e) => setD({ ...d, weightLb: Number((e.target as HTMLInputElement).value) || null })} /></label>

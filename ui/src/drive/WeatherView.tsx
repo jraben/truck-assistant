@@ -174,7 +174,7 @@ export default function WeatherView({ s, onClose }: { s: State | null; onClose: 
                 </div>
               ))}
             </div>
-            {r.error && <div class="dimtxt" style="font-size:16px">Last refresh failed: {r.error}</div>}
+            {r.error && <div class="dimtxt" style="font-size:var(--fs-body)">Last refresh failed: {r.error}</div>}
           </>
         )}
       </aside>

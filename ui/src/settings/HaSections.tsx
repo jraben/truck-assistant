@@ -41,13 +41,13 @@ export function GasSection({ gas, onChange, haReady }: { gas: Settings['gas']; o
           </label>
           <div class="row wrap">
             <button class="btn sm" type="button" disabled={!haReady} onClick={() => void find()}>Find GasBuddy sensors</button>
-            {findMsg && <span class="dimtxt" style="font-size:14px">{findMsg}</span>}
+            {findMsg && <span class="dimtxt" style="font-size:var(--fs-body-sm)">{findMsg}</span>}
           </div>
           {found && found.length > 0 && (
             <div class="list">
               {found.map((s) => (
                 <label class="check" style="justify-content:space-between">
-                  <span><input type="checkbox" checked={gas.haEntities.includes(s.entityId)} onChange={(e) => toggle(s.entityId, (e.target as HTMLInputElement).checked)} /> {s.name} <code class="dimtxt" style="font-size:12px">{s.entityId}</code></span>
+                  <span><input type="checkbox" checked={gas.haEntities.includes(s.entityId)} onChange={(e) => toggle(s.entityId, (e.target as HTMLInputElement).checked)} /> {s.name} <code class="dimtxt" style="font-size:var(--fs-caption)">{s.entityId}</code></span>
                   <span class="num">{s.price !== null ? `$${s.price.toFixed(2)}` : '—'}{s.unit ? ` ${s.unit}` : ''}</span>
                 </label>
               ))}
@@ -89,7 +89,7 @@ export function ImportSection({ settings, haReady }: { settings: Settings; haRea
         <label class="f"><span>From</span><input type="date" value={from} onInput={(e) => setFrom((e.target as HTMLInputElement).value)} /></label>
         <label class="f"><span>To</span><input type="date" value={to} onInput={(e) => setTo((e.target as HTMLInputElement).value)} /></label>
       </div>
-      <div class="dimtxt" style="font-size:14px">Tracker: <code>{d?.tracker ?? 'none set (add one in Drivers)'}</code></div>
+      <div class="dimtxt" style="font-size:var(--fs-body-sm)">Tracker: <code>{d?.tracker ?? 'none set (add one in Drivers)'}</code></div>
       <div class="row wrap">
         <button class="btn big primary" type="button" disabled={!haReady || !d?.tracker || job?.state === 'running'} onClick={() => void start()}>Import my phone history</button>
         {err && <span class="err">{err}</span>}
@@ -128,7 +128,7 @@ export function PlacesSection() {
       <div class="list">
         {places?.map((p) => (
           <div class="item row between">
-            <div><b>{p.name}</b> <span class="dimtxt" style="font-size:13px">{p.visits} visit{p.visits === 1 ? '' : 's'} · {Math.round(p.radiusM)} m{p.lastVisit ? ` · last ${fmtDateTime(p.lastVisit)}` : ''}</span></div>
+            <div><b>{p.name}</b> <span class="dimtxt" style="font-size:var(--fs-caption)">{p.visits} visit{p.visits === 1 ? '' : 's'} · {Math.round(p.radiusM)} m{p.lastVisit ? ` · last ${fmtDateTime(p.lastVisit)}` : ''}</span></div>
             <div class="row"><button class="btn sm" type="button" onClick={() => void rename(p)}>Rename</button><button class="btn sm danger" type="button" onClick={() => void remove(p)}>Forget</button></div>
           </div>
         ))}

@@ -43,8 +43,8 @@ export function TrafficAhead({ s }: WP) {
   const keyedNames = v.states.filter((s) => s.keyed).map((s) => s.name.replace(/ \(.*\)$/, '')).join(', ');
   return (
     <div class="tfgrid">
-      <Card label="Cameras ahead" right={<span class="dimtxt" style="font-size:13px">{FOLLOW[v.following]}</span>}>
-        {(err || v.message) && <div class="banner" style="font-size:14px">{err ?? v.message}{v.message?.includes('settings page') && <> <a href="/settings#traffic">Open settings</a></>}</div>}
+      <Card label="Cameras ahead" right={<span class="dimtxt" style="font-size:var(--fs-caption)">{FOLLOW[v.following]}</span>}>
+        {(err || v.message) && <div class="banner" style="font-size:var(--fs-body-sm)">{err ?? v.message}{v.message?.includes('settings page') && <> <a href="/settings#traffic">Open settings</a></>}</div>}
         {!v.cameras.length && !v.message && <div class="dimtxt">No 511 cameras ahead.</div>}
         <div class="tfcams">
           {v.cameras.map((c) => {
@@ -67,7 +67,7 @@ export function TrafficAhead({ s }: WP) {
               <div class={`item tfev ${e.type}`}>
                 <div class="row between"><b>{EV_LABEL[e.type]}{e.fullClosure ? ': road closed' : ''}</b><span class="num">{e.distMi} mi</span></div>
                 <div>{[e.roadway, e.direction].filter(Boolean).join(' ')}{e.description ? `: ${e.description}` : ''}</div>
-                {(e.lanes || e.updatedAt) && <div class="dimtxt" style="font-size:13px">{e.lanes ?? ''}{e.lanes && e.updatedAt ? ' · ' : ''}{e.updatedAt ? `updated ${fmtTime(e.updatedAt)}` : ''}</div>}
+                {(e.lanes || e.updatedAt) && <div class="dimtxt" style="font-size:var(--fs-caption)">{e.lanes ?? ''}{e.lanes && e.updatedAt ? ' · ' : ''}{e.updatedAt ? `updated ${fmtTime(e.updatedAt)}` : ''}</div>}
               </div>
             ))}
           </div>
@@ -97,19 +97,19 @@ function HazardsCard() {
     void load(); const id = setInterval(() => void load(), 60_000); return () => clearInterval(id);
   }, []);
   return (
-    <Card label="Weather and fires ahead" right={<span class="dimtxt" style="font-size:13px">{v?.following === 'route' ? 'along your trip' : 'around you'}</span>}>
+    <Card label="Weather and fires ahead" right={<span class="dimtxt" style="font-size:var(--fs-caption)">{v?.following === 'route' ? 'along your trip' : 'around you'}</span>}>
       {!v?.checkedAt && <div class="dimtxt">Checking…</div>}
       {v?.checkedAt && !v.hazards.length && <div class="dimtxt">Nothing to watch for{v.following === 'route' ? ' on the rest of the trip' : ' nearby'}.</div>}
       <div class="list">
         {v?.hazards.slice(0, 8).map((h) => (
           <div class={`item tfev ${h.severity === 'high' ? 'crash' : 'roadwork'}`}>
             <div class="row between"><b>{HZ_LABEL[h.kind]}: {h.title}</b>{v.following === 'route' && <span class="num">mile {h.mi}</span>}</div>
-            {(h.detail || h.at) && <div class="dimtxt" style="font-size:13px">{h.detail ?? ''}{h.detail && h.at ? ' · ' : ''}{h.at ? (h.kind === 'warning' ? `until ${fmtTime(h.at)}` : h.kind === 'fire' ? `seen ${fmtTime(h.at)}` : `around ${fmtTime(h.at)}`) : ''}</div>}
+            {(h.detail || h.at) && <div class="dimtxt" style="font-size:var(--fs-caption)">{h.detail ?? ''}{h.detail && h.at ? ' · ' : ''}{h.at ? (h.kind === 'warning' ? `until ${fmtTime(h.at)}` : h.kind === 'fire' ? `seen ${fmtTime(h.at)}` : `around ${fmtTime(h.at)}`) : ''}</div>}
           </div>
         ))}
       </div>
-      {v && !v.firesOn && <div class="dimtxt" style="font-size:13px">Add a free NASA FIRMS key on the settings page to see fires near the route.</div>}
-      {v?.errors.length ? <div class="dimtxt" style="font-size:12px">{v.errors.join(' · ')}</div> : null}
+      {v && !v.firesOn && <div class="dimtxt" style="font-size:var(--fs-caption)">Add a free NASA FIRMS key on the settings page to see fires near the route.</div>}
+      {v?.errors.length ? <div class="dimtxt" style="font-size:var(--fs-caption)">{v.errors.join(' · ')}</div> : null}
       <div class="attrib">Warnings: National Weather Service. Forecast: Open-Meteo. Fires: NASA FIRMS (satellite hotspots, a few hours old).</div>
     </Card>
   );

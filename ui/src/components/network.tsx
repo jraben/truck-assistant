@@ -34,7 +34,7 @@ export function NetPanel({ s, onClose }: { s: State | null; onClose: () => void 
   return (
     <div class="card netpanel" role="dialog" aria-label="Network">
       <div class="row between"><span class="lbl">Network{st?.manual ? ' · picked by hand' : ' · automatic'}</span><button class="btn sm" type="button" onClick={onClose}>Close</button></div>
-      {st?.backend === 'sim' && <div class="dimtxt" style="font-size:13px">Simulated (desk): no radios are touched.</div>}
+      {st?.backend === 'sim' && <div class="dimtxt" style="font-size:var(--fs-caption)">Simulated (desk): no radios are touched.</div>}
       {st?.backend === 'unavailable' && <div class="banner">{st.error}</div>}
       {cands && !cands.length && <div class="dimtxt">No networks set up. Add home Wi-Fi and each driver's hotspot on the <a href="/settings#network">settings page</a>.</div>}
       <div class="list">
@@ -42,7 +42,7 @@ export function NetPanel({ s, onClose }: { s: State | null; onClose: () => void 
           <div class={`item row between ${c.active ? 'sel' : ''}`}>
             <div class="grow">
               <b>{c.label}</b>
-              <div class="dimtxt" style="font-size:13px">{c.kind === 'bt' ? 'Bluetooth tethering' : c.ssid}{c.inRange ? (c.signal != null ? ` · ${c.signal}%` : '') : ' · not in range'}</div>
+              <div class="dimtxt" style="font-size:var(--fs-caption)">{c.kind === 'bt' ? 'Bluetooth tethering' : c.ssid}{c.inRange ? (c.signal != null ? ` · ${c.signal}%` : '') : ' · not in range'}</div>
             </div>
             {c.active ? <span class="tag ok">ON</span>
               : <button class="btn sm" type="button" disabled={!c.inRange || busy !== null} onClick={() => void go('/api/network/connect', { id: c.id }, c.id)}>{busy === c.id ? 'Joining…' : 'Use'}</button>}
@@ -51,9 +51,9 @@ export function NetPanel({ s, onClose }: { s: State | null; onClose: () => void 
       </div>
       {st?.manual && <button class="btn" type="button" disabled={busy !== null} onClick={() => void go('/api/network/auto')}>Back to automatic</button>}
       {st && Object.keys(st.bytesThisMonth).length > 0 && (
-        <div class="dimtxt" style="font-size:13px">Phone data this month: {Object.entries(st.bytesThisMonth).map(([d, b]) => `${d} ${fmtBytes(b)}`).join(' · ')}{st.saveData ? ' · saving data' : ''}</div>
+        <div class="dimtxt" style="font-size:var(--fs-caption)">Phone data this month: {Object.entries(st.bytesThisMonth).map(([d, b]) => `${d} ${fmtBytes(b)}`).join(' · ')}{st.saveData ? ' · saving data' : ''}</div>
       )}
-      {st?.bluetooth && st.bluetooth !== 'supported' && <div class="dimtxt" style="font-size:12px">Bluetooth tethering {st.bluetooth}</div>}
+      {st?.bluetooth && st.bluetooth !== 'supported' && <div class="dimtxt" style="font-size:var(--fs-caption)">Bluetooth tethering {st.bluetooth}</div>}
     </div>
   );
 }

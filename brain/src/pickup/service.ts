@@ -28,6 +28,9 @@ export type Pickup = {
 };
 /** sim: following the SIM test panel's made-up flight; officialOn: a FlightAware key is set. */
 export type PickupView = { pickup: Pickup | null; state: PickupState | null; suggestion: { flight: FlightId; from: string } | null; error: string | null; sim?: boolean; officialOn?: boolean };
+/** How long after the passenger should be out front the pickup banner stays up. */
+export const BANNER_AFTER_READY_MS = 30 * 60_000;
+
 export type PickupBrief = { phase: PickupState['phase']; line: string; leaveNow: boolean } | null;
 
 export class PickupError extends Error {}
@@ -133,6 +136,8 @@ export class PickupService {
 
   brief(): PickupBrief {
     if (!this.p || !this.state) return null;
+    // The pickup is over half an hour after they should have been out front: no banner left on every screen for ever.
+    if (this.state.readyAt && Date.now() - Date.parse(this.state.readyAt) > BANNER_AFTER_READY_MS) return null;
     const leaveNow = !!this.state.leaveAt && Date.parse(this.state.leaveAt) <= Date.now() && this.state.phase !== 'at-gate';
     return { phase: this.state.phase, line: this.state.line, leaveNow };
   }

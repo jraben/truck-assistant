@@ -1,25 +1,25 @@
-.parked { display: grid; grid-template-rows: auto 1fr; gap: 10px; min-height: 0; }
+.parked { display: grid; grid-template-rows: auto 1fr; gap: var(--s1); min-height: 0; }
 .parked .pbody { overflow: auto; min-height: 0; }
-.parked-lock { display: grid; place-items: center; gap: 8px; height: 100%; font-size: 34px; font-family: var(--display); }
-.app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
-.app-tile { display: grid; gap: 6px; align-content: center; text-align: left; min-height: 110px; padding: 16px; border-radius: calc(14px * var(--r)); border: 1px solid var(--hairline); background: var(--panel-2); color: var(--fg); }
-.app-tile b { font-family: var(--display); font-size: 24px; }
-.app-tile span { font-size: 13px; }
+.parked-lock { display: grid; place-items: center; gap: var(--s1); height: 100%; font-size: 34px; font-family: var(--display); }
+.app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--s15); }
+.app-tile { display: grid; gap: var(--s1); align-content: center; text-align: left; min-height: 110px; padding: var(--s2); border-radius: var(--radius); border: 1px solid var(--hairline); background: var(--panel-2); color: var(--fg); }
+.app-tile b { font-family: var(--display); font-size: var(--fs-title); }
+.app-tile span { font-size: var(--fs-caption); }
 .app-tile:disabled { opacity: .5; }
 .app-netflix b { color: #e50914; } .app-youtube b, .app-youtubetv b { color: #ff0033; } .app-disney b { color: #3d7bf7; }
 .app-hulu b { color: #1ce783; } .app-max b { color: #5d4bff; } .app-prime b { color: #00a8e1; } .app-peacock b { color: #f4b400; } .app-paramount b { color: #0064ff; }
-.vplayer { display: grid; gap: 8px; }
-.vplayer video { width: 100%; max-height: 560px; background: #000; border-radius: calc(10px * var(--r)); }
-.tow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.checklist { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.checklist .item { text-align: left; font-size: 16px; }
+.vplayer { display: grid; gap: var(--s1); }
+.vplayer video { width: 100%; max-height: 560px; background: var(--media-bg); border-radius: var(--radius); }
+.tow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.checklist { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s1); }
+.checklist .item { text-align: left; font-size: var(--fs-body); }
 .badc { color: var(--bad, #e5484d); }
-.pet-screen { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: 18px; background: #0b2a3a; color: #fff; text-align: center; }
+.pet-screen { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: var(--s2); background: #0b2a3a; color: #fff; text-align: center; }
 .pet-screen.warm { background: #4a3a0b; } .pet-screen.hot { background: #5a1414; }
 .pet-temp { font-size: 150px; font-weight: 700; line-height: 1; }
 .pet-msg { font-size: 44px; font-family: var(--display); max-width: 1500px; }
-.camp-screen { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: 12px; background: #000; color: #555; border: 0; font-size: 20px; }
+.camp-screen { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: var(--s15); background: var(--media-bg); color: #555; border: 0; font-size: var(--fs-section); }
 .camp-clock { font-size: 120px; color: #7a2a2a; }
-.sky { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
-.skypass { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; padding: 6px 10px; border-radius: var(--radius); background: var(--panel-2); }
+.sky { display: grid; gap: var(--s1); margin-top: var(--s15); padding-top: var(--s15); border-top: 1px solid var(--hairline); }
+.skypass { display: flex; flex-wrap: wrap; gap: var(--s05) var(--s2); align-items: baseline; padding: var(--s1) var(--s1); border-radius: var(--radius); background: var(--panel-2); }
 .skypass.vis { border-left: 4px solid var(--ok); }

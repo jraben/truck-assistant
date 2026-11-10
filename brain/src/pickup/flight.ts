@@ -160,7 +160,7 @@ function stateOf(o: Parameters<typeof pickupState>[0]): PickupState {
     const ready = gate + curb * 60_000;
     const l = leave(ready);
     return { phase: stopped ? 'at-gate' : 'taxiing', milesOut: 0, landsAt: iso(landed), gateAt: iso(gate), readyAt: iso(ready), leaveAt: l ? iso(l) : null, driveMin: o.driveMin,
-      line: stopped ? `${who}${o.label} is at the gate: out front in about ${Math.round((ready - now) / 60_000)} min.` : `${who}${o.label} landed and is taxiing.` };
+      line: stopped ? (ready > now ? `${who}${o.label} is at the gate: out front in about ${Math.round((ready - now) / 60_000)} min.` : `${who}${o.label} should be out front now.`) : `${who}${o.label} landed and is taxiing.` };
   }
   // In the air: distance over ground speed, slowed for the approach.
   const gs = Math.max(ac.gsKt ?? 400, 140) * 1.15078;

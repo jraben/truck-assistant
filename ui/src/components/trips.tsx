@@ -72,15 +72,15 @@ export function Trips({ s }: WP) {
     <DrivingLock what="list" summary={s?.trip ? <>This trip: <b class="num">{s.trip.miles.toFixed(1)} mi</b></> : null}>
     <div class="trips">
       <Card label="Trips" right={
-        <div class="row" style="gap:4px">
+        <div class="row" style="gap:var(--s05)">
           {(['day', 'trips', 'places'] as const).map((t) => <button type="button" class={`tag ${tab === t ? 'accent' : 'dim'}`} onClick={() => setTab(t)}>{t.toUpperCase()}</button>)}
         </div>}>
-        <div class="row wrap" style="gap:6px" role="group" aria-label="Whose trips">
+        <div class="row wrap" style="gap:var(--s1)" role="group" aria-label="Whose trips">
           <button type="button" class={`btn sm ${driver === '' ? 'primary' : ''}`} onClick={() => setDriver('')}>Everyone</button>
           {drivers.filter((d) => !d.guest).map((d) => <button type="button" class={`btn sm ${driver === d.id ? 'primary' : ''}`} onClick={() => setDriver(d.id)}>{d.name}</button>)}
         </div>
-        {job?.state === 'running' && <div class="banner" style="font-size:14px">Importing {nameOf(job.driverId) ?? job.driverId}'s phone history: day {job.daysDone} of {job.daysTotal}…</div>}
-        {job?.state === 'error' && <div class="banner bad" style="font-size:14px">Phone import stopped: {job.error}</div>}
+        {job?.state === 'running' && <div class="banner" style="font-size:var(--fs-body-sm)">Importing {nameOf(job.driverId) ?? job.driverId}'s phone history: day {job.daysDone} of {job.daysTotal}…</div>}
+        {job?.state === 'error' && <div class="banner bad" style="font-size:var(--fs-body-sm)">Phone import stopped: {job.error}</div>}
         {err && <div class="err">{err}</div>}
 
         {tab === 'day' && (
@@ -123,7 +123,7 @@ export function Trips({ s }: WP) {
               {places?.map((p) => (
                 <div class="item row between">
                   <b>{p.name}</b>
-                  <span class="dimtxt num" style="font-size:14px">{p.visits} visit{p.visits === 1 ? '' : 's'}{p.lastVisit ? ` · last ${fmtDate(p.lastVisit)}` : ''}</span>
+                  <span class="dimtxt num" style="font-size:var(--fs-body-sm)">{p.visits} visit{p.visits === 1 ? '' : 's'}{p.lastVisit ? ` · last ${fmtDate(p.lastVisit)}` : ''}</span>
                 </div>
               ))}
             </div>
@@ -132,11 +132,11 @@ export function Trips({ s }: WP) {
       </Card>
       <Card class="route" label={detail ? `${tripTitle(detail)} · ${detail.miles.toFixed(1)} mi` : 'Route'} right={detail && (detail.source === 'phone'
         ? <PhoneTag />
-        : <span class="dimtxt num" style="font-size:13px">SoC <V v={detail.startSoc?.toFixed(0)} why="Charge level unknown at start" />% → <V v={detail.endSoc?.toFixed(0)} why={detail.endedAt ? 'Charge level unknown at end' : 'Trip in progress'} />%</span>)}>
+        : <span class="dimtxt num" style="font-size:var(--fs-caption)">SoC <V v={detail.startSoc?.toFixed(0)} why="Charge level unknown at start" />% → <V v={detail.endSoc?.toFixed(0)} why={detail.endedAt ? 'Charge level unknown at end' : 'Trip in progress'} />%</span>)}>
         {detail && <ModeSplit t={detail} kwh />}
         {detail ? <RoutePlot pts={detail.points} /> : <div class="dimtxt">Pick a trip.</div>}
         {detail && detail.points.length > 1 && (
-          <div class="row wrap" style="gap:8px">
+          <div class="row wrap" style="gap:var(--s1)">
             {detail.source === 'truck' && detail.endedAt && <button class="btn sm primary" type="button" onClick={() => void openEnergy()}>Energy</button>}
             <a class="btn sm" href={`/api/trips/${detail.id}/scene.gevbundle.json`} download title="A God's Eye View scene: IMPORT it in God's Eye's Scenes panel">Replay in God's Eye</a>
           </div>
@@ -154,10 +154,10 @@ function StopRow({ st, onName }: { st: Stop; onName: () => void }) {
   return (
     <div class="item stop">
       <div class="row between">
-        <div class="grow ellip"><span class="pin" aria-hidden="true">●</span> <b>{stopName(st.name)}</b>{st.nameSource === 'geocode' && <span class="dimtxt" style="font-size:12px"> · map</span>}</div>
+        <div class="grow ellip"><span class="pin" aria-hidden="true">●</span> <b>{stopName(st.name)}</b>{st.nameSource === 'geocode' && <span class="dimtxt" style="font-size:var(--fs-caption)"> · map</span>}</div>
         {!named && <button class="btn sm" type="button" onClick={onName}>Name it</button>}
       </div>
-      <div class="row wrap dimtxt" style="font-size:14px">
+      <div class="row wrap dimtxt" style="font-size:var(--fs-body-sm)">
         <span>{fmtTime(st.arrivedAt)}{st.departedAt ? ` – ${fmtTime(st.departedAt)}` : st.source === 'truck' ? ' – now' : ''}</span>
         <span>{fmtDuration(st.durationS)}</span>
         {st.source === 'phone' && <span class="tag dim">phone</span>}
@@ -173,7 +173,7 @@ function TripRow({ t, sel, onClick, showDate, driverName }: { t: Trip; sel: bool
         <b class="ellip">{tripTitle(t)}</b>
         {t.endedAt === null && <span class="tag ok">NOW</span>}
       </div>
-      <div class="row wrap dimtxt" style="font-size:14px">
+      <div class="row wrap dimtxt" style="font-size:var(--fs-body-sm)">
         {showDate && <span>{fmtDate(t.startedAt)} · {fmtTime(t.startedAt)}</span>}
         {!showDate && <span>{fmtTime(t.startedAt)}</span>}
         <span class="num">{t.source === 'phone' ? '~' : ''}{t.miles.toFixed(1)} mi</span><span>{fmtDuration(t.durationS)}</span>

@@ -15,7 +15,7 @@ export function Chargers({ s }: WP) {
   const [waze, setWaze] = useState<Charger | null>(null);
   return (
     <Card label="Where to charge" right={<button class="btn sm" type="button" onClick={() => void refreshChargers(true)} disabled={c.loading}>{c.loading ? 'Looking…' : 'Refresh'}</button>}>
-      {c.message && <div class={c.list.length ? 'dimtxt' : 'banner'} style="font-size:14px">{c.message}{/settings/.test(c.message) && <> <a href="/settings">Open settings</a></>}</div>}
+      {c.message && <div class={c.list.length ? 'dimtxt' : 'banner'} style="font-size:var(--fs-body-sm)">{c.message}{/settings/.test(c.message) && <> <a href="/settings">Open settings</a></>}</div>}
       <div class="list">
         {c.list.slice(0, 12).map((ch) => (
           <div class="item charger">
@@ -45,12 +45,12 @@ export function WazeModal({ ch, onClose }: { ch: Charger; onClose: () => void })
   const [copied, setCopied] = useState(false);
   return (
     <Modal title="Send to Waze" onClose={onClose}>
-      <div class="row wrap" style="gap:20px;align-items:flex-start">
+      <div class="row wrap" style="gap:var(--s3);align-items:flex-start">
         <div class="qr" dangerouslySetInnerHTML={{ __html: svg }} aria-label="QR code for the Waze link" />
-        <div class="grow" style="display:grid;gap:10px">
-          <div style="font-family:var(--display);font-size:24px;font-weight:600">{ch.name}</div>
+        <div class="grow" style="display:grid;gap:var(--s1)">
+          <div style="font-family:var(--display);font-size:var(--fs-title);font-weight:600">{ch.name}</div>
           <CarPlayWazeHint />
-          <code style="word-break:break-all;font-size:13px">{url}</code>
+          <code style="word-break:break-all;font-size:var(--fs-caption)">{url}</code>
           <div class="row wrap">
             <button class="btn" type="button" onClick={() => { void navigator.clipboard?.writeText(url).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy link'}</button>
             <a class="btn" href={url} target="_blank" rel="noreferrer">Open link</a>
@@ -71,13 +71,13 @@ export function SocSlider({ s }: WP) {
     <Card label="Charge level" right={<span class={`tag ${s?.socSource === 'estimate' ? 'warn' : s?.socSource ? 'ok' : 'dim'}`}>{socLabel(s?.socSource ?? null)}</span>}>
       <div class="row between">
         <div class="big num">{dragging ? v : <V v={cur === null ? null : Math.round(cur)} why={whySoc(s)} />}<small>%</small></div>
-        <div class="dimtxt" style="font-size:13px;text-align:right">{s?.socSource === 'estimate' ? 'Estimated from miles driven' : s?.socSource === 'manual' ? 'Set by hand' : s?.socSource === 'can' ? 'From the truck' : 'Not set'}</div>
+        <div class="dimtxt" style="font-size:var(--fs-caption);text-align:right">{s?.socSource === 'estimate' ? 'Estimated from miles driven' : s?.socSource === 'manual' ? 'Set by hand' : s?.socSource === 'can' ? 'From the truck' : 'Not set'}</div>
       </div>
       <input class="soc" type="range" min={0} max={100} step={1} value={v} aria-label="Set charge level"
         onInput={(e) => { setDragging(true); setV(Number((e.target as HTMLInputElement).value)); }}
         onChange={(e) => commit(Number((e.target as HTMLInputElement).value))} />
       <div class="row wrap">{[20, 50, 80, 90, 100].map((n) => <button class="btn sm" type="button" onClick={() => { setV(n); commit(n); }}>{n}%</button>)}</div>
-      <div class="dimtxt" style="font-size:12px">Raising it while parked logs a charge session.</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">Raising it while parked logs a charge session.</div>
     </Card>
   );
 }

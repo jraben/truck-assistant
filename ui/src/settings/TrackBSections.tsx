@@ -14,7 +14,7 @@ function Section({ id, title, help, children }: { id: string; title: string; hel
 
 function Secret({ label, set, value, placeholder, onInput, onClear }: { label: string; set: string | undefined; value: string; placeholder?: string; onInput: (v: string) => void; onClear: () => void }) {
   return (
-    <div class="form" style="gap:6px">
+    <div class="form" style="gap:var(--s1)">
       <label class="f"><span>{label}</span>
         <input type="password" autocomplete="off" value={value} placeholder={set ? `set (${set}); type to replace` : placeholder ?? 'not set'} onInput={(e) => onInput((e.target as HTMLInputElement).value)} />
       </label>
@@ -113,7 +113,7 @@ function SpotifySection({ m, put, settings, status, reload }: SP & { settings: S
   const sp = status?.spotify;
   return (
     <Section id="spotify" title="Spotify" help={<>The truck becomes a Spotify Connect speaker ("{m.spotify.deviceName}", librespot on the Pi), and the Media view shows what's playing, skips, and plays your playlists on it. Optional: without a Client ID, the Media view hands Spotify off to the phone (CarPlay) like Pandora. Since March 2026 Spotify only runs a developer app while its owner has <b>Spotify Premium</b>, and play/skip control needs Premium too; a free account can't use this. Creating the app costs nothing extra.</>}>
-      <ol class="help" style="margin:0;padding-left:20px;display:grid;gap:4px">
+      <ol class="help" style="margin:0;padding-left:var(--s3);display:grid;gap:var(--s05)">
         <li>On developer.spotify.com/dashboard (signed in with your Premium account), create an app. Tick "Web API".</li>
         <li>Add this Redirect URI to the app: <code style="word-break:break-all">{red.uri}</code>{red.paste ? ' (Spotify only allows https, or http on 127.0.0.1)' : ''}.</li>
         <li>In the app's User Management, add the email of every Spotify account that will connect. An app in development mode serves at most <b>5 Spotify accounts</b>.</li>
@@ -125,7 +125,7 @@ function SpotifySection({ m, put, settings, status, reload }: SP & { settings: S
         <label class="f"><span>Stream quality</span><select value={String(bitrate)} onChange={(e) => setBitrate(Number((e.target as HTMLSelectElement).value) as 96 | 160 | 320)}><option value="96">96 kbps (least data)</option><option value="160">160 kbps</option><option value="320">320 kbps</option></select></label>
       </div>
       <label class="check"><input type="checkbox" checked={connect} onChange={(e) => setConnect((e.target as HTMLInputElement).checked)} /> Run the Spotify Connect speaker on the truck (librespot)</label>
-      <div class="row wrap"><button class="btn primary" type="button" onClick={() => void save()}>Save Spotify</button><Note m={msg} />{sp && <span class="dimtxt" style="font-size:14px">Speaker: {sp.librespot}{sp.librespotError ? ` (${sp.librespotError})` : ''}</span>}</div>
+      <div class="row wrap"><button class="btn primary" type="button" onClick={() => void save()}>Save Spotify</button><Note m={msg} />{sp && <span class="dimtxt" style="font-size:var(--fs-body-sm)">Speaker: {sp.librespot}{sp.librespotError ? ` (${sp.librespotError})` : ''}</span>}</div>
       <div class="list">
         {settings.drivers.filter((d) => !d.guest).map((d) => {
           const c = m.spotify.connected[d.id];
@@ -223,7 +223,7 @@ function LocalSection({ m, put, status }: SP & { status: MediaStatus | null }) {
       <div class="fields form">
         <label class="f"><span>Folder (empty = the data folder's music/)</span><input type="text" value={folder} placeholder={status?.local.root ?? '/var/lib/slate-cockpit/music'} onInput={(e) => setFolder((e.target as HTMLInputElement).value)} /></label>
       </div>
-      <div class="row wrap"><button class="btn primary" type="button" onClick={() => void put({ local: { folder: folder.trim() || null } }).then(setMsg)}>Save</button><Note m={msg} />{status && <span class="dimtxt" style="font-size:14px">Now reading {status.local.root}</span>}</div>
+      <div class="row wrap"><button class="btn primary" type="button" onClick={() => void put({ local: { folder: folder.trim() || null } }).then(setMsg)}>Save</button><Note m={msg} />{status && <span class="dimtxt" style="font-size:var(--fs-body-sm)">Now reading {status.local.root}</span>}</div>
     </Section>
   );
 }

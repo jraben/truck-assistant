@@ -49,8 +49,8 @@ export function WoprSubtitle() {
       {v.you && <div class="wopr-you">“{v.you}”</div>}
       {v.reply && <div class="wopr-reply">{v.reply}</div>}
       {v.phase === 'thinking' && !v.reply && <div class="wopr-reply dimtxt">…</div>}
-      {v.note && <div class="dimtxt" style="font-size:14px">{v.note}</div>}
-      {v.error && <div class="err" style="font-size:16px">{v.error}</div>}
+      {v.note && <div class="dimtxt" style="font-size:var(--fs-body-sm)">{v.note}</div>}
+      {v.error && <div class="err" style="font-size:var(--fs-body)">{v.error}</div>}
     </div>
   );
 }
@@ -106,7 +106,7 @@ export function NextAppointment({ s }: WP) {
       ) : (
         <div class="dimtxt">{n === null ? 'Asking WOPR…' : !n.configured ? 'Connect WOPR on the settings page to see your calendar.' : !n.online ? 'Offline: the calendar needs the internet.' : n.message ?? 'Nothing on the calendar in the next day and a half.'}</div>
       )}
-      {a && n?.message && <div class="dimtxt" style="font-size:12px">Last checked {n.fetchedAt ? timeOf(n.fetchedAt) : '—'} ({n.message})</div>}
+      {a && n?.message && <div class="dimtxt" style="font-size:var(--fs-caption)">Last checked {n.fetchedAt ? timeOf(n.fetchedAt) : '—'} ({n.message})</div>}
       {waze && a?.wazeUrl && <WazeLinkModal title={a.title} where={a.location!} url={a.wazeUrl} onClose={() => setWaze(false)} />}
     </Card>
   );
@@ -118,13 +118,13 @@ export function WazeLinkModal({ title, where, url, onClose }: { title: string; w
   const [copied, setCopied] = useState(false);
   return (
     <Modal title="Send to Waze" onClose={onClose}>
-      <div class="row wrap" style="gap:20px;align-items:flex-start">
+      <div class="row wrap" style="gap:var(--s3);align-items:flex-start">
         <div class="qr" dangerouslySetInnerHTML={{ __html: svg }} aria-label="QR code for the Waze link" />
-        <div class="grow" style="display:grid;gap:10px">
-          <div style="font-family:var(--display);font-size:24px;font-weight:600">{title}</div>
+        <div class="grow" style="display:grid;gap:var(--s1)">
+          <div style="font-family:var(--display);font-size:var(--fs-title);font-weight:600">{title}</div>
           <div class="dimtxt">{where}</div>
           <CarPlayWazeHint />
-          <code style="word-break:break-all;font-size:13px">{url}</code>
+          <code style="word-break:break-all;font-size:var(--fs-caption)">{url}</code>
           <div class="row wrap">
             <button class="btn" type="button" onClick={() => { void navigator.clipboard?.writeText(url).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy link'}</button>
             <a class="btn" href={url} target="_blank" rel="noreferrer">Open link</a>

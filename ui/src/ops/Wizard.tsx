@@ -91,7 +91,7 @@ function TruckStep({ settings, next }: StepProps) {
   const photo = truckPhotoUrl(truckOf(settings));
   return (
     <div class="form">
-      {photo && <img src={photo} alt="Your truck" style="display:block;width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:var(--panel-2)" />}
+      {photo && <img src={photo} alt="Your truck" style="display:block;width:100%;max-height:220px;object-fit:contain;border-radius:var(--radius);background:var(--panel-2)" />}
       <div class="fields form">
         <label class="f"><span>Truck id (MQTT prefix)</span><input type="text" value={id} onInput={(e) => setId(val(e))} /></label>
         <label class="f"><span>Usable pack kWh</span><input type="number" step="0.1" value={pack} onInput={(e) => setPack(val(e))} /></label>

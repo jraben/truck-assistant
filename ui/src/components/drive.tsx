@@ -12,7 +12,7 @@ export function Speed({ s }: WP) {
     <Card class="speedo" label="Speed" right={<span class="tag dim">GPS</span>}>
       <div class="speed num"><V v={fmtNum(s?.speedMph)} why={whyGps(s)} /><small>MPH</small></div>
       <div>
-        <div class="lbl" style="margin-bottom:6px">Gear {gear === null && <V v={null} why={s?.truckbox ? 'P, N and D need the CAN bus; only R is wired (reverse lamp)' : whyTruck(s, 'reverse')} />}</div>
+        <div class="lbl" style="margin-bottom:var(--s1)">Gear {gear === null && <V v={null} why={s?.truckbox ? 'P, N and D need the CAN bus; only R is wired (reverse lamp)' : whyTruck(s, 'reverse')} />}</div>
         <div class="gears" role="group" aria-label="Gear (display only)">
           {(['P', 'R', 'N', 'D'] as const).map((g) => <div class={`gear ${gear === g ? 'on' : ''}`}>{g}</div>)}
         </div>
@@ -39,7 +39,7 @@ export function Soc({ s, go }: WP) {
   const soc = s?.soc ?? null;
   return (
     <Card class="socw" label="Battery" right={<button type="button" class={`tag ${s?.socSource === 'estimate' ? 'warn' : s?.socSource ? 'ok' : 'dim'}`} title="Tap to set the charge level" onClick={() => go('charge')}>{socLabel(s?.socSource ?? null)}</button>}>
-      <div class="row wrap" style="gap:20px">
+      <div class="row wrap" style="gap:var(--s3)">
         <span title={soc === null ? whySoc(s) : s?.socSource === 'estimate' ? 'Estimated: last manual value minus GPS miles / efficiency' : 'Set by hand'}><Ring soc={soc} /></span>
         <div>
           <div class="lbl">Range</div>
@@ -61,8 +61,8 @@ export function NextCharger({ s, go }: WP) {
           <div class="icon"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg></div>
           <div class="grow">
             <div class="lbl ellip">{top.network ?? 'Unknown network'} · {top.distanceMi.toFixed(1)} mi · {top.maxKw ? `${Math.round(top.maxKw)} kW` : 'kW unknown'}</div>
-            <div class="ellip" style="font-family:var(--display);font-size:28px;font-weight:600">{top.name}</div>
-            <div class="dimtxt ellip" style="font-size:14px">{top.reasons.find((r) => r.startsWith('Arrive')) ?? top.reasons[0]}</div>
+            <div class="ellip" style="font-family:var(--display);font-size:var(--fs-display-sm);font-weight:600">{top.name}</div>
+            <div class="dimtxt ellip" style="font-size:var(--fs-body-sm)">{top.reasons.find((r) => r.startsWith('Arrive')) ?? top.reasons[0]}</div>
           </div>
           <div class="score">{top.score}</div>
         </button>
@@ -77,7 +77,7 @@ export function TripW({ s, go }: WP) {
   return (
     <Card label="Trip" right={<button class="tag accent" type="button" onClick={() => go('trips')}>LOG</button>}>
       <div class="mid num"><V v={s?.trip ? s.trip.miles.toFixed(1) : null} why={s ? 'No trip in progress' : 'Not connected'} /><small>mi</small></div>
-      <div class="dimtxt" style="font-size:13px">{s?.trip ? `since ${new Date(s.trip.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'parked'}</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">{s?.trip ? `since ${new Date(s.trip.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'parked'}</div>
     </Card>
   );
 }
@@ -105,7 +105,7 @@ export function Tilt({ s }: WP) {
           <circle cx="34" cy={40 - p * 0.4} r="5" fill="var(--accent)" /><circle cx="66" cy={40 - p * 0.4} r="5" fill="var(--accent)" />
         </g>
       </svg>
-      <div class="num" style="font-family:var(--mono);font-size:13px">
+      <div class="num" style="font-family:var(--mono);font-size:var(--fs-caption)">
         {t ? <>P {t.pitch.toFixed(1)}° · R {t.roll.toFixed(1)}°</> : <V v={null} why={whyTruck(s, 'tilt')} />}
       </div>
     </Card>

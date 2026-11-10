@@ -25,7 +25,7 @@ export function CostSummary({ s }: WP) {
   const saved = cur && cur.gasEquivalent !== null ? cur.gasEquivalent - cur.cost : null;
   return (
     <Card label={view === 'month' ? 'Charging this month' : 'Charging this year'} right={
-      <div class="row" style="gap:4px">
+      <div class="row" style="gap:var(--s05)">
         <button type="button" class={`tag ${view === 'month' ? 'accent' : 'dim'}`} onClick={() => setView('month')}>MONTH</button>
         <button type="button" class={`tag ${view === 'year' ? 'accent' : 'dim'}`} onClick={() => setView('year')}>YEAR</button>
         <a class="tag dim" href="/api/charges.csv" download style="text-decoration:none">CSV</a>
@@ -39,7 +39,7 @@ export function CostSummary({ s }: WP) {
           <span>$/mile</span><span><V v={cur?.costPerMile != null ? `$${cur.costPerMile.toFixed(3)}` : null} why="No trip miles in this period yet" /></span>
         </div>
       </div>
-      <div class="dimtxt" style="font-size:13px">
+      <div class="dimtxt" style="font-size:var(--fs-caption)">
         {cur?.gasEquivalent != null
           ? <>vs. {cur.gasVehicle === 'Custom' ? 'a gas truck' : cur.gasVehicle}: {saved !== null && saved >= 0
             ? <>you saved <b style="color:var(--ok)">{money(saved)}</b> this {view}</>
@@ -47,7 +47,7 @@ export function CostSummary({ s }: WP) {
           : 'Gas comparison appears once trips have miles.'}
       </div>
       {gas?.source === 'ha' && (
-        <div class="dimtxt" style="font-size:13px">
+        <div class="dimtxt" style="font-size:var(--fs-caption)">
           {gas.today
             ? <>Gas nearby: <b class="num">${gas.today.price.toFixed(2)}</b> {gas.fuel}{gas.today.station ? <> at {gas.today.station}</> : ''}, updated {ago(gas.today.updatedAt ?? gas.today.fetchedAt)}</>
             : <>Gas nearby: {gas.message ?? 'no price yet'}{/settings page/.test(gas.message ?? '') && <> <a href="/settings#ha">Open settings</a></>}</>}
@@ -82,9 +82,9 @@ export function CostSessions(_: WP) {
           <button type="button" class="item" onClick={() => setEdit(s)}>
             <div class="row between">
               <div class="grow ellip"><b>{s.stationName ?? (s.place === 'home' ? 'Home' : s.network ?? 'Charge')}</b> <span class="dimtxt">{fmtDateTime(s.startedAt)}</span></div>
-              <span class="num" style="font-family:var(--display);font-size:22px;font-weight:600"><V v={money(s.cost)} why="Cost not entered yet" /></span>
+              <span class="num" style="font-family:var(--display);font-size:var(--fs-title);font-weight:600"><V v={money(s.cost)} why="Cost not entered yet" /></span>
             </div>
-            <div class="row wrap" style="gap:6px;min-width:0">
+            <div class="row wrap" style="gap:var(--s1);min-width:0">
               <span class={`tag ${s.place === 'home' ? 'ok' : 'accent'}`}>{s.place}</span>
               {s.kwh !== null && <span class="tag dim">{s.kwh.toFixed(1)} kWh</span>}
               {s.startSoc !== null && s.endSoc !== null && <span class="tag dim">{Math.round(s.startSoc)}→{Math.round(s.endSoc)}%</span>}
@@ -92,7 +92,7 @@ export function CostSessions(_: WP) {
               {s.source !== 'manual' && <span class="tag dim">{s.source}</span>}
               {s.onPeak && <span class="tag bad" title={`Charged during ${s.onPeak}: the demand charge may apply this month`}>on-peak</span>}
             </div>
-            {s.onPeak && <div class="dimtxt" style="font-size:12px">Overlapped {s.onPeak}: your plan's demand charge may bill this hour.</div>}
+            {s.onPeak && <div class="dimtxt" style="font-size:var(--fs-caption)">Overlapped {s.onPeak}: your plan's demand charge may bill this hour.</div>}
           </button>
         ))}
       </div>
@@ -170,7 +170,7 @@ export function ChargeForm({ session, onDone, prefill }: { session: ChargeSessio
       <datalist id="networks">{['Tesla', 'Electrify America', 'EVgo', 'ChargePoint', 'Blink', 'Rivian Adventure Network', 'Ionna', 'Shell Recharge'].map((x) => <option value={x} />)}</datalist>
       <label class="check"><input type="checkbox" checked={f.free} onChange={set('free')} /> Free charge</label>
       <label class="f"><span>Note</span><input type="text" value={f.note} onInput={set('note')} placeholder="idle fee, membership, …" /></label>
-      {nearOk && !session && <div class="dimtxt" style="font-size:13px">Prefilled from the nearest charger ({nearOk.distanceMi.toFixed(1)} mi).</div>}
+      {nearOk && !session && <div class="dimtxt" style="font-size:var(--fs-caption)">Prefilled from the nearest charger ({nearOk.distanceMi.toFixed(1)} mi).</div>}
       {err && <div class="err">{err}</div>}
       <div class="row wrap">
         <button class="btn big primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
@@ -214,7 +214,7 @@ export function ChargePrompt() {
     return (
       <div class="card prompt" role="status">
         <div class="lbl">Home charge logged</div>
-        <div style="font-family:var(--display);font-size:24px;font-weight:600">{homeNew.kwh !== null ? `${homeNew.kwh.toFixed(1)} kWh` : 'kWh unknown'} · <V v={money(homeNew.cost)} why="Set a home rate on the settings page" /></div>
+        <div style="font-family:var(--display);font-size:var(--fs-title);font-weight:600">{homeNew.kwh !== null ? `${homeNew.kwh.toFixed(1)} kWh` : 'kWh unknown'} · <V v={money(homeNew.cost)} why="Set a home rate on the settings page" /></div>
         <div class="row wrap">
           <button class="btn" type="button" onClick={() => later(homeNew.id)}>OK</button>
           <button class="btn" type="button" onClick={() => setEditing(homeNew)}>Edit</button>

@@ -24,9 +24,9 @@ function Swatch({ name, hex, on, onClick }: { name: string; hex: string; on: boo
 function ColorPick({ label, value, onChange, allowNone }: { label: string; value: string; onChange: (v: string) => void; allowNone?: boolean }) {
   const none = value === 'none';
   return (
-    <div class="form" style="gap:6px">
+    <div class="form" style="gap:var(--s1)">
       <span class="lbl">{label}: <b style="color:var(--fg)">{none ? 'None' : nameOf(value) ?? value}</b></span>
-      <div class="row wrap" style="gap:6px">
+      <div class="row wrap" style="gap:var(--s1)">
         {allowNone && <button type="button" class={`btn sm ${none ? 'primary' : ''}`} aria-pressed={none} onClick={() => onChange('none')}>None</button>}
         <input type="color" value={none ? '#1c1d1f' : value} onInput={(e) => onChange((e.target as HTMLInputElement).value)} aria-label={`${label} colour`} style="width:48px;height:40px;border:0;background:none;padding:0" />
         {WRAP_COLORS.map((c) => <Swatch name={c.name} hex={c.hex} on={value.toLowerCase() === c.hex} onClick={() => onChange(c.hex)} />)}
@@ -37,9 +37,9 @@ function ColorPick({ label, value, onChange, allowNone }: { label: string; value
 
 function NamePick({ label, value, onChange, noneLabel }: { label: string; value: string; onChange: (v: string) => void; noneLabel?: string }) {
   return (
-    <div class="form" style="gap:6px">
+    <div class="form" style="gap:var(--s1)">
       <span class="lbl">{label}: <b style="color:var(--fg)">{value === 'none' ? noneLabel ?? 'None' : value}</b></span>
-      <div class="row wrap" style="gap:6px">
+      <div class="row wrap" style="gap:var(--s1)">
         {noneLabel && <button type="button" class={`btn sm ${value === 'none' ? 'primary' : ''}`} aria-pressed={value === 'none'} onClick={() => onChange('none')}>{noneLabel}</button>}
         {WRAP_COLORS.map((c) => <Swatch name={c.name} hex={c.hex} on={value === c.name} onClick={() => onChange(c.name)} />)}
       </div>
@@ -67,17 +67,17 @@ function PhotoBox({ settings }: { settings: Settings }) {
   };
   const https = /^https:\/\//i.test(url.trim());
   return (
-    <div class="form photobox" style="gap:8px">
+    <div class="form photobox" style="gap:var(--s1)">
       <span class="lbl">Photo of your truck</span>
       <div class="photoframe">{src ? <img src={src} alt="Your truck" /> : <span class="dimtxt">No photo yet. The Drive screen shows it while parked; without one it shows the drawing.</span>}</div>
-      <div class="row wrap" style="gap:8px">
+      <div class="row wrap" style="gap:var(--s1)">
         <label class="btn sm" style="cursor:pointer">Upload…
           <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={busy} onChange={(e) => { const i = e.target as HTMLInputElement; upload(i.files?.[0]); i.value = ''; }} />
         </label>
         {src && <button class="btn sm danger" type="button" disabled={busy} onClick={() => void run('Photo removed.', () => api('/api/vehicle/photo', { method: 'DELETE' }))}>Remove</button>}
-        {t.photo && <span class="dimtxt" style="font-size:13px">{t.photo.source === 'url' ? 'From a URL' : 'Uploaded'}, {new Date(t.photo.updatedAt).toLocaleDateString()}</span>}
+        {t.photo && <span class="dimtxt" style="font-size:var(--fs-caption)">{t.photo.source === 'url' ? 'From a URL' : 'Uploaded'}, {new Date(t.photo.updatedAt).toLocaleDateString()}</span>}
       </div>
-      <div class="row wrap" style="gap:8px;align-items:flex-end">
+      <div class="row wrap" style="gap:var(--s1);align-items:flex-end">
         <label class="f" style="flex:1;min-width:220px"><span>From image URL (https)</span><input type="url" value={url} placeholder="https://…/truck.jpg" onInput={(e) => setUrl((e.target as HTMLInputElement).value)} /></label>
         <button class="btn sm" type="button" disabled={busy || !https} onClick={() => void run('Photo saved.', async () => { await api('/api/vehicle/photo', { method: 'POST', body: JSON.stringify({ url: url.trim() }) }); setUrl(''); })}>Fetch</button>
       </div>
@@ -130,14 +130,14 @@ export function DriveSection({ settings }: { settings: Settings }) {
       <div class="myslate">
         <div class="myslate-preview">
           <TruckSide t={truck} id="set-side" />
-          <div class="row" style="gap:16px;align-items:flex-end">
+          <div class="row" style="gap:var(--s2);align-items:flex-end">
             <div style="width:42%"><TruckRear t={truck} id="set-rear" /></div>
             <p class="help" style="flex:1">Live preview of the tilt drawing the Drive screen rotates. Save to keep it.</p>
           </div>
           <PhotoBox settings={settings} />
         </div>
         <div class="form myslate-controls">
-          <div class="form" style="gap:6px">
+          <div class="form" style="gap:var(--s1)">
             <label class="f"><span>My build on slate.auto (share link)</span>
               <input type="url" value={share} placeholder="https://www.slate.auto/share/ABC123" aria-invalid={!shareOk} onInput={(e) => setTruck({ ...truck, slateShareUrl: (e.target as HTMLInputElement).value })} />
             </label>
@@ -145,7 +145,7 @@ export function DriveSection({ settings }: { settings: Settings }) {
             {shareOk && share.trim() && <div><a class="btn sm" href={parseSlateShareUrl(share)!.url} target="_blank" rel="noreferrer noopener">Open my build on slate.auto ↗</a></div>}
           </div>
           {COLOR_FIELDS.map(([k, label]) => <ColorPick label={label} value={truck.colors[k]} allowNone={k === 'logo'} onChange={(v) => c(k, v)} />)}
-          <div class="form" style="gap:6px">
+          <div class="form" style="gap:var(--s1)">
             <span class="lbl">Front lamp plates</span>
             <div class="row wrap">
               <label class="check"><input type="radio" name="lamp" checked={truck.colors.lampPlates === 'synthwave'} onChange={() => c('lampPlates', 'synthwave')} /> Synthwave (round amber lamps)</label>
@@ -213,7 +213,7 @@ export function DriveSection({ settings }: { settings: Settings }) {
         {settings.drivers.map((dr) => {
           const dd = driverDrive(dr);
           return (
-            <div class="item row wrap" style="gap:12px">
+            <div class="item row wrap" style="gap:var(--s15)">
               <b style="min-width:90px">{dr.name}</b>
               <label class="f" style="min-width:170px"><span>Speedometer</span>
                 <select value={dd.speedo} onChange={(e) => void saveDriver(dr.id, { speedo: (e.target as HTMLSelectElement).value as DriverDrive['speedo'] }, dd)}>

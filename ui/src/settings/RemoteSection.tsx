@@ -32,7 +32,7 @@ function ZoneRow({ z, places, set, remove }: { z: Zone; places: PlaceOpt[]; set:
   };
   const where = z.where ?? (Number.isFinite(z.lat) ? places.find((p) => Math.abs(p.lat - z.lat) < 1e-4 && Math.abs(p.lon - z.lon) < 1e-4)?.name ?? 'a spot set earlier' : 'not picked yet');
   return (
-    <div class="card" style="padding:10px;margin:6px 0">
+    <div class="card" style="padding:var(--s1);margin:var(--s1) 0">
       <div class="row wrap">
         <label class="f"><span>Name</span><input type="text" style="max-width:160px" value={z.name} onInput={(e) => set((x) => { x.name = (e.target as HTMLInputElement).value; })} /></label>
         <label class="f"><span>Radius, miles</span><input type="number" step="0.05" min="0.02" style="max-width:100px" value={toMi(z.radiusM)} onChange={(e) => set((x) => { x.radiusM = fromMi((e.target as HTMLInputElement).value); })} /></label>
@@ -41,7 +41,7 @@ function ZoneRow({ z, places, set, remove }: { z: Zone; places: PlaceOpt[]; set:
       <div class="row wrap">
         <span class="help">At: <b>{where}</b></span>
         <select onChange={(e) => { const p = places.find((x) => String(x.id) === (e.target as HTMLSelectElement).value); if (p) pick(p.name, p.lat, p.lon); }}>
-          <option value="">Saved place�</option>
+          <option value="">Saved place�</option>
           {places.map((p) => <option value={String(p.id)}>{p.name}</option>)}
         </select>
         <input type="text" placeholder="or search an address" style="max-width:220px" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void search(); } }} />
@@ -108,7 +108,7 @@ export function RemoteSection() {
         <p class="help">USB webcams (UVC) and composite/AHD capture sticks: the 360° kit's stitched output, or the Slate's own backup camera through a splitter. Use /dev/v4l/by-id/… paths so cameras keep their place after a reboot (`ls -l /dev/v4l/by-id` on the Pi). Up to 4 plus the 360 view. "test" streams a moving pattern for bench checks.</p>
         {d.cams.cameras.map((c, i) => (
           <div class="item">
-            <div class="fields form" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
+            <div class="fields form" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:var(--s1)">
               <label class="f"><span>Name</span><input type="text" value={c.name} onInput={(e) => setCam(i, { name: (e.target as HTMLInputElement).value })} /></label>
               <label class="f"><span>Id (stream)</span><input type="text" value={c.id} onInput={(e) => setCam(i, { id: (e.target as HTMLInputElement).value })} /></label>
               <label class="f"><span>Role</span><select value={c.role} onChange={(e) => setCam(i, { role: (e.target as HTMLSelectElement).value as CameraConfig['role'] })}>{ROLES.map((r) => <option value={r}>{r}</option>)}</select></label>
@@ -135,8 +135,8 @@ export function RemoteSection() {
         </div>
         <h3 class="sub">Parking guides</h3>
         <div class="row wrap" style="align-items:flex-start">
-          <div style="position:relative;width:320px;height:180px;background:#111;border-radius:10px;overflow:hidden;flex:none"><Guides g={g} /></div>
-          <div class="fields form" style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px">
+          <div style="position:relative;width:320px;height:180px;background:#111;border-radius:var(--radius);overflow:hidden;flex:none"><Guides g={g} /></div>
+          <div class="fields form" style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s1)">
             {([['bottomWidth', 'Width at the bottom', 0.1, 1], ['topWidth', 'Width at the top', 0, 1], ['top', 'Top of the lines', 0.05, 0.95], ['offsetX', 'Shift left/right', -0.5, 0.5]] as const).map(([k, label, min, max]) => (
               <label class="f"><span>{label}</span><input type="range" min={min} max={max} step={0.01} value={g[k]} onInput={(e) => up((x) => { (x.cams.guides as any)[k] = Number((e.target as HTMLInputElement).value); })} /></label>
             ))}
@@ -237,9 +237,9 @@ function TruckLink({ url, onNew }: { url: string; onNew: () => void }) {
   const [shown, setShown] = useState(false);
   return (
     <div class="row wrap" style="align-items:flex-start">
-      {shown && <div style="width:160px;background:#fff;border-radius:8px" dangerouslySetInnerHTML={{ __html: svg }} />}
-      <div class="form" style="flex:1;gap:6px">
-        <code style="word-break:break-all;font-size:12px">{shown ? url : url.replace(/token=[^&]+/, 'token=••••')}</code>
+      {shown && <div style="width:160px;background:#fff;border-radius:var(--radius)" dangerouslySetInnerHTML={{ __html: svg }} />}
+      <div class="form" style="flex:1;gap:var(--s1)">
+        <code style="word-break:break-all;font-size:var(--fs-caption)">{shown ? url : url.replace(/token=[^&]+/, 'token=••••')}</code>
         <div class="row wrap">
           <button class="btn sm" type="button" onClick={() => setShown(!shown)}>{shown ? 'Hide' : 'Show link + QR'}</button>
           <button class="btn sm" type="button" onClick={() => void navigator.clipboard?.writeText(url)}>Copy</button>

@@ -77,7 +77,7 @@ export function TripEnergy({ tripId, title, onClose }: { tripId: number; title: 
             <EnergyMap pts={e.series} hover={hover} />
             <Chart pts={e.series} hover={hover} onHover={setHover} />
             {e.breakdown && <Breakdown b={e.breakdown} regen={t.regenKwh} />}
-            <div class="row wrap" style="gap:8px;align-items:flex-end">
+            <div class="row wrap" style="gap:var(--s1);align-items:flex-end">
               <label class="f" style="width:170px"><span>Load beyond the driver, lb</span><input type="number" min={0} max={5000} value={lb} placeholder="0" onInput={(x) => setLb((x.target as HTMLInputElement).value)} /></label>
               <label class="f grow" style="min-width:180px"><span>What it was</span><input type="text" maxLength={80} value={note} placeholder="2 passengers, bed of mulch, the camper…" onInput={(x) => setNote((x.target as HTMLInputElement).value)} /></label>
               <button class="btn" type="button" onClick={() => void saveLoad()}>Save load</button>
@@ -93,7 +93,7 @@ export function TripEnergy({ tripId, title, onClose }: { tripId: number; title: 
 }
 
 function Tile({ k, v, sub, good }: { k: string; v: string; sub?: string; good?: boolean }) {
-  return <div class="etile"><span class="lbl">{k}</span><b class="num" style={good ? 'color:var(--ok)' : ''}>{v}</b>{sub && <span class="dimtxt num" style="font-size:13px">{sub}</span>}</div>;
+  return <div class="etile"><span class="lbl">{k}</span><b class="num" style={good ? 'color:var(--ok)' : ''}>{v}</b>{sub && <span class="dimtxt num" style="font-size:var(--fs-caption)">{sub}</span>}</div>;
 }
 
 /** Driving vs the dash's tech vs switched accessories, as one bar. */
@@ -110,7 +110,7 @@ function Split({ t }: { t: EnergyResp['totals'] }) {
       <div class="ebar" role="img" aria-label={parts.map((p) => `${p.k} ${k1(p.v)} kWh`).join(', ')}>
         {parts.map((p) => p.v > 0 && <span style={{ width: `${(p.v / sum) * 100}%`, background: p.c }} />)}
       </div>
-      <div class="row wrap" style="gap:14px;font-size:14px">
+      <div class="row wrap" style="gap:var(--s2);font-size:var(--fs-body-sm)">
         {parts.map((p) => <span><i class="dot" style={{ background: p.c }} /> {p.k}: <b class="num">{k1(p.v)} kWh</b> <span class="dimtxt">({Math.round((p.v / sum) * 100)}%{p.how ? `, ${p.how}` : ''})</span></span>)}
       </div>
     </div>
@@ -161,7 +161,7 @@ function EnergyMap({ pts, hover }: { pts: Point[]; hover: number | null }) {
     <div class="emapwrap">
       <div class="emap" ref={el} />
       <div class="elegend"><i style="background:var(--ok)" />regen <i style="background:var(--accent)" />under 12 kW <i style="background:var(--warn)" />12-30 <i style="background:var(--bad)" />30+ kW</div>
-      {tilesFailed && <div class="dimtxt" style="font-size:13px">Map tiles need the internet; the route is drawn anyway.</div>}
+      {tilesFailed && <div class="dimtxt" style="font-size:var(--fs-caption)">Map tiles need the internet; the route is drawn anyway.</div>}
     </div>
   );
 }
@@ -196,7 +196,7 @@ function Chart({ pts, hover, onHover }: { pts: Point[]; hover: number | null; on
   const h = hover !== null ? pts[hover] : null;
   return (
     <div class="echart">
-      <div class="row between dimtxt num" style="font-size:13px;min-height:1.4em">
+      <div class="row between dimtxt num" style="font-size:var(--fs-caption);min-height:1.4em">
         {h ? <span>{h.mi.toFixed(1)} mi · {h.altM !== null ? `${Math.round(h.altM * FT)} ft · ` : ''}{h.speedMph !== null ? `${Math.round(h.speedMph)} mph · ` : ''}<b style={{ color: powerColor(h.powerKw) }}>{h.powerKw >= 0 ? `${h.powerKw.toFixed(1)} kW` : `regen ${(-h.powerKw).toFixed(1)} kW`}</b>{h.measured ? '' : ' (model)'}</span> : <span>Drag across the chart to follow the trip on the map.</span>}
         <span>{g.total.toFixed(1)} mi</span>
       </div>
@@ -208,7 +208,7 @@ function Chart({ pts, hover, onHover }: { pts: Point[]; hover: number | null; on
         {pts.map((p) => <rect x={g.x(p.mi) - g.barW / 2} width={g.barW} y={Math.min(g.zero, g.yP(p.powerKw))} height={Math.max(0.5, Math.abs(g.yP(p.powerKw) - g.zero))} fill={powerColor(p.powerKw)} />)}
         {h && <line x1={g.x(h.mi)} x2={g.x(h.mi)} y1={0} y2={H} class="ecursor" />}
       </svg>
-      <div class="row between dimtxt num" style="font-size:12px">
+      <div class="row between dimtxt num" style="font-size:var(--fs-caption)">
         <span>Height {g.hasAlt ? `${Math.round(g.aLo * FT)}-${Math.round(g.aHi * FT)} ft` : '(no GPS height)'} · Speed to {Math.round(g.sHi)} mph · Power {Math.round(g.pLo)} to {Math.round(g.pHi)} kW</span>
       </div>
     </div>

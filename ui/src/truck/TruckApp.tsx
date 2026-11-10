@@ -65,7 +65,7 @@ export function TruckApp() {
       </div>
       {err && <div class="banner">{err}</div>}
       <MapBox pos={snap.position} />
-      <div class="dimtxt" style="font-size:13px">
+      <div class="dimtxt" style="font-size:var(--fs-caption)">
         {snap.place ? `${snap.place.name ?? 'Unnamed stop'} since ${new Date(snap.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : snap.speedMph && snap.speedMph > 1 ? `Driving, ${Math.round(snap.speedMph)} mph` : ''}
         {snap.position && ` · position from ${snap.position.source === 'gps' ? 'the cockpit GPS' : `the watch, ${ago(snap.position.at)}`}`}
       </div>
@@ -116,7 +116,7 @@ export function TruckApp() {
           </div>
         )}
       </section>
-      <p class="dimtxt" style="font-size:12px">Updated {ago(snap.ts)}. While the Pi sleeps this page can't load: use Home Assistant's Slate Watch device (Wake Pi button), then reopen.</p>
+      <p class="dimtxt" style="font-size:var(--fs-caption)">Updated {ago(snap.ts)}. While the Pi sleeps this page can't load: use Home Assistant's Slate Watch device (Wake Pi button), then reopen.</p>
     </div>
   );
 }

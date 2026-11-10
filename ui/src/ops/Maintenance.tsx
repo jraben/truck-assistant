@@ -33,17 +33,17 @@ export function MaintenanceView() {
         <div class="list">
           {m.reminders.map((r) => (
             <div class="item row" style="justify-content:space-between">
-              <div style="display:grid;gap:2px"><b style="font-size:18px">{r.name}</b>
-                <span class="dimtxt" style="font-size:13px">{[r.everyMiles ? `every ${r.everyMiles} mi` : null, r.everyMonths ? `every ${r.everyMonths} mo` : null].filter(Boolean).join(' or ') || r.note} {r.why && r.state !== 'unset' ? `· ${r.why}` : ''}{r.lastDone ? ` · last ${new Date(r.lastDone.at).toLocaleDateString()}` : ''}</span></div>
+              <div style="display:grid;gap:2px"><b style="font-size:var(--fs-section)">{r.name}</b>
+                <span class="dimtxt" style="font-size:var(--fs-caption)">{[r.everyMiles ? `every ${r.everyMiles} mi` : null, r.everyMonths ? `every ${r.everyMonths} mo` : null].filter(Boolean).join(' or ') || r.note} {r.why && r.state !== 'unset' ? `· ${r.why}` : ''}{r.lastDone ? ` · last ${new Date(r.lastDone.at).toLocaleDateString()}` : ''}</span></div>
               <div class="row"><span class={`tag ${STATE_TAG[r.state]}`}>{STATE_LABEL[r.state]}</span><button class="btn sm" type="button" onClick={() => void done(r)}>Done today</button></div>
             </div>
           ))}
         </div>
       )}
-      <h3 class="sub" style="margin:4px 0 0">Log</h3>
+      <h3 class="sub" style="margin:var(--s05) 0 0">Log</h3>
       <div class="tblwrap"><table class="mtable"><thead><tr><th>Date</th><th>Item</th><th>Odometer</th><th>Cost</th><th>Shop</th><th>Note</th><th>Receipt</th><th /></tr></thead>
         <tbody>{m.log.map((e) => <LogRow e={e} onChange={() => void load()} />)}{!m.log.length && <tr><td colSpan={8} class="dimtxt">Nothing logged yet.</td></tr>}</tbody></table></div>
-      <h3 class="sub" style="margin:4px 0 0">Tire pressure history</h3>
+      <h3 class="sub" style="margin:var(--s05) 0 0">Tire pressure history</h3>
       <TpmsGraph />
     </div>
   );
@@ -176,7 +176,7 @@ export function DueCard({ onOpen }: { onOpen: () => void }) {
   return (
     <div class={`card duecard ${due ? 'due' : ''}`} role="status">
       <span class="lbl">Maintenance {due ? 'due' : 'coming up'}</span>
-      {items.slice(0, 3).map((i) => <div class="row between"><b style="font-size:18px">{i.name}</b><span class={`tag ${STATE_TAG[i.state]}`}>{i.why}</span></div>)}
+      {items.slice(0, 3).map((i) => <div class="row between"><b style="font-size:var(--fs-section)">{i.name}</b><span class={`tag ${STATE_TAG[i.state]}`}>{i.why}</span></div>)}
       <div class="row"><button class="btn primary" type="button" onClick={onOpen}>Open</button><button class="btn" type="button" onClick={() => { try { localStorage.setItem(DISMISS, key); } catch { /* */ } force((n) => n + 1); }}>Later</button></div>
     </div>
   );

@@ -193,10 +193,12 @@ export function App() {
       {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
-      <PeakBanner s={s} />
-      <TripBanner s={s} go={go} />
-      <TrafficBanner s={s} go={go} />
-      <PickupBanner s={s} go={go} />
+      <div class="banners">
+        <PeakBanner s={s} />
+        <TripBanner s={s} go={go} />
+        <TrafficBanner s={s} go={go} />
+        <PickupBanner s={s} go={go} />
+      </div>
       <ChargePrompt />
       <WeatherOverlay s={s} />
       <TrackBOverlays />
@@ -224,7 +226,7 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
     <div class="card picker" role="dialog" aria-label="Theme">
       <div class="row between"><span class="lbl">Theme · {driver.name}</span><button class="btn sm" type="button" onClick={onClose}>Close</button></div>
       <button type="button" class={`item ${ts.auto.enabled ? 'sel' : ''}`} onClick={() => void save({ auto: { ...ts.auto, enabled: true } })}>
-        <Swatch t={shown} /><span><b>Auto</b> <span class="dimtxt" style="font-size:13px">sunrise/sunset · {allThemes(ts).find((x) => x.id === ts.auto.day)?.name} / {allThemes(ts).find((x) => x.id === ts.auto.night)?.name}</span></span>
+        <Swatch t={shown} /><span><b>Auto</b> <span class="dimtxt" style="font-size:var(--fs-caption)">sunrise/sunset · {allThemes(ts).find((x) => x.id === ts.auto.day)?.name} / {allThemes(ts).find((x) => x.id === ts.auto.night)?.name}</span></span>
       </button>
       <div class="list">
         {allThemes(ts).map((t) => (

@@ -35,7 +35,7 @@ export function DriverGrid({ onPicked }: { onPicked?: () => void }) {
           onClick={async () => { await pickDriver(d.id); onPicked?.(); }}>
           <DriverBadge d={d} size={64} />
           <b>{d.name}</b>
-          <span class="dimtxt" style="font-size:13px">{d.id === sug && d.id === cur ? 'suggested' : d.guest ? 'no history kept' : d.id === cur ? 'driving' : ''}</span>
+          <span class="dimtxt" style="font-size:var(--fs-caption)">{d.id === sug && d.id === cur ? 'suggested' : d.guest ? 'no history kept' : d.id === cur ? 'driving' : ''}</span>
         </button>
       ))}
     </div>
@@ -52,7 +52,7 @@ export function DriverPrompt() {
       <div class="row between">
         <div>
           <div class="lbl">Who's driving?</div>
-          <div class="dimtxt" style="font-size:14px">{sug.reason}</div>
+          <div class="dimtxt" style="font-size:var(--fs-body-sm)">{sug.reason}</div>
         </div>
         <button class="btn" type="button" onClick={() => void api('/api/driver/dismiss', { method: 'POST' })}>{sug.name}, go</button>
       </div>

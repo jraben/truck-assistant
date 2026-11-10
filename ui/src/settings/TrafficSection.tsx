@@ -26,11 +26,11 @@ export function TrafficSection({ settings }: { settings: Settings }) {
       <p class="help">The Traffic screen shows state 511 cameras and crashes, closures and roadwork ahead, fetched by the truck itself wherever it has a signal. Each state needs its own free developer key: make an account on the state's 511 site, log in, and request a key on its developer page. Add the states you drive in; a state without a key is simply skipped. Speed and red-light camera locations come from OpenStreetMap and need no key.</p>
       <div class="fields form">
         {STATES_511.map((s) => (
-          <div class="form" style="gap:6px">
+          <div class="form" style="gap:var(--s1)">
             <label class="f"><span>{s.name}{s.checked ? '' : ' (API not yet checked)'}</span>
               <input type="password" autocomplete="off" value={keys[s.id] ?? ''} placeholder={have[s.id] ? `set (${have[s.id]}); type to replace` : 'not set'} onInput={(e) => setKeys({ ...keys, [s.id]: (e.target as HTMLInputElement).value })} />
             </label>
-            <div class="row wrap" style="gap:8px">
+            <div class="row wrap" style="gap:var(--s1)">
               <a class="btn sm" href={keyUrl(s)} target="_blank" rel="noreferrer">Get a key</a>
               {have[s.id] && <button class="btn sm danger" type="button" onClick={() => void put({ [s.id]: '' })}>Remove</button>}
             </div>

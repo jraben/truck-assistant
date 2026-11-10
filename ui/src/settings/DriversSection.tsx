@@ -99,13 +99,13 @@ export function DriversSection({ settings }: { settings: Settings }) {
           <label class="f"><span>Colour</span><input type="color" value={draft.color} style="min-height:48px;width:100%" onInput={(e) => set('color', (e.target as HTMLInputElement).value)} /></label>
           {!d.guest && <label class="f"><span>Phone tracker (HA)</span><input type="text" value={draft.tracker} placeholder="person.jeff" onInput={(e) => set('tracker', (e.target as HTMLInputElement).value)} /></label>}
         </div>
-        <div class="row wrap" style="gap:10px;align-items:center">
+        <div class="row wrap" style="gap:var(--s1);align-items:center">
           <DriverBadge d={d} size={64} />
           <label class="btn sm" style="cursor:pointer">{d.photo ? 'Change photo…' : 'Add photo…'}
             <input type="file" accept="image/*" hidden disabled={photoBusy} onChange={(e) => { const i = e.target as HTMLInputElement; void uploadPhoto(i.files?.[0]); i.value = ''; }} />
           </label>
           {d.photo && <button class="btn sm danger" type="button" disabled={photoBusy} onClick={() => void removePhoto()}>Remove photo</button>}
-          <span class="dimtxt" style="font-size:13px">{photoBusy ? 'Saving…' : 'Shown instead of the initials. Cropped to a square and shrunk on this device; kept on the truck only.'}</span>
+          <span class="dimtxt" style="font-size:var(--fs-caption)">{photoBusy ? 'Saving…' : 'Shown instead of the initials. Cropped to a square and shrunk on this device; kept on the truck only.'}</span>
         </div>
         {d.guest && <p class="help">The Guest profile keeps no history beyond the trip itself and can't be deleted.</p>}
 

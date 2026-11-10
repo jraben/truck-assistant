@@ -32,7 +32,7 @@ export function Relays({ s }: WP) {
   const tabletWatts = useStore(settingsStore)?.tabletWatts ?? 12;
   const pw = powerSummary(s?.relays, tablet, tabletWatts, s?.dashW ?? null);
   return (
-    <Card label="Upfit relays" right={<span class="row" style="gap:10px">
+    <Card label="Upfit relays" right={<span class="row" style="gap:var(--s1)">
       <span class="powertotal num" title={pw.allMeasured ? 'Measured by the truck box’s current sensors (the tablet is its rated watts)' : 'Measured where a circuit has a current sensor; the rest from the watts set in Settings'}>{pw.allMeasured ? '' : '≈ '}{pw.total} W · {pw.amps} A</span>
       <span class={`tag ${online ? 'ok' : 'warn'}`}>{online ? 'TRUCK BOX ONLINE' : 'TRUCK BOX OFFLINE'}</span>
     </span>}>
@@ -116,7 +116,7 @@ export function FiveSwitch({ s }: WP) {
       <div class="leds">
         {fs.map((on, i) => <div class={`led ${on ? 'on' : ''}`} title={on === null ? whyTruck(s, 'this circuit') : undefined}>{i + 1}<br />{on === null ? '—' : on ? 'ON' : 'OFF'}</div>)}
       </div>
-      <div class="dimtxt" style="font-size:13px">Sensed from Slate's own switch circuits; this screen never drives them.</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">Sensed from Slate's own switch circuits; this screen never drives them.</div>
     </Card>
   );
 }

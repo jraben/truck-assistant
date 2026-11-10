@@ -41,7 +41,7 @@ export function PickupCard() {
         {p.origin && p.dest && <div class="dimtxt">{p.origin.city ?? p.origin.iata} → {p.dest.name}</div>}
         {pl && <div class="dimtxt num">{planeLine(pl)}</div>}
         {o && (o.gate || o.terminal || o.baggage || o.delayMin !== null || o.status) && (
-          <div class="row wrap dimtxt num" style="gap:12px">
+          <div class="row wrap dimtxt num" style="gap:var(--s15)">
             {o.terminal && <span>Terminal <b>{o.terminal}</b></span>}
             {o.gate && <span>Gate <b>{o.gate}</b></span>}
             {o.baggage && <span>Bags at <b>{o.baggage}</b></span>}
@@ -57,7 +57,7 @@ export function PickupCard() {
           {s?.leaveAt && s.phase !== 'at-gate' && <div><b class="num">{Date.parse(s.leaveAt) <= Date.now() ? 'Now' : fmtTime(s.leaveAt)}</b><small>leave{s.driveMin !== null ? ` (${s.driveMin} min drive)` : ''}</small></div>}
         </div>
         {p.dest && <a class="btn primary" href={wazeUrl(p.dest.lat, p.dest.lon)} target="_blank" rel="noreferrer">Waze to {p.dest.iata ?? 'the airport'}</a>}
-        {v?.error && <div class="dimtxt" style="font-size:13px">{v.error}</div>}
+        {v?.error && <div class="dimtxt" style="font-size:var(--fs-caption)">{v.error}</div>}
         <div class="attrib">Position: ADS-B via adsb.fi (open data); route: adsbdb. Landing time is an estimate from distance and speed.{v?.officialOn ? ' Gate, bags and delays: FlightAware AeroAPI.' : ' The gate and bag carousel need a FlightAware key (Settings → Traffic cameras and incidents).'}</div>
       </Card>
     );
@@ -73,7 +73,7 @@ export function PickupCard() {
           <button class="btn primary" type="submit" disabled={busy || !flight.trim()}>{busy ? 'Finding…' : 'Track'}</button>
         </form>
       </DrivingLock>
-      <div class="dimtxt" style="font-size:13px">Follows the flight live and tells you when to leave, with alerts to your phone when it's time, when it lands and when it's at the gate.</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">Follows the flight live and tells you when to leave, with alerts to your phone when it's time, when it lands and when it's at the gate.</div>
     </Card>
   );
 }

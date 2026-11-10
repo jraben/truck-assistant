@@ -47,7 +47,7 @@ export function MediaW({ go }: WP) {
   return (
     <div class="card media">
       {src && <SourceHeader src={src} pick={pick} />}
-      {ms?.saveData && STREAMS.has(tab) && <div class="banner" style="font-size:14px">On a phone hotspot with "save data" on: streaming asks first. AM/FM, Files and the phone's own apps use no truck data.</div>}
+      {ms?.saveData && STREAMS.has(tab) && <div class="banner" style="font-size:var(--fs-body-sm)">On a phone hotspot with "save data" on: streaming asks first. AM/FM, Files and the phone's own apps use no truck data.</div>}
       <div class="mbody">
         {tab === 'home' && <MediaHome pick={pick} />}
         {tab === 'spotify' && <SpotifyTab go={go} />}
@@ -142,7 +142,7 @@ function HandOffPane({ src, go, note }: { src: Source; go: (v: string) => void; 
         {f?.startApplication && <button class="btn big" type="button" onClick={openApp}>Open the {src.label} app</button>}
         <a class="btn big" href={h.web} target="_blank" rel="noopener noreferrer">Web player</a>
       </div>
-      <div class="dimtxt" style="font-size:14px">The web player opens in a new tab and plays from this screen, signed in with your own account; its controls stay in that tab.{f?.startApplication ? '' : ' On the tablet, turn on Fully Kiosk\'s JavaScript interface to get an "Open the app" button.'}</div>
+      <div class="dimtxt" style="font-size:var(--fs-body-sm)">The web player opens in a new tab and plays from this screen, signed in with your own account; its controls stay in that tab.{f?.startApplication ? '' : ' On the tablet, turn on Fully Kiosk\'s JavaScript interface to get an "Open the app" button.'}</div>
     </div>
   );
 }
@@ -155,12 +155,12 @@ export function DataConfirm() {
   const t = p.confirm.track;
   return (
     <Modal title="Use phone data?" onClose={() => player.confirmData(false)}>
-      <p style="margin:0;font-size:18px">The cockpit is online through <b>{s?.network?.label ?? 'a phone'}</b> with "save data" on. {t.title ?? 'This stream'} uses about <b>{mbPerHour(t.kbps)} MB an hour</b>{t.source === 'plex' ? ' (more for lossless files)' : ''}.</p>
+      <p style="margin:0;font-size:var(--fs-section)">The cockpit is online through <b>{s?.network?.label ?? 'a phone'}</b> with "save data" on. {t.title ?? 'This stream'} uses about <b>{mbPerHour(t.kbps)} MB an hour</b>{t.source === 'plex' ? ' (more for lossless files)' : ''}.</p>
       <div class="row wrap">
         <button class="btn big primary" type="button" onClick={() => player.confirmData(true)}>Play anyway</button>
         <button class="btn big" type="button" onClick={() => player.confirmData(false)}>Not now</button>
       </div>
-      <div class="dimtxt" style="font-size:13px">Asked once per connection. Turn it off on the settings page (Getting online).</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">Asked once per connection. Turn it off on the settings page (Getting online).</div>
     </Modal>
   );
 }
@@ -171,7 +171,7 @@ const settingsUrl = (hash: string) => `${location.origin}/settings#${hash}`;
 
 function QrLink({ url, label }: { url: string; label: string }) {
   const svg = useMemo(() => renderSVG(url, { border: 1 }), [url]);
-  return <div class="row" style="gap:16px;align-items:flex-start"><div class="qr sm" dangerouslySetInnerHTML={{ __html: svg }} aria-label={label} /><div class="dimtxt" style="font-size:14px">{label}<br /><code style="word-break:break-all">{url}</code></div></div>;
+  return <div class="row" style="gap:var(--s2);align-items:flex-start"><div class="qr sm" dangerouslySetInnerHTML={{ __html: svg }} aria-label={label} /><div class="dimtxt" style="font-size:var(--fs-body-sm)">{label}<br /><code style="word-break:break-all">{url}</code></div></div>;
 }
 
 function SpotifyTab({ go }: { go: (v: string) => void }) {
@@ -215,7 +215,7 @@ function SpotifyTab({ go }: { go: (v: string) => void }) {
     <div class="mpane">
       {ask && (
         <Modal title="Use phone data?" onClose={() => setAsk(null)}>
-          <p style="margin:0;font-size:18px">Spotify on the truck streams over {ms?.link === 'bt' ? 'Bluetooth tethering' : 'the phone hotspot'}: about {mbPerHour(160)} MB an hour at 160 kbps.</p>
+          <p style="margin:0;font-size:var(--fs-section)">Spotify on the truck streams over {ms?.link === 'bt' ? 'Bluetooth tethering' : 'the phone hotspot'}: about {mbPerHour(160)} MB an hour at 160 kbps.</p>
           <div class="row wrap">
             <button class="btn big primary" type="button" onClick={() => { const a = ask; setAsk(null); void cmd(a.c, a.body, true); }}>Play anyway</button>
             <button class="btn big" type="button" onClick={() => setAsk(null)}>Not now</button>
@@ -280,7 +280,7 @@ function StationRow({ st, fav, onFav }: { st: RadioStation; fav: boolean; onFav:
       {st.favicon ? <img class="mfav" src={st.favicon} alt="" loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.visibility = 'hidden'; }} /> : <span class="mfav noart">📻</span>}
       <button type="button" class="grow mrow" onClick={() => (on ? player.toggle() : player.play(stationTrack(st)))}>
         <b class="ellip">{st.name}</b>
-        <span class="dimtxt ellip" style="font-size:13px">{[st.country, st.codec, st.bitrate ? `${st.bitrate} kbps` : null, ...st.tags.slice(0, 3)].filter(Boolean).join(' · ')}{st.hls ? ' · HLS (may not play)' : ''}</span>
+        <span class="dimtxt ellip" style="font-size:var(--fs-caption)">{[st.country, st.codec, st.bitrate ? `${st.bitrate} kbps` : null, ...st.tags.slice(0, 3)].filter(Boolean).join(' · ')}{st.hls ? ' · HLS (may not play)' : ''}</span>
       </button>
       <button type="button" class={`btn sm ${fav ? 'primary' : ''}`} aria-pressed={fav} title={fav ? 'Remove from favourites' : 'Add to favourites'} onClick={() => onFav(!fav)}>{fav ? '★' : '☆'}</button>
       <button type="button" class="btn sm" onClick={() => (on ? player.toggle() : player.play(stationTrack(st)))}>{on && p.playing ? 'Pause' : 'Play'}</button>
@@ -311,7 +311,7 @@ function RadioTab() {
       <div class="lbl">Presets</div>
       <div class="list">{rows(presets.data ?? [])}</div>
       <div class="lbl">Favourites{st?.driver ? ` · ${st.driver.name}` : ''}</div>
-      {favs.data?.length ? <div class="list">{rows(favs.data)}</div> : <div class="dimtxt" style="font-size:14px">Tap ☆ on a station to keep it here.</div>}
+      {favs.data?.length ? <div class="list">{rows(favs.data)}</div> : <div class="dimtxt" style="font-size:var(--fs-body-sm)">Tap ☆ on a station to keep it here.</div>}
       <div class="lbl">Find a station (Radio Browser)</div>
       <form class="row" onSubmit={(e) => { e.preventDefault(); if (q.trim()) setQuery({ q: q.trim() }); }}>
         <input class="grow minput" type="search" placeholder="Station name, e.g. KJZZ" value={q} onInput={(e) => setQ((e.target as HTMLInputElement).value)} />
@@ -381,7 +381,7 @@ function PlexTab() {
       {list.error && <div class="err">{list.error}</div>}
       <div class={tracks.length === items.length && items.length ? 'list' : 'mgrid'}>
         {items.slice(0, 200).map((it) => it.type === 'track' ? (
-          <button type="button" class="item mrow" onClick={() => open(it)}><b class="ellip">{it.index ? `${it.index}. ` : ''}{it.title}</b><span class="dimtxt ellip" style="font-size:13px">{it.subtitle ?? ''}{it.durationMs ? ` · ${Math.floor(it.durationMs / 60000)}:${String(Math.floor(it.durationMs / 1000) % 60).padStart(2, '0')}` : ''}</span></button>
+          <button type="button" class="item mrow" onClick={() => open(it)}><b class="ellip">{it.index ? `${it.index}. ` : ''}{it.title}</b><span class="dimtxt ellip" style="font-size:var(--fs-caption)">{it.subtitle ?? ''}{it.durationMs ? ` · ${Math.floor(it.durationMs / 60000)}:${String(Math.floor(it.durationMs / 1000) % 60).padStart(2, '0')}` : ''}</span></button>
         ) : (
           <button type="button" class="mtile" onClick={() => open(it)}>
             {it.thumb ? <img src={it.thumb} alt="" loading="lazy" /> : <span class="noart">♪</span>}
@@ -417,7 +417,7 @@ function LocalTab() {
         <div class="list">
           {d.files.map((f, i) => (
             <button type="button" class="item mrow" onClick={() => player.play(localTrack(f), d.files.map(localTrack), i)}>
-              <b class="ellip">{f.title}</b><span class="dimtxt ellip" style="font-size:13px">{[f.artist, f.album].filter(Boolean).join(' · ') || f.name}</span>
+              <b class="ellip">{f.title}</b><span class="dimtxt ellip" style="font-size:var(--fs-caption)">{[f.artist, f.album].filter(Boolean).join(' · ') || f.name}</span>
             </button>
           ))}
         </div>
@@ -434,7 +434,7 @@ export function PlayerControls() {
   const pct = p.durationS && p.positionS !== null ? (p.positionS / p.durationS) * 100 : null;
   return (
     <div class="pctl">
-      {p.error && <div class="err" style="font-size:13px">{p.error}</div>}
+      {p.error && <div class="err" style="font-size:var(--fs-caption)">{p.error}</div>}
       {pct !== null && !c.live && <div class="npbar" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); player.seek(((e.clientX - r.left) / r.width) * (p.durationS ?? 0)); }}><i style={{ width: `${Math.min(100, pct)}%` }} /></div>}
       <div class="row wrap">
         {!c.live && <button class="btn" type="button" onClick={() => player.prev()} aria-label="Previous">⏮</button>}

@@ -46,18 +46,18 @@ export function PayoffGoalCard(_: WP) {
   if (!g) return <Card label="Truck payoff"><div class="dimtxt">{error ? `Couldn't load the goal: ${error}` : 'Loading…'}</div></Card>;
   return (
     <Card label="Paid off with gas savings" right={<a class="tag dim" href="/settings#payoff" style="text-decoration:none">GOAL</a>}>
-      <div class="row between wrap" style="gap:6px;align-items:baseline">
+      <div class="row between wrap" style="gap:var(--s1);align-items:baseline">
         <span class="big num" style="font-size:38px">{usd0(g.saved)}</span>
         <span class="dimtxt num">of {money(g.target)} <b style="color:var(--fg)">({g.pct.toFixed(1)}%)</b></span>
       </div>
       <Bar pct={g.pct} />
-      {g.message ? <div class="dimtxt" style="font-size:13px">{g.message}</div> : (
-        <div class="kv" style="font-size:13px">
+      {g.message ? <div class="dimtxt" style="font-size:var(--fs-caption)">{g.message}</div> : (
+        <div class="kv" style="font-size:var(--fs-caption)">
           <span>This month</span><span class="num">{money(g.thisMonth)}</span>
           <span>Avg / month</span><span class="num">{g.avgPerMonth === null ? '—' : money(g.avgPerMonth)}</span>
         </div>
       )}
-      <div class="dimtxt" style="font-size:12px">{projectionText(g)}</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">{projectionText(g)}</div>
       <MonthBars g={g} />
     </Card>
   );
@@ -73,7 +73,7 @@ export function GoalDriveCard({ go }: { go: WP['go'] }) {
         <span class="lbl">Truck payoff · gas savings</span>
         <span class="cbig num">{usd0(g.saved)}<small> {g.pct.toFixed(0)}%</small></span>
         <Bar pct={g.pct} />
-        <span class="dimtxt" style="font-size:14px;line-height:1.3">{g.startDate ? projectionText(g) : 'Counting starts with the first real drive'}</span>
+        <span class="dimtxt" style="font-size:var(--fs-body-sm);line-height:1.3">{g.startDate ? projectionText(g) : 'Counting starts with the first real drive'}</span>
       </span>
     </button>
   );
@@ -181,7 +181,7 @@ export function GoalSettings({ value, onSaved }: { value: PayoffGoal; onSaved: (
 
   return (
     <div class="form">
-      {g && <div class="row wrap" style="gap:16px;align-items:center">
+      {g && <div class="row wrap" style="gap:var(--s2);align-items:center">
         <span class="big num">{usd0(g.saved)}</span>
         <span class="dimtxt">of {money(g.target)} ({g.pct.toFixed(1)}%) · {projectionText(g)}</span>
       </div>}

@@ -10,7 +10,7 @@ const Note = ({ m }: { m: Msg }) => (m ? <span class={m.ok ? 'okmsg' : 'err'}>{m
 
 function Key({ label, set, value, onInput, onClear }: { label: string; set: string | undefined; value: string; onInput: (v: string) => void; onClear: () => void }) {
   return (
-    <div class="form" style="gap:6px">
+    <div class="form" style="gap:var(--s1)">
       <label class="f"><span>{label}</span>
         <input type="password" autocomplete="off" value={value} placeholder={set ? `set (${set}); type to replace` : 'not set'} onInput={(e) => onInput((e.target as HTMLInputElement).value)} />
       </label>

@@ -31,7 +31,7 @@ export function ContactsSection() {
         <div class="list">
           {st.sources.map((s) => (
             <div class="item row between">
-              <div><b>{s.label}</b>{s.account ? ` · ${s.account}` : ''}<div class="dimtxt" style="font-size:13px">{s.contacts} contacts{s.lastSync ? ` · synced ${new Date(s.lastSync).toLocaleString()}` : ''}{s.error ? '' : ''}</div>{s.error && <div class="err" style="font-size:13px">{s.error}</div>}</div>
+              <div><b>{s.label}</b>{s.account ? ` · ${s.account}` : ''}<div class="dimtxt" style="font-size:var(--fs-caption)">{s.contacts} contacts{s.lastSync ? ` · synced ${new Date(s.lastSync).toLocaleString()}` : ''}{s.error ? '' : ''}</div>{s.error && <div class="err" style="font-size:var(--fs-caption)">{s.error}</div>}</div>
               {s.kind !== 'demo' && <button class="btn sm danger" type="button" onClick={() => void run(() => api(`/api/contacts/source/${encodeURIComponent(s.id)}`, { method: 'DELETE' }), 'Disconnected.')}>Disconnect</button>}
             </div>
           ))}
@@ -47,7 +47,7 @@ export function ContactsSection() {
         <button class="btn" type="button" onClick={() => void run(() => api('/api/contacts/settings', { method: 'PUT', body: JSON.stringify({ outlookClientId: msId.trim() || null }) }), 'Saved.')}>Save id</button>
         <button class="btn primary" type="button" disabled={!st.outlookClientId} onClick={() => void run(() => post('/api/contacts/outlook/start'), 'Enter the code below.')}>Connect Outlook</button>
       </div>
-      {st.outlookPending && <div class="banner ok">Go to <b>{st.outlookPending.verificationUri}</b> and enter <b class="num" style="font-size:22px;letter-spacing:.1em">{st.outlookPending.userCode}</b>. This page updates when you're done.</div>}
+      {st.outlookPending && <div class="banner ok">Go to <b>{st.outlookPending.verificationUri}</b> and enter <b class="num" style="font-size:var(--fs-title);letter-spacing:.1em">{st.outlookPending.userCode}</b>. This page updates when you're done.</div>}
 
       <h3 class="sub">Google</h3>
       <p class="help">One-time setup: at console.cloud.google.com create a project, enable the People API, then Credentials → OAuth client id → type "Desktop app". Paste its client id and secret, press Connect, and sign in. If the browser then shows an error page, copy the whole address from its address bar and paste it below.</p>

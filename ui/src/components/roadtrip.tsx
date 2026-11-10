@@ -108,7 +108,7 @@ function Planner({ s, v, busy, onPlan }: { s: State | null; v: RoadTripView; bus
         <button class="btn" type="submit" disabled={q.trim().length < 3 || planning}>Search</button>
         {hits && <button class="btn" type="button" onClick={() => { setHits(null); setQ(''); }}>Saved places</button>}
       </form>
-      {searchErr && <div class="dimtxt" style="font-size:14px">{searchErr}</div>}
+      {searchErr && <div class="dimtxt" style="font-size:var(--fs-body-sm)">{searchErr}</div>}
       <div class="rtplaces">
         {list.map((d) => (
           <div class="rtplace">
@@ -119,7 +119,7 @@ function Planner({ s, v, busy, onPlan }: { s: State | null; v: RoadTripView; bus
             <button type="button" class="btn sm primary" disabled={planning || startSoc === null} onClick={() => go(d)} title={`Plan a trip to ${d.name}`}>Go</button>
           </div>
         ))}
-        {!hits && !v.destinations.length && <span class="dimtxt" style="font-size:14px">Search for a place, or save places (restaurants, friends' houses) to find them here.</span>}
+        {!hits && !v.destinations.length && <span class="dimtxt" style="font-size:var(--fs-body-sm)">Search for a place, or save places (restaurants, friends' houses) to find them here.</span>}
       </div>
       {saving && <SavePlace d={saving} onDone={(saved) => { setSaving(null); if (saved) setHits(null); }} />}
       {calling && <CallModal d={calling} onClose={() => setCalling(null)} />}
@@ -135,18 +135,18 @@ function Planner({ s, v, busy, onPlan }: { s: State | null; v: RoadTripView; bus
               <button type="button" class="btn sm" aria-label={`Remove ${w.name}`} onClick={() => setStops(stops.filter((_, k) => k !== i))}>✕</button>
             </div>
           ))}
-          <div class="dimtxt" style="font-size:13px">Now pick where you're going (Go). Charging during a stay counts: a wall outlet is about 1.4 kW, a Level 2 charger 7 kW.</div>
+          <div class="dimtxt" style="font-size:var(--fs-caption)">Now pick where you're going (Go). Charging during a stay counts: a wall outlet is about 1.4 kW, a Level 2 charger 7 kW.</div>
         </div>
       )}
       <div class="row between rtstart">
         <span class="dimtxt">Leaving with</span>
-        <div class="row" style="gap:8px">
+        <div class="row" style="gap:var(--s1)">
           <input type="range" min={10} max={100} step={1} value={startSoc ?? 80} aria-label="Starting charge level" onInput={(e) => setSoc(Number((e.target as HTMLInputElement).value))} />
           <b class="num" style="min-width:52px;text-align:right">{startSoc === null ? '?' : `${startSoc}%`}</b>
           {soc !== null && <button type="button" class="btn sm" onClick={() => setSoc(null)}>Now</button>}
         </div>
       </div>
-      <div class="dimtxt" style="font-size:13px">Plans the fastest set of charging stops from the truck's charging curve, the climbs, the heat and your charging preferences, around your stops, arriving everywhere above your minimum charge.</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">Plans the fastest set of charging stops from the truck's charging curve, the climbs, the heat and your charging preferences, around your stops, arriving everywhere above your minimum charge.</div>
     </Card>
   );
 }
@@ -164,7 +164,7 @@ function CallModal({ d, onClose }: { d: Dest; onClose: () => void }) {
         {(d.phones ?? []).map((p) => (
           <div class="item row between">
             <span><b class="num">{p.number}</b> <span class="dimtxt">{p.label}</span></span>
-            <span class="row" style="gap:8px">
+            <span class="row" style="gap:var(--s1)">
               <a class="btn" href={`tel:${p.number.replace(/[^\d+*#,]/g, '')}`}>Call here</a>
               {d.contactId !== undefined && <button class="btn primary" type="button" onClick={() => void ring(p.number)}>Ring my phone</button>}
             </span>
@@ -172,7 +172,7 @@ function CallModal({ d, onClose }: { d: Dest; onClose: () => void }) {
         ))}
       </div>
       {msg && <div class="dimtxt">{msg}</div>}
-      <div class="dimtxt" style="font-size:13px">“Call here” uses the tablet's own dialer (a tablet with a phone plan, or one linked to your phone). “Ring my phone” sends a notification to your phone (Settings › Alerts) that opens its dialer. With CarPlay, saying “call {d.name}” to Siri works too.</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">“Call here” uses the tablet's own dialer (a tablet with a phone plan, or one linked to your phone). “Ring my phone” sends a notification to your phone (Settings › Alerts) that opens its dialer. With CarPlay, saying “call {d.name}” to Siri works too.</div>
     </Modal>
   );
 }
@@ -243,9 +243,9 @@ function PlanCard({ p, busy, onStart, onDiscard }: { p: TripPlan; busy: string |
   const [waze, setWaze] = useState<PlanStop | null>(null);
   const r = p.result;
   return (
-    <Card label={`To ${p.to.name}`} right={<span class="dimtxt" style="font-size:13px">leaving at {p.startSoc}%</span>}>
+    <Card label={`To ${p.to.name}`} right={<span class="dimtxt" style="font-size:var(--fs-caption)">leaving at {p.startSoc}%</span>}>
       <Summary p={p} />
-      {p.warnings.map((w) => <div class="banner" style="font-size:14px">{w}</div>)}
+      {p.warnings.map((w) => <div class="banner" style="font-size:var(--fs-body-sm)">{w}</div>)}
       {!r.feasible && <div class="banner bad">{r.note}</div>}
       {r.feasible && r.note && <div class="banner ok">{r.note}</div>}
       <Stops stops={r.stops} via={p.via ?? []} onWaze={setWaze} />
@@ -339,7 +339,7 @@ function ActiveTrip({ v, busy, onReplan, onEnd }: { v: RoadTripView; busy: strin
             <div class="num">{pr?.atStop ? <>Charge to <b>{ns.departSoc}%</b>, leave by {fmtTime(ns.departAt)}</> : <>Arrive ~<b>{pr?.nextArriveSoc ?? ns.arriveSoc}%</b> (plan {ns.arriveSoc}%) · charge to {ns.departSoc}%</>}</div>
             <div class="row wrap">
               <button class="btn primary" type="button" onClick={() => setWaze(ns)}>Waze to this stop</button>
-              {ns.backup && <span class="dimtxt" style="font-size:14px">Backup: {ns.backup.name}</span>}
+              {ns.backup && <span class="dimtxt" style="font-size:var(--fs-body-sm)">Backup: {ns.backup.name}</span>}
             </div>
           </div>
         ) : <div class="banner ok">No more charging stops: arrive with about {p.result.arriveSoc}%.</div>}
@@ -389,7 +389,7 @@ function CurveCard({ v }: { v: RoadTripView }) {
         })}
         {[0, 50, 100].map((x) => <text x={(x / 100) * W} y={H + 14} text-anchor={x === 0 ? 'start' : x === 100 ? 'end' : 'middle'}>{x}%</text>)}
       </svg>
-      <div class="dimtxt" style="font-size:13px">{v.curve.learnedBins ? 'Bright bars are learned from this truck’s own DC charging; the rest follow their scale.' : 'Slate hasn’t published a curve. This starts generic and learns from every DC charge.'} Fastest charging is below about 50%.</div>
+      <div class="dimtxt" style="font-size:var(--fs-caption)">{v.curve.learnedBins ? 'Bright bars are learned from this truck’s own DC charging; the rest follow their scale.' : 'Slate hasn’t published a curve. This starts generic and learns from every DC charge.'} Fastest charging is below about 50%.</div>
     </Card>
   );
 }
