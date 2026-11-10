@@ -2,10 +2,11 @@
 // Left = speed, centre = the truck with its range and battery, right = 1-2 context cards.
 // One number dominates each zone; zones are split by space and a hairline,
 // never boxes in boxes. Every colour is a theme token.
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { SPEEDO_STYLES, type SpeedoStyle } from '../../../brain/src/drive/types.ts';
 import { api, putDriver, toast, useStore, type State } from '../lib/brain.ts';
-import { nowPlayingStore } from '../carplay/controller.ts';
+import { SOURCE_LABEL, useAnyNowPlaying } from '../media/nowplaying.tsx';
+import { pollMediaStatus } from '../media/status.ts';
 import { V, whyGps, whySoc, whyTruck } from '../components/common.tsx';
 import { socLabel, type WP } from '../components/drive.tsx';
 import { fmtTime } from '../lib/fmt.ts';
@@ -159,13 +160,15 @@ function HeroZone({ s, go }: { s: State | null; go: WP['go'] }) {
 
 // ---- context cards ----------------------------------------------------------------
 
-function NowPlayingCard({ go }: { go: WP['go'] }) {
-  const np = useStore(nowPlayingStore);
+/** Whatever is playing, from any source (the same pick as the Media view): CarPlay, radio, FM, Plex, Spotify, files. */
+function NowPlayingCard({ s, go }: { s: State | null; go: WP['go'] }) {
+  const np = useAnyNowPlaying(s);
   if (!np) return null;
+  const radio = np.source === 'radio' || np.source === 'fm';
   return (
-    <button type="button" class="ccard np-card" onClick={() => go('carplay')}>
-      {np.art ? <img src={np.art} alt="" /> : <span class="noart" aria-hidden="true">♪</span>}
-      <span class="grow ccol"><span class="lbl">Now playing</span><b class="ellip">{np.title ?? '—'}</b><span class="ellip dimtxt">{np.artist ?? ''}</span></span>
+    <button type="button" class="ccard np-card" onClick={() => go(np.source === 'carplay' ? 'carplay' : 'media')}>
+      {np.art ? <img src={np.art} alt="" /> : <span class="noart" aria-hidden="true">{radio ? '📻' : '♪'}</span>}
+      <span class="grow ccol"><span class="lbl">Now playing · {SOURCE_LABEL[np.source] ?? 'Media'}</span><b class="ellip">{np.title ?? '—'}</b><span class="ellip dimtxt">{np.artist ?? ''}</span></span>
     </button>
   );
 }
@@ -230,12 +233,13 @@ function TiltCard({ s }: { s: State | null }) {
 }
 
 function Cards({ s, go }: { s: State | null; go: WP['go'] }) {
-  const np = useStore(nowPlayingStore);
+  const np = useAnyNowPlaying(s);
+  useEffect(() => pollMediaStatus(false), []); // Spotify's art and words
   const { g } = useGoal();
   const cards = pickCards(s, !!np, !!g?.startDate);
   return (
     <section class={`dz dz-cards n${cards.length}`} aria-label="Context">
-      {cards.map((c) => c === 'np' ? <NowPlayingCard go={go} /> : c === 'since' ? <SinceChargeCard s={s} go={go} /> : c === 'trip' ? <TripCard s={s} go={go} /> : c === 'goal' ? <GoalDriveCard go={go} /> : <TiltCard s={s} />)}
+      {cards.map((c) => c === 'np' ? <NowPlayingCard s={s} go={go} /> : c === 'since' ? <SinceChargeCard s={s} go={go} /> : c === 'trip' ? <TripCard s={s} go={go} /> : c === 'goal' ? <GoalDriveCard go={go} /> : <TiltCard s={s} />)}
     </section>
   );
 }

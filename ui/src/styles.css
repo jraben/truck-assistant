@@ -602,3 +602,18 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 .ebtrack span { display: block; height: 100%; background: var(--accent); }
 .ebrow.good .ebtrack span { background: var(--ok); }
 @media (max-width: 640px) { .ebrow { grid-template-columns: 120px 1fr 50px; } .emap { height: 220px; } }
+
+/* System health (strip): a four-segment gauge and four icons, green fine, red not. */
+.pill.health { gap: var(--s05); padding: 0 var(--s1); }
+.pill.health .hgauge { width: 28px; height: 18px; margin-right: var(--s05); flex: none; }
+.hgauge path { fill: none; stroke-width: 3; stroke-linecap: round; stroke: var(--dim); }
+.hgauge path.ok { stroke: var(--ok); } .hgauge path.bad { stroke: var(--bad); }
+.hico { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius); flex: none; color: var(--dim); }
+.hico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.hico.ok { color: var(--ok); }
+.hico.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.healthpanel .item { gap: var(--s15); }
+.healthpanel .hico { width: 36px; height: 36px; background: color-mix(in srgb, currentColor 12%, transparent); }
+.healthpanel .hico svg { width: 22px; height: 22px; }
+@media (prefers-reduced-motion: no-preference) { .pill.health.has-bad .hgauge path.bad { animation: hpulse 1.6s ease-in-out infinite; } }
+@keyframes hpulse { 50% { opacity: .45; } }

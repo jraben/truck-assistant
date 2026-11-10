@@ -8,7 +8,8 @@ import { V } from './common.tsx';
 import { ChargePrompt } from './costs.tsx';
 import { widgetFor } from './widgets.tsx';
 import { DriverBadge, DriverPanel, DriverPrompt } from './drivers.tsx';
-import { NetPanel, NetPill } from './network.tsx';
+import { NetPanel } from './network.tsx';
+import { HealthButton, HealthPanel } from './health.tsx';
 import { WeatherOverlay, WeatherStrip } from '../drive/WeatherStrip.tsx';
 import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
 import { GaragePrompt, HOME_ICON, withHomeView } from '../home/Home.tsx';
@@ -75,6 +76,7 @@ export function App() {
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);
   const [netOpen, setNetOpen] = useState(false);
+  const [healthOpen, setHealthOpen] = useState(false);
   const [logs, setLogs] = useState<null | 'mileage' | 'maintenance'>(null);
   const [editing, setEditing] = useState(false);
   const stripRef = useRef<HTMLElement>(null);
@@ -160,10 +162,7 @@ export function App() {
         {editing
           ? <span class="rail-edit"><b>Arrange icons</b><button type="button" class="btn sm" onClick={resetOrder}>Reset</button><button type="button" class="btn sm primary" onClick={() => setEditing(false)}>Done</button></span>
           : <h1 class="screen-title">{cur.label}</h1>}
-        <span class="pill stat" title={link.connected ? 'Connected to the brain' : 'Reconnecting to the brain…'}><span class={`dot ${link.connected ? 'ok' : 'bad'}`} /><span class="ptxt">{link.connected ? 'Brain' : 'Reconnecting'}</span></span>
-        <span class="pill stat hide-sm" title={s?.truckbox ? 'Truck box online' : 'Truck box offline: relays and sensors unavailable'}><span class={`dot ${s?.truckbox ? 'ok' : 'warn'}`} /><span class="ptxt">Truck box {s?.truckbox ? 'online' : 'offline'}</span></span>
-        <span class="pill stat hide-sm" title={s?.gps?.fix ? 'GPS fix' : 'No GPS fix'}><span class={`dot ${s?.gps?.fix ? 'ok' : 'warn'}`} /><span class="ptxt">GPS</span></span>
-        <NetPill s={s} open={netOpen} onClick={() => setNetOpen(!netOpen)} />
+        <HealthButton s={s} connected={link.connected} open={healthOpen} onClick={() => { setHealthOpen(!healthOpen); setNetOpen(false); }} />
         {s?.place && <span class="pill place hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? s.area ?? 'Unnamed stop'}</span>}
         {!s?.place && s?.area && <span class="pill place hide-sm">{s.area}</span>}
         <span class="sp" />
@@ -191,6 +190,7 @@ export function App() {
       <ModeOverlays />
       <TabletHello />
       {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} />}
+      {healthOpen && <HealthPanel s={s} connected={link.connected} onClose={() => setHealthOpen(false)} onNetwork={() => { setHealthOpen(false); setNetOpen(true); }} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <div class="banners">

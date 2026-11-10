@@ -1,22 +1,9 @@
-// How the cockpit is online: label in the top strip, tap for a panel to pick a network by hand.
+// Pick a network by hand (opened from the strip's system health panel).
 import { useEffect, useState } from 'preact/hooks';
 import { api, toast, type State } from '../lib/brain.ts';
 import type { NetCandidate, NetworkStatus } from '../../../brain/src/types.ts';
 
 export const fmtBytes = (n: number) => (n < 1e6 ? `${Math.round(n / 1e3)} KB` : n < 1e9 ? `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)} MB` : `${(n / 1e9).toFixed(2)} GB`);
-
-export function NetPill({ s, onClick, open }: { s: State | null; onClick: () => void; open: boolean }) {
-  const n = s?.network;
-  const tone = !n ? 'bad' : n.link === 'offline' ? 'warn' : 'ok';
-  const phone = n && (n.link === 'hotspot' || n.link === 'bt');
-  return (
-    <button type="button" class="pill netpill" aria-expanded={open} onClick={onClick} title={n?.error ?? (n ? `${n.label}${n.ssid ? ` (${n.ssid})` : ''}` : 'Not connected to the brain')}>
-      <span class={`dot ${tone}`} />{n?.label ?? '—'}
-      {n?.signal != null && <span class="dimtxt num">{n.signal}%</span>}
-      {phone && <span class="dimtxt num">{fmtBytes(n!.bytesThisTrip)} trip</span>}
-    </button>
-  );
-}
 
 export function NetPanel({ s, onClose }: { s: State | null; onClose: () => void }) {
   const [cands, setCands] = useState<NetCandidate[] | null>(null);
