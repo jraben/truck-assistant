@@ -15,6 +15,17 @@ Built for Jeff's truck first, published for other Slate owners later.
 > is not made, endorsed or supported by Slate Auto. MIT licensed (`LICENSE`).
 > The public name is undecided: it is one constant in `brain/src/project.ts`.
 
+## Install guides
+
+Step by step, with pictures, for a first-time installer:
+
+1. **[Desk install](docs/install/desk.md)**: the software on your computer,
+   then the dash tablet, CarPlay and Tasker, the Raspberry Pi brain and the
+   truck box, all tested on a bench.
+2. **[Truck install](docs/install/truck.md)**: finding power with a meter,
+   fuse taps, the brain under the dash, the tablet, the truck box, cameras,
+   first power-up, calibration and the test drive.
+
 ## Status
 
 - **Software core (2026-11-05):** `brain/` (Node 24 service on :8080) and

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" width="900" height="440" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+<title>First flash of the truck box (it has no USB port)</title>
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#38505e"/></marker>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c0392b"/></marker>
+  <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3559a8"/></marker>
+</defs>
+<rect width="900" height="440" fill="#ffffff"/>
+<text x="24" y="38" font-size="22" font-weight="700" fill="#1d2a33">First flash of the truck box (it has no USB port)</text>
+<rect x="40" y="80" width="260" height="260" rx="10" fill="#eceff1" stroke="#78909c" stroke-width="2"/><text x="52" y="104" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">USB-serial adapter</text><text x="52" y="124" font-size="12.5" fill="#5b6b75" text-anchor="start">CP2102 or CH340</text><text x="52" y="141" font-size="12.5" fill="#5b6b75" text-anchor="start">jumper set to 3.3 V logic</text>
+<rect x="600" y="80" width="260" height="260" rx="10" fill="#dcecf2" stroke="#1c6b80" stroke-width="2"/><text x="612" y="104" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">ESP32 Relay Board x8</text><text x="612" y="124" font-size="12.5" fill="#5b6b75" text-anchor="start">6-pin programming header</text><text x="612" y="141" font-size="12.5" fill="#5b6b75" text-anchor="start">IO0 + RST (EN) buttons nearby</text>
+<rect x="230" y="146" width="56" height="28" rx="5" fill="#fff" stroke="#2e7d4f" stroke-width="2"/>
+<text x="258" y="165" font-size="13" fill="#2e7d4f" font-weight="700" text-anchor="middle">TX</text>
+<rect x="614" y="146" width="56" height="28" rx="5" fill="#fff" stroke="#2e7d4f" stroke-width="2"/>
+<text x="642" y="165" font-size="13" fill="#2e7d4f" font-weight="700" text-anchor="middle">RX</text>
+<polyline points="286,160 614,160" fill="none" stroke="#2e7d4f" stroke-width="3"/>
+<text x="450" y="154" font-size="12.5" fill="#2e7d4f" font-weight="700" text-anchor="middle">TX → RX</text>
+<rect x="230" y="188" width="56" height="28" rx="5" fill="#fff" stroke="#3559a8" stroke-width="2"/>
+<text x="258" y="207" font-size="13" fill="#3559a8" font-weight="700" text-anchor="middle">RX</text>
+<rect x="614" y="188" width="56" height="28" rx="5" fill="#fff" stroke="#3559a8" stroke-width="2"/>
+<text x="642" y="207" font-size="13" fill="#3559a8" font-weight="700" text-anchor="middle">TX</text>
+<polyline points="286,202 614,202" fill="none" stroke="#3559a8" stroke-width="3"/>
+<text x="450" y="196" font-size="12.5" fill="#3559a8" font-weight="700" text-anchor="middle">RX → TX</text>
+<rect x="230" y="230" width="56" height="28" rx="5" fill="#fff" stroke="#1d2a33" stroke-width="2"/>
+<text x="258" y="249" font-size="13" fill="#1d2a33" font-weight="700" text-anchor="middle">GND</text>
+<rect x="614" y="230" width="56" height="28" rx="5" fill="#fff" stroke="#1d2a33" stroke-width="2"/>
+<text x="642" y="249" font-size="13" fill="#1d2a33" font-weight="700" text-anchor="middle">GND</text>
+<polyline points="286,244 614,244" fill="none" stroke="#1d2a33" stroke-width="3"/>
+<text x="450" y="238" font-size="12.5" fill="#1d2a33" font-weight="700" text-anchor="middle">GND → GND</text>
+<rect x="230" y="272" width="56" height="28" rx="5" fill="#fff" stroke="#c0392b" stroke-width="2"/>
+<text x="258" y="291" font-size="13" fill="#c0392b" font-weight="700" text-anchor="middle">5V</text>
+<rect x="614" y="272" width="56" height="28" rx="5" fill="#fff" stroke="#c0392b" stroke-width="2"/>
+<text x="642" y="291" font-size="13" fill="#c0392b" font-weight="700" text-anchor="middle">5V</text>
+<polyline points="286,286 614,286" fill="none" stroke="#c0392b" stroke-width="3"/>
+<text x="450" y="280" font-size="12.5" fill="#c0392b" font-weight="700" text-anchor="middle">5V → 5V</text>
+<text x="40" y="380" font-size="14" fill="#1d2a33" font-weight="400" text-anchor="start">1. Hold IO0.  2. Tap RST (or unplug and replug the adapter).  3. Let go of IO0.</text><text x="40" y="398" font-size="14" fill="#1d2a33" font-weight="400" text-anchor="start">4. Run "esphome run truckbox.yaml" and pick the adapter's COM / tty port.  Later updates go over Wi-Fi.</text>
+</svg>

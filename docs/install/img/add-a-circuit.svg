@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 400" width="980" height="400" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+<title>How an add-a-circuit fuse tap works</title>
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#38505e"/></marker>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c0392b"/></marker>
+  <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3559a8"/></marker>
+</defs>
+<rect width="980" height="400" fill="#ffffff"/>
+<text x="24" y="38" font-size="22" font-weight="700" fill="#1d2a33">How an add-a-circuit fuse tap works</text>
+<rect x="60" y="90" width="300" height="230" rx="16" fill="#f3f6f8" stroke="#78909c" stroke-width="2"/>
+<text x="210" y="116" font-size="13" fill="#5b6b75" font-weight="700" text-anchor="middle">truck fuse box</text>
+<rect x="180" y="150" width="60" height="120" rx="6" fill="#fff6cc" stroke="#b8670f" stroke-width="2.5"/>
+<text x="210" y="140" font-size="12" fill="#1d2a33" font-weight="400" text-anchor="middle">tap goes in the slot</text>
+<rect x="186" y="160" width="48" height="40" rx="4" fill="#ffd36b"/>
+<text x="210" y="186" font-size="11" fill="#1d2a33" font-weight="700" text-anchor="middle">orig.</text>
+<rect x="186" y="214" width="48" height="40" rx="4" fill="#9ed2ff"/>
+<text x="210" y="240" font-size="11" fill="#1d2a33" font-weight="700" text-anchor="middle">new</text>
+<polyline points="240,234 460,234" fill="none" stroke="#c0392b" stroke-width="2.2" marker-end="url(#ar)"/><text x="270" y="224" font-size="12.5" fill="#c0392b" font-weight="600">pigtail → crimp → your wire</text>
+<rect x="460" y="190" width="220" height="90" rx="10" fill="#dcecf2" stroke="#1c6b80" stroke-width="2"/><text x="472" y="214" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Your new circuit</text><text x="472" y="234" font-size="12.5" fill="#5b6b75" text-anchor="start">e.g. CarPiHAT 12 V constant</text><text x="472" y="251" font-size="12.5" fill="#5b6b75" text-anchor="start">fused by the "new" fuse</text>
+<text x="60" y="350" font-size="13" fill="#1d2a33" font-weight="400" text-anchor="start">Top slot keeps the ORIGINAL fuse (the truck circuit). Bottom slot gets YOUR fuse.</text><text x="60" y="367" font-size="13" fill="#1d2a33" font-weight="400" text-anchor="start">The pigtail faces the load side of the slot: test both orientations with the meter, pick the one where</text><text x="60" y="384" font-size="13" fill="#1d2a33" font-weight="400" text-anchor="start">the tap is live with the original fuse pulled out.</text>
+<rect x="720" y="90" width="230" height="190" rx="10" fill="#eceff1" stroke="#78909c" stroke-width="2"/><text x="732" y="114" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Pick the slot with the meter</text><text x="732" y="134" font-size="12.5" fill="#5b6b75" text-anchor="start">black probe on bare chassis</text><text x="732" y="151" font-size="12.5" fill="#5b6b75" text-anchor="start">red probe on each fuse's test points</text><text x="732" y="168" font-size="12.5" fill="#5b6b75" text-anchor="start"></text><text x="732" y="185" font-size="12.5" fill="#5b6b75" text-anchor="start">truck OFF and ON:</text><text x="732" y="202" font-size="12.5" fill="#5b6b75" text-anchor="start">  12 V both times = CONSTANT</text><text x="732" y="219" font-size="12.5" fill="#5b6b75" text-anchor="start">  12 V only when ON = IGNITION</text><text x="732" y="236" font-size="12.5" fill="#5b6b75" text-anchor="start">  0 V both = wrong slot</text>
+</svg>

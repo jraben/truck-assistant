@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 470" width="1060" height="470" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+<title>Tasker on the tablet: what happens when the truck turns on and off</title>
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#38505e"/></marker>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#c0392b"/></marker>
+  <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3559a8"/></marker>
+</defs>
+<rect width="1060" height="470" fill="#ffffff"/>
+<text x="24" y="38" font-size="22" font-weight="700" fill="#1d2a33">Tasker on the tablet: what happens when the truck turns on and off</text>
+<rect x="40" y="90" width="230" height="80" rx="10" fill="#e0f2e7" stroke="#2e7d4f" stroke-width="2"/><text x="52" y="114" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Truck turns ON</text><text x="52" y="134" font-size="12.5" fill="#5b6b75" text-anchor="start">12 V socket live → tablet charging</text>
+<rect x="340" y="90" width="300" height="80" rx="10" fill="#e6eefc" stroke="#3559a8" stroke-width="2"/><text x="352" y="114" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Task "Truck on" / "Slate Cockpit"</text><text x="352" y="134" font-size="12.5" fill="#5b6b75" text-anchor="start">stop "Truck off", screen on,</text><text x="352" y="151" font-size="12.5" fill="#5b6b75" text-anchor="start">open the cockpit</text>
+<rect x="40" y="260" width="230" height="80" rx="10" fill="#fbe3e0" stroke="#c0392b" stroke-width="2"/><text x="52" y="284" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Truck turns OFF</text><text x="52" y="304" font-size="12.5" fill="#5b6b75" text-anchor="start">12 V socket dead → on battery</text>
+<rect x="340" y="250" width="300" height="100" rx="10" fill="#e6eefc" stroke="#3559a8" stroke-width="2"/><text x="352" y="274" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Task "Truck off"</text><text x="352" y="294" font-size="12.5" fill="#5b6b75" text-anchor="start">asks the brain:</text><text x="352" y="311" font-size="12.5" fill="#5b6b75" text-anchor="start">GET /api/tablet/sleep</text><text x="352" y="328" font-size="12.5" fill="#5b6b75" text-anchor="start">(no answer → wait 2 minutes)</text>
+<rect x="720" y="200" width="300" height="80" rx="10" fill="#eceff1" stroke="#78909c" stroke-width="2"/><text x="732" y="224" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Sleep after N minutes</text><text x="732" y="244" font-size="12.5" fill="#5b6b75" text-anchor="start">Settings › Truck (default 2)</text>
+<rect x="720" y="310" width="300" height="80" rx="10" fill="#eceff1" stroke="#78909c" stroke-width="2"/><text x="732" y="334" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Keep on until battery N %</text><text x="732" y="354" font-size="12.5" fill="#5b6b75" text-anchor="start">camping / waiting in the truck</text>
+<rect x="720" y="90" width="300" height="80" rx="10" fill="#efe6f8" stroke="#6a3d9a" stroke-width="2"/><text x="732" y="114" font-size="15" font-weight="700" fill="#1d2a33" text-anchor="start">Screen locks</text><text x="732" y="134" font-size="12.5" fill="#5b6b75" text-anchor="start">needs Tasker's Device Admin</text>
+<polyline points="270,130 340,130" fill="none" stroke="#38505e" stroke-width="2.2" marker-end="url(#a)"/>
+<polyline points="270,300 340,300" fill="none" stroke="#38505e" stroke-width="2.2" marker-end="url(#a)"/>
+<polyline points="640,285 720,245" fill="none" stroke="#38505e" stroke-width="2.2" marker-end="url(#a)"/>
+<polyline points="640,315 720,350" fill="none" stroke="#38505e" stroke-width="2.2" marker-end="url(#a)"/>
+<polyline points="870,200 870,170" fill="none" stroke="#38505e" stroke-width="2.2" marker-end="url(#a)"/>
+<polyline points="1020,350 1040,350 1040,130 1020,130" fill="none" stroke="#38505e" stroke-width="2.2" marker-end="url(#a)"/>
+<polyline points="490,170 490,250" fill="none" stroke="#2e7d4f" stroke-width="2.2" stroke-dasharray="7 6" marker-end="url(#a)"/><text x="500" y="215" font-size="12.5" fill="#2e7d4f" font-weight="600">plugging back in cancels it</text>
+<text x="40" y="420" font-size="13.5" fill="#5b6b75" font-weight="400" text-anchor="start">Change the sleep time on the settings page any time; the tablet reads it fresh each time the truck turns off.</text>
+</svg>
