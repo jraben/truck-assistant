@@ -322,6 +322,24 @@ textarea { min-height: 120px; font-family: var(--mono); font-size: 13px; resize:
   .strip .wxstrip .wxhl { display: none; }
 }
 
+/* A short screen (a tablet browser that keeps its toolbars, a kiosk app with a smaller page, a big
+   system font): 16 icons at 44 px no longer fit, so the rail scrolled and the bottom ones were cut
+   off. Tighter icons and labels keep every one on screen down to about 560 px tall; below that the
+   labels go and the icons stay. */
+@media (min-width: 821px) and (max-height: 700px) {
+  .rail { gap: 2px; padding: 3px 5px; }
+  .rail > .slot { min-height: 36px; }
+  .rail .slot > a, .rail .slot > button { gap: 1px; padding: 1px 0; }
+  /* body + .app: beats the relay-dots icon and the bigger icons while driving (drive.css). */
+  body .app .rail svg, body .app .rail svg.relaydots, body .app.at-speed .rail svg { width: 20px; height: 20px; }
+  .rail .rl, .rail .slot > .voice { font-size: 10px; line-height: 1; }
+}
+@media (min-width: 821px) and (max-height: 560px) {
+  .rail .rl { display: none; } .rail .slot > .voice { font-size: 0; }
+  .rail > .slot { min-height: 32px; }
+  body .app .rail svg, body .app .rail svg.relaydots, body .app.at-speed .rail svg { width: 22px; height: 22px; }
+}
+
 /* phone / narrow: one scrolling column, rail across the top */
 @media (max-width: 820px) {
   body { overflow: auto; }
