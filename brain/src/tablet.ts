@@ -7,8 +7,16 @@
 //   GET http://<tablet>:<port>/slate/launch?pkg=…    open an installed app (Moonlight, RetroArch)
 // The tablet's address is learned from the cockpit itself (it says hello every
 // minute), so nothing has to be typed in. Ignition wake/sleep is Tasker's own
-// "power connected / disconnected" profile: no brain involvement.
+// "power connected / disconnected" profile; on power loss it asks the brain
+// how long to wait (GET /api/tablet/sleep, Settings > Truck > "When the truck
+// turns off"), and falls back to 2 minutes if the brain doesn't answer.
 import { kvGet, kvSet, type Db } from './db.ts';
+import type { TabletSleep } from './types.ts';
+
+/** What Tasker reads when the truck turns off. Flat fields, seconds included, so the task needs no arithmetic. Pure. */
+export function sleepPlan(t: TabletSleep) {
+  return { minutes: t.minutes, waitSec: t.minutes * 60, never: t.never, keepOn: t.never ? 1 : 0, minBattery: t.minBattery };
+}
 
 export type TabletState = { ip: string | null; seenAt: string | null; ua: string | null; taskerPort: number };
 const KEY = 'tablet';

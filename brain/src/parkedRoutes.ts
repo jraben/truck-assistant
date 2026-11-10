@@ -9,7 +9,7 @@ import { Parked, ParkedError } from './parked.ts';
 import { PlexError, type PlexService } from './media/plex.ts';
 import { PlexVideo } from './media/plexVideo.ts';
 import type { RemoteService } from './remote/service.ts';
-import { Tablet } from './tablet.ts';
+import { sleepPlan, Tablet } from './tablet.ts';
 import { config } from './config.ts';
 
 /** DEMO=1 hides the owner's own sites from the app list. */
@@ -66,6 +66,8 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   app.get('/api/tablet', async () => tablet.get());
   app.put('/api/tablet', async (req, reply) => { try { return tablet.setPort((req.body as { taskerPort?: unknown } | null)?.taskerPort); } catch (e) { return reply.code(400).send({ error: (e as Error).message }); } });
   app.post('/api/tablet/test', async () => tablet.front());
+  // Read by Tasker's "Truck off" task (deploy/android/README.md step 6); open, since Tasker can't log in and it says nothing private.
+  app.get('/api/tablet/sleep', async () => sleepPlan(brain.settings.get().tabletSleep));
 
   // ---- Plex video ----------------------------------------------------------------
   const pv = <Q>(p: string, f: (q: Q) => Promise<unknown>) => app.get<{ Querystring: Q }>(p, async (req, reply) => { try { return await f(req.query as Q); } catch (e) { return fail(reply, e); } });

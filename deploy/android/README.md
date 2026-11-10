@@ -56,12 +56,28 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
 
    | Profile | Trigger | Task |
    |---|---|---|
-   | Truck on | Event › Power › **Power Connected** | Display › Turn On; App › Launch App: **Slate Cockpit** |
-   | Truck off | Event › Power › **Power Disconnected** | Wait 2 minutes; Display › System Lock (or Turn Off) |
+   | Truck on | Event › Power › **Power Connected** | Task › Stop: **Truck off**; Display › Turn On; App › Launch App: **Slate Cockpit** |
+   | Truck off | Event › Power › **Power Disconnected** | the **Truck off** task below |
    | Cockpit to front | Event › Net › **HTTP Request**, port **1821**, path `/slate/front` | App › Launch App: **Slate Cockpit**; HTTP Response 200 |
    | Open an app | Event › Net › **HTTP Request**, port 1821, path `/slate/launch` | App › Launch App, package `%http_request_query_pkg`; HTTP Response 200 |
 
-   The brain learns the tablet's address by itself (the cockpit checks in every
+   The **Truck off** task follows Settings › Truck › *Dash tablet when the
+   truck turns off* (sleep after N minutes, or stay on until the battery is
+   down to N %), read from the brain each time the power drops:
+
+   1. Net › **HTTP Request**: GET `http://10.42.0.1:8080/api/tablet/sleep`,
+      timeout 5 s, Structure Output on. (No login needed for this one address.)
+   2. Variables › Variable Set `%wait` to `120`; then, If `%http_data.waitSec`
+      is set, Variable Set `%wait` to `%http_data.waitSec`.
+   3. If `%http_data.keepOn` eq `1`: Task › **Wait Until** `%BATT` < `%http_data.minBattery`
+      (check every 5 minutes); Else: Task › **Wait** `%wait` seconds; End If.
+   4. Display › **System Lock** (or Turn Off).
+
+   It answers `{minutes, waitSec, never, keepOn, minBattery}`. Plugging back
+   in (truck on) stops the task, so a short stop never locks the screen. If
+   the brain doesn't answer, the tablet sleeps after 2 minutes as before.
+
+ (the cockpit checks in every
    minute) and calls `/slate/front` the moment the truck moves while Netflix or
    a game is open. A different port goes on `PUT /api/tablet {taskerPort}`.
    Check it from the brain with `POST /api/tablet/test` (the cockpit should jump
@@ -96,7 +112,7 @@ On the desk, with the NAS copy as the brain:
 3. **WOPR** button: speak a question. **Pass:** it answers out loud.
 4. **Parked › Watch › Netflix**: **pass** if the Netflix app opens, and if
    `POST /api/tablet/test` brings the cockpit back.
-5. Unplug and replug the charger. **Pass:** the screen sleeps after 2 minutes
+5. Unplug and replug the charger. **Pass:** the screen sleeps after the time set in Settings › Truck (2 minutes unless changed)
    and wakes with the cockpit on top.
 
 If step 2 fails (Chrome doesn't offer the dongle, or the hub can't charge and

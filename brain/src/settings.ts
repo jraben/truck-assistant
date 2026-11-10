@@ -84,6 +84,7 @@ export function defaultSettings(): Settings {
     tabletWatts: 12,
     stackWatts: 25,
     tabletGps: true,
+    tabletSleep: { minutes: 2, never: false, minBattery: 30 },
     keys: {},
     homeAssistant: { bridge: true, url: null },
     homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0, demandPerKw: null },
@@ -398,6 +399,15 @@ export function validate(s: Settings): Settings {
   num(s.tabletWatts, 'tabletWatts', 0, 100);
   s.tabletWatts = Math.round(s.tabletWatts);
   if (typeof s.tabletGps !== 'boolean') s.tabletGps = true;
+  {
+    const d = defaultSettings().tabletSleep;
+    const t = (s.tabletSleep && typeof s.tabletSleep === 'object' ? s.tabletSleep : {}) as Partial<typeof d>;
+    s.tabletSleep = {
+      minutes: t.minutes === undefined ? d.minutes : Math.round(num(t.minutes, 'tabletSleep.minutes', 0, 120)),
+      never: typeof t.never === 'boolean' ? t.never : d.never,
+      minBattery: t.minBattery === undefined ? d.minBattery : Math.round(num(t.minBattery, 'tabletSleep.minBattery', 5, 90)),
+    };
+  }
   if (s.stackWatts === undefined || s.stackWatts === null) s.stackWatts = defaultSettings().stackWatts;
   num(s.stackWatts, 'stackWatts', 0, 300);
   s.stackWatts = Math.round(s.stackWatts);

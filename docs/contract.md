@@ -61,6 +61,11 @@ dash tablet counts only while it charges (the browser's Battery API says so).
 
 ## HTTP + WebSocket (brain, port 8080)
 
+- `GET  /api/tablet/sleep` → `{minutes, waitSec, never, keepOn, minBattery}`
+  from `Settings.tabletSleep` (`{minutes 0–120, never, minBattery 5–90}`,
+  default `{2, false, 30}`): what Tasker on the dash tablet does when the
+  truck's power drops (`deploy/android/README.md` step 6). Open (no login):
+  Tasker can't log in, and only GET/HEAD of this one path is exempt.
 - `GET  /ws` WebSocket. Server sends `{"type":"state","data":State}` on connect
   and on every change (at most 10/s). Client sends
   `{"type":"relay","id":"relay_1","on":true}` or

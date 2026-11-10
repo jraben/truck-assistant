@@ -118,6 +118,9 @@ export type GasSettings = {
 };
 
 /** Truck-level settings. Per-driver prefs live in drivers[]. */
+/** The dash tablet after the truck turns off: sleep after `minutes`, or stay on (`never`) until its battery drops to `minBattery` %. */
+export type TabletSleep = { minutes: number; never: boolean; minBattery: number };
+
 export type Settings = {
   truckId: string;
   packKwh: number;
@@ -133,6 +136,8 @@ export type Settings = {
   stackWatts: number;
   /** Use the dash tablet's own GPS whenever there's no GPS puck with a fix (tabletGps.ts). */
   tabletGps: boolean;
+  /** What the dash tablet does when the truck turns off (Tasker reads GET /api/tablet/sleep). */
+  tabletSleep: TabletSleep;
   keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** NASA FIRMS MAP_KEY (fire hotspots). */ firms?: string; /** FlightAware AeroAPI (airport pickup: gate, bags, delays; paid, optional). */ flightAware?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {

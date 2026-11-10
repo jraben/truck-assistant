@@ -126,6 +126,10 @@ Built for Jeff's truck first, published for other Slate owners later.
   for driving (one Chrome flag on the tablet: `deploy/android/README.md`). A
   puck always wins, and parked features still need one (or the LTE-M watch),
   since the tablet sleeps when the truck is off.
+- **Tablet sleep settings (2026-11-09):** Settings › Truck › *Dash tablet when
+  the truck turns off*: sleep the screen after N minutes (2 by default, 0 =
+  right away), or keep it on until its battery is down to N %. Tasker reads it
+  from `GET /api/tablet/sleep` each time the power drops.
 - **Trip energy (2026-11-09):** Trips → a trip → **Energy**: power used and
   regenerated along the route on a map, with height, speed and power on a
   chart you can scrub, how much went to driving vs the dash's tech vs

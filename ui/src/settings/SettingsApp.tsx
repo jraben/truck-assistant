@@ -295,7 +295,25 @@ export function SettingsApp() {
         </div>
         <p class="help">Charging within 150 m of home is priced from your home rate below.</p>
         <label class="check"><input type="checkbox" checked={draft.tabletGps !== false} onChange={(e) => set('tabletGps', (e.target as HTMLInputElement).checked)} /> Use the dash tablet’s GPS when there’s no GPS puck</label>
-        <p class="help">The dash page sends the tablet’s own location, so a USB GPS puck is optional for driving. A puck, when fitted, always wins. One-time setup on the tablet: in Chrome open chrome://flags, find “Insecure origins treated as secure”, add the dash’s address (e.g. http://10.42.0.1:8080), relaunch, and allow location when asked. The tablet sleeps when the truck is off, so parked features (theft and tow alerts, where the truck is) still need a puck or the LTE-M watch.{health?.gps === 'tablet' ? ' Using the tablet’s GPS now.' : ''}</p>
+        <p class="help">The dash page sends the tablet’s own location, so a USB GPS puck is optional for driving. A puck, when fitted, always wins. One-time setup on the tablet: in Chrome open chrome://flags, find “Insecure origins treated as secure”, add the dash’s address (e.g. http://10.42.0.1:8080), relaunch, and allow location when asked. The tablet’s location stops when its screen sleeps (below), so parked features (theft and tow alerts, where the truck is) still need a puck or the LTE-M watch.{health?.gps === 'tablet' ? ' Using the tablet’s GPS now.' : ''}</p>
+        <h3 class="sub">Dash tablet when the truck turns off</h3>
+        {(() => {
+          const ts = draft.tabletSleep ?? { minutes: 2, never: false, minBattery: 30 };
+          const setTs = (p: Partial<typeof ts>) => set('tabletSleep', { ...ts, ...p });
+          return <>
+            <div class="row wrap">
+              <label class="check"><input type="radio" name="tablet-sleep" checked={!ts.never} onChange={() => setTs({ never: false })} /> Sleep the screen after</label>
+              <input type="number" min="0" max="120" step="1" style="width:5em" disabled={ts.never} value={ts.minutes} onInput={(e) => setTs({ minutes: num((e.target as HTMLInputElement).value) })} />
+              <span>minutes (0 = right away)</span>
+            </div>
+            <div class="row wrap">
+              <label class="check"><input type="radio" name="tablet-sleep" checked={ts.never} onChange={() => setTs({ never: true })} /> Keep it on (camping, waiting in the truck) until its battery is down to</label>
+              <input type="number" min="5" max="90" step="5" style="width:5em" disabled={!ts.never} value={ts.minBattery} onInput={(e) => setTs({ minBattery: num((e.target as HTMLInputElement).value) })} />
+              <span>%</span>
+            </div>
+            <p class="help">With the truck off the tablet runs on its own battery. Tasker on the tablet reads this when the power drops, so a change applies from the next time you turn the truck off; it waits 2 minutes if the truck’s computer doesn’t answer. Setup: deploy/android/README.md, step 6.</p>
+          </>;
+        })()}
       </Section>
 
       <Section title="Relay names & power" help="The six upfit relays in the truck box, and what each load draws when on (from its label or manual). Nothing measures current, so the Control screen's watts are these numbers.">
