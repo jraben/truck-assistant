@@ -1,5 +1,6 @@
 // The brain's core: one State, fed by the truck box (MQTT or SIM) and GPS
 // (gpsd or SIM), with SoC, trips, stops and charge sessions derived from it.
+import { isDashTablet, tabletFix, useTabletFix } from './tabletGps.ts';
 import { driverPhotoUrl } from './drive/driverPhoto.ts';
 import { EventEmitter } from 'node:events';
 import { config } from './config.ts';
@@ -115,6 +116,11 @@ export class Brain extends EventEmitter {
   private tilt = { pitch: null as number | null, roll: null as number | null };
   private lastFix: GpsFix | null = null;
   private lastGpsAt = 0;
+  /** When the GPS puck (gpsd) and the dash tablet last gave a fix (tabletGps.ts). */
+  private puckFixAt = 0;
+  private tabletFixAt = 0;
+  /** SIM test panel: take positions from the browser's location instead of the simulated drive. */
+  simGpsFromDevice = false;
   private haKwh: number | null = null;
   /** Wall charger power (kW) from Settings.homeAssistant.homeChargerPowerEntity, and when it was read. */
   private haPower: { kw: number | null; plugged: boolean | null; at: number } = { kw: null, plugged: null, at: 0 };
@@ -262,10 +268,10 @@ export class Brain extends EventEmitter {
       // DEMO: the charge level reads like the truck's own (CAN), not a number typed in.
       if (config.demo) this.soc.setCan(this.soc.value ?? 74);
       else if (this.soc.value === null) this.soc.setManual(78);
-      this.sim = new SimTruck((sub, p) => this.onTruckbox(sub, p), (f) => this.onFix(f), config.simSpeedup, { demo: config.demo });
+      this.sim = new SimTruck((sub, p) => this.onTruckbox(sub, p), (f) => { if (!this.simGpsFromDevice) this.onFix(f); }, config.simSpeedup, { demo: config.demo });
       this.sim.start();
     } else {
-      this.gpsd = new GpsdClient(config.gpsdHost, config.gpsdPort, (f) => this.onFix(f));
+      this.gpsd = new GpsdClient(config.gpsdHost, config.gpsdPort, (f) => { if (f.fix) this.puckFixAt = Date.now(); this.onFix(f); });
       this.gpsd.start();
     }
     this.tickTimer = setInterval(() => this.tick(), 1000);
@@ -503,6 +509,29 @@ export class Brain extends EventEmitter {
     if (p.truckbox === undefined && !this.s.truckbox) this.s.truckbox = true; // data implies it is up
     applyTruckbox(this.s, p, this.tilt);
     this.changed();
+  }
+
+  /**
+   * A position from the dash tablet's own GPS (socket {"type":"gps"}; tabletGps.ts).
+   * Used only from the dash tablet, with the setting on, and only while no GPS
+   * puck has a fresh fix. True when it was used.
+   */
+  /** SIM test panel: positions from the browser (true) or the simulated drive (false). */
+  setSimGpsFromDevice(on: boolean) {
+    this.simGpsFromDevice = on;
+    if (!on) this.tabletFixAt = 0; // the GPS label goes back to "sim" at once
+  }
+
+  onTabletFix(m: Record<string, unknown>, ip: string | undefined, ua: string | undefined): boolean {
+    const now = Date.now();
+    const deskTest = !!this.sim && this.simGpsFromDevice;
+    if (!deskTest && !isDashTablet(ip, ua)) return false;
+    if (!useTabletFix({ enabled: this.settings.get().tabletGps, puckFixAt: this.puckFixAt, simOwnsGps: !!this.sim && !this.simGpsFromDevice, now })) return false;
+    const f = tabletFix(m, now);
+    if (!f) return false;
+    if (f.fix) this.tabletFixAt = now;
+    this.onFix(f);
+    return true;
   }
 
   private onFix(f: GpsFix) {
@@ -771,7 +800,8 @@ export class Brain extends EventEmitter {
 
   health(): Health {
     const mqtt = !this.mqtt ? 'disabled' : this.mqtt.status === 'connected' ? 'connected' : `${this.mqtt.status}${this.mqtt.lastError ? ` (${this.mqtt.lastError})` : ''}`;
-    const gps = this.sim ? 'sim' : this.gpsd?.status ?? 'no gpsd';
+    const fromTablet = Date.now() - this.tabletFixAt < 10_000;
+    const gps = fromTablet ? 'tablet' : this.sim ? 'sim' : this.gpsd?.status ?? 'no gpsd';
     return { ok: true, version: config.version, mqtt, gps, ha: this.ha.status(), uptimeS: Math.round((Date.now() - this.startedAt) / 1000) };
   }
 

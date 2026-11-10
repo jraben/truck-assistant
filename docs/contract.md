@@ -65,6 +65,13 @@ dash tablet counts only while it charges (the browser's Battery API says so).
   and on every change (at most 10/s). Client sends
   `{"type":"relay","id":"relay_1","on":true}` or
   `{"type":"soc","value":72}` (manual charge level), or
+  `{"type":"gps","lat":…,"lon":…,"accM":…,"speedMps":…,"headingDeg":…,"altM":…}`
+  (the dash tablet's own location, at most 1/s, `brain/src/tabletGps.ts`: used
+  only from an Android browser on a private/Tailscale address, with
+  `Settings.tabletGps` on (default), while no GPS puck has had a fix for 5 s;
+  worse than 100 m accuracy is position-only; `Health.gps` reads `tablet` while
+  it feeds the position. SIM: `POST /api/sim/gps-device {on}` takes positions
+  from the test panel's browser instead of the simulated drive), or
   `{"type":"media","title":"…","artist":"…","album":"…"}` (what CarPlay is
   playing; strings or null, at most 200 characters each; no title and no
   artist = nothing playing). The UI sends it when the song changes, not on

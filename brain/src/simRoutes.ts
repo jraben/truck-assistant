@@ -72,6 +72,13 @@ export function registerSim(app: FastifyInstance, brain: Brain, remote: RemoteSe
     return { ok: true };
   });
 
+  /** Desk test of the tablet-as-GPS path: positions come from this browser's location, not the simulated drive. */
+  app.post('/api/sim/gps-device', async (req, reply) => {
+    if (!brain.simTruck) return off(reply);
+    brain.setSimGpsFromDevice((req.body as { on?: unknown } | null)?.on === true);
+    return { on: brain.simGpsFromDevice };
+  });
+
   /** A made-up flight into Phoenix (lands in ~25 min), so the whole airport pickup flow runs at a desk. No flight-tracking calls go out. */
   app.post('/api/sim/flight', async (req, reply) => {
     if (!brain.simTruck) return off(reply);

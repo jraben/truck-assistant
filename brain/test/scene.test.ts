@@ -48,6 +48,19 @@ describe("God's Eye scene bundle", () => {
     expect(shots.at(-1)!.title).toBe('Arrive');
   });
 
+  it('chains the fly-along into one smooth chase: each move starts where the last ended, linear, no holds', () => {
+    const long = Array.from({ length: 400 }, (_, i) => ({ lat: 33.4 + i * 0.0005, lon: -111.9 + Math.sin(i / 40) * 0.01, elevM: 350 }));
+    const shots = tripBundle({ title: 'Trip', route: long, stops: [], attribution: 'x', flyAlong: true }).project.scenes[0].shots as Record<string, any>[];
+    const fly = shots.filter((s) => String(s.id).startsWith('fly-'));
+    expect(fly.length).toBeGreaterThan(10);
+    expect(fly[0].move).toBeUndefined();
+    for (let k = 1; k < fly.length; k++) {
+      expect(fly[k].move).toEqual({ from: fly[k - 1].camera, easing: 'linear' });
+      expect(fly[k].holdSec).toBe(0);
+    }
+    for (const s of fly) { expect(s.camera.pitch).toBeLessThan(-20); expect(s.camera.alt).toBeGreaterThan(350); expect(s.camera.altitudeReference).toBe('ellipsoid'); }
+  });
+
   it('keeps the GeoJSON inside the pack limits, with unique string ids and heights', () => {
     const big = Array.from({ length: 20000 }, (_, i) => ({ lat: 33 + i * 1e-4, lon: -112, elevM: null }));
     const g = routeGeoJson(big, stops, 'x');

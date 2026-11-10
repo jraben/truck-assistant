@@ -121,6 +121,11 @@ Built for Jeff's truck first, published for other Slate owners later.
   own tuner, HD1 drops to the station's analog signal when the digital one is
   lost (and tries HD again later, or on "Back to HD"), and **Check presets** /
   **Scan the band** find which stations carry HD and what's on HD2-HD4.
+- **The tablet as GPS (2026-11-09):** the dash tablet's own GPS feeds the
+  truck's position whenever there's no USB GPS puck, so the puck is optional
+  for driving (one Chrome flag on the tablet: `deploy/android/README.md`). A
+  puck always wins, and parked features still need one (or the LTE-M watch),
+  since the tablet sleeps when the truck is off.
 - **Trip energy (2026-11-09):** Trips → a trip → **Energy**: power used and
   regenerated along the route on a map, with height, speed and power on a
   chart you can scrub, how much went to driving vs the dash's tech vs

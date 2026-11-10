@@ -11,6 +11,12 @@ export type SceneStop = { id: string; name: string; lat: number; lon: number; el
 
 /** God's Eye's limits: 2,000 features and 50,000 positions per GeoJSON pack. */
 const MAX_POSITIONS = 5000;
+/** The chase along a driven trip: one shot per this many miles (at most CHASE_MAX_SHOTS), each this many seconds. */
+export const CHASE_MI_PER_SHOT = 0.6;
+export const CHASE_MAX_SHOTS = 60;
+export const CHASE_SEC_PER_SHOT = 3;
+/** Camera behind the truck, above the ground, looking down the road. */
+const CHASE_BACK_M = 650, CHASE_ALT_M = 380, CHASE_PITCH = -28;
 
 const bearing = (a: ScenePoint, b: ScenePoint) => {
   const r = Math.PI / 180;
@@ -68,10 +74,29 @@ export function tripBundle(o: { title: string; route: ScenePoint[]; stops: Scene
       camera: { lat: r6(p.lat - Math.cos(head * Math.PI / 180) * back), lon: r6(p.lon - Math.sin(head * Math.PI / 180) * back / Math.cos(p.lat * Math.PI / 180)), alt: Math.round((p.elevM ?? 0) + alt), heading: head, pitch, roll: 0 } });
   };
   if (o.flyAlong) {
-    const n = Math.min(24, Math.max(4, Math.round(pts.length / 40)));
+    // A chase: God's Eye plays each shot from move.from to camera and never follows anything,
+    // so the drive is a chain of short linear moves, each starting exactly where the last
+    // ended (no ease in/out, no hold), the camera behind and above the truck looking along
+    // the road. Points are evenly spaced by distance, so the pace is steady.
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversineMi(pts[i - 1], pts[i]));
+    const total = cum[cum.length - 1];
+    const n = Math.min(CHASE_MAX_SHOTS, Math.max(4, Math.round(total / CHASE_MI_PER_SHOT) + 1));
+    const atMi = (mi: number) => { let i = cum.findIndex((c) => c >= mi); if (i < 0) i = pts.length - 1; return i; };
+    const look = Math.max(0.15, total / n); // heading over the next stretch, not the next GPS point
+    let prev: Record<string, unknown> | null = null;
     for (let k = 0; k < n; k++) {
-      const i = Math.floor((k / (n - 1)) * (pts.length - 1));
-      at(pts[i], pts[Math.min(pts.length - 1, i + Math.max(1, Math.floor(pts.length / n)))], 700, -22, k === 0 ? 'Start' : k === n - 1 ? 'Arrive' : `Along the way ${k}`, `fly-${k}`, 6, 0);
+      const mi = (k / (n - 1)) * total;
+      const p = pts[atMi(mi)], ahead = pts[atMi(Math.min(total, mi + look))];
+      const head: number = p === ahead ? (prev?.heading as number | undefined) ?? 0 : bearing(p, ahead);
+      const back = CHASE_BACK_M / 111_000;
+      const camera: Record<string, number | string> = { lat: r6(p.lat - Math.cos(head * Math.PI / 180) * back), lon: r6(p.lon - Math.sin(head * Math.PI / 180) * back / Math.cos(p.lat * Math.PI / 180)), alt: Math.round((p.elevM ?? 0) + CHASE_ALT_M), heading: head, pitch: CHASE_PITCH, roll: 0, altitudeReference: 'ellipsoid' };
+      shots.push({
+        id: `fly-${k}`, title: k === 0 ? 'Start' : k === n - 1 ? 'Arrive' : `Along the way ${k}`, dataPackIds: ['route'], camera,
+        // The first leg flies in from the overview; every later one starts where the last ended.
+        ...(prev ? { durationSec: CHASE_SEC_PER_SHOT, holdSec: 0, move: { from: prev, easing: 'linear' } } : { durationSec: 4, holdSec: 1 }),
+      });
+      prev = camera;
     }
   } else {
     o.stops.forEach((s, i) => {

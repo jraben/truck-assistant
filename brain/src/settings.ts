@@ -83,6 +83,7 @@ export function defaultSettings(): Settings {
     relayWatts: { relay_1: 36, relay_2: 120, relay_3: 48, relay_4: 360, relay_5: 45, relay_6: 60 },
     tabletWatts: 12,
     stackWatts: 25,
+    tabletGps: true,
     keys: {},
     homeAssistant: { bridge: true, url: null },
     homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0, demandPerKw: null },
@@ -396,6 +397,7 @@ export function validate(s: Settings): Settings {
   if (s.tabletWatts === undefined || s.tabletWatts === null) s.tabletWatts = defaultSettings().tabletWatts;
   num(s.tabletWatts, 'tabletWatts', 0, 100);
   s.tabletWatts = Math.round(s.tabletWatts);
+  if (typeof s.tabletGps !== 'boolean') s.tabletGps = true;
   if (s.stackWatts === undefined || s.stackWatts === null) s.stackWatts = defaultSettings().stackWatts;
   num(s.stackWatts, 'stackWatts', 0, 300);
   s.stackWatts = Math.round(s.stackWatts);

@@ -72,7 +72,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   const socketIds = new WeakMap<WebSocket, number>();
   let nextSocketId = 0;
 
-  app.get('/ws', { websocket: true }, (socket) => {
+  app.get('/ws', { websocket: true }, (socket, req) => {
     clients.add(socket);
     socketIds.set(socket, ++nextSocketId);
     socket.send(JSON.stringify({ type: 'state', data: brain.getState() }));
@@ -88,6 +88,8 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
         const np = parseMediaMessage(m), src = mediaSourceOf(m);
         if (np === undefined || src === undefined) return;
         nowPlaying.report(`ws${socketIds.get(socket)}:${src}`, np); // a screen with nothing playing doesn't clear another's
+      } else if (m.type === 'gps') {
+        brain.onTabletFix(m, req.ip, String(req.headers['user-agent'] ?? '')); // the dash tablet's own GPS (tabletGps.ts)
       }
     });
     const gone = () => {

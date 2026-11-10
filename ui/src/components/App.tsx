@@ -1,3 +1,4 @@
+import { useTabletGps } from '../lib/tabletGps.ts';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DEFAULT_LAYOUT } from '../../../brain/src/layout.ts';
 import { activeDriver, linkStore, loadSettings, putDriver, settingsStore, stateStore, toast, toastStore, useStore, type Driver, type Layout, type State } from '../lib/brain.ts';
@@ -67,6 +68,7 @@ export function App() {
   const settings = useStore(settingsStore);
   const toastMsg = useStore(toastStore);
   const driver = activeDriver(settings, s);
+  useTabletGps(); // the dash tablet's own GPS, when there's no puck (lib/tabletGps.ts)
   const base = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
   const layout = useMemo(() => withParkedView(withHomeView(withMediaView(base))), [base]);
   const [view, setView] = useState(() => viewFromHash(layout));

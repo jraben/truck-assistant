@@ -12,6 +12,7 @@ import type { SimControl, SimStatus as SimTruckStatus } from '../../../brain/src
 type SimStatus = SimTruckStatus & { soc: number | null; rangeMi: number | null };
 import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import { useCamStatus } from '../lib/cams.ts';
+import { DESK_TEST_KEY, tabletGpsStore } from '../lib/tabletGps.ts';
 import { CamPlayer } from '../components/camplayer.tsx';
 import { carplaySimWanted, setCarplaySim } from '../carplay/sim.ts';
 import './sim.css';
@@ -198,6 +199,8 @@ function ChargeTab({ st, post }: TabProps) {
 }
 
 function TruckTab({ st, set, post }: TabProps) {
+  const deskGps = lsGet(DESK_TEST_KEY) === '1';
+  const gpsStatus = useStore(tabletGpsStore);
   return (
     <div class="simgrid">
       <Readout st={st} />
@@ -233,6 +236,17 @@ function TruckTab({ st, set, post }: TabProps) {
           <button type="button" class="btn" onClick={() => void post('/api/sim/flight', { flight: 'AA 1234' }).then((ok) => ok && toast('Fake flight AA 1234 from Dallas: lands at PHX in about 25 min (Road trip view)'))}>Fake inbound flight</button>
         </div>
         <span class="dimtxt">Alerts from a simulated truck are logged, not sent to the phone, unless SIM_ALERTS=1.</span>
+      </div>
+      <div class="simrow col"><span class="lbl">GPS from this device</span>
+        <div class="row" style="align-items:center">
+          <button type="button" class={`btn ${deskGps ? 'primary' : ''}`} onClick={() => {
+            const on = !deskGps;
+            try { if (on) localStorage.setItem(DESK_TEST_KEY, '1'); else localStorage.removeItem(DESK_TEST_KEY); } catch { /* private mode */ }
+            void post('/api/sim/gps-device', { on }).then((ok) => { if (ok) location.reload(); });
+          }}>{deskGps ? 'Back to the simulated drive' : 'Use this browser’s location'}</button>
+          <span class="dimtxt">{deskGps ? `Location: ${gpsStatus}` : ''}</span>
+        </div>
+        <span class="dimtxt">Tests the tablet-as-GPS path at a desk: the truck's position comes from this browser (the browser asks first), as it would from the dash tablet with no GPS puck.</span>
       </div>
     </div>
   );

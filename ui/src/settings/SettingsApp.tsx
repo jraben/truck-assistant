@@ -202,7 +202,7 @@ export function SettingsApp() {
         <h1>{PROJECT.shortName} · SETTINGS</h1>
         <span class="pill"><span class={`dot ${health ? 'ok' : 'bad'}`} />{health ? `brain v${health.version}` : 'brain unreachable'}</span>
         {health && <span class="pill"><span class={`dot ${health.mqtt === 'connected' ? 'ok' : 'warn'}`} />MQTT {health.mqtt}</span>}
-        {health && <span class="pill"><span class={`dot ${health.gps === 'fix' || health.gps === 'sim' ? 'ok' : 'warn'}`} />GPS {health.gps}</span>}
+        {health && <span class="pill"><span class={`dot ${health.gps === 'fix' || health.gps === 'sim' || health.gps === 'tablet' ? 'ok' : 'warn'}`} />GPS {health.gps}</span>}
         {health && <span class="pill"><span class={`dot ${health.ha === 'connected' ? 'ok' : 'warn'}`} />HA {health.ha}</span>}
         <span style="flex:1" />
         <a class="btn" href="/">Back to cockpit</a>
@@ -294,6 +294,8 @@ export function SettingsApp() {
           {draft.homeLocation && <button class="btn sm" type="button" onClick={() => set('homeLocation', null)}>Clear</button>}
         </div>
         <p class="help">Charging within 150 m of home is priced from your home rate below.</p>
+        <label class="check"><input type="checkbox" checked={draft.tabletGps !== false} onChange={(e) => set('tabletGps', (e.target as HTMLInputElement).checked)} /> Use the dash tablet’s GPS when there’s no GPS puck</label>
+        <p class="help">The dash page sends the tablet’s own location, so a USB GPS puck is optional for driving. A puck, when fitted, always wins. One-time setup on the tablet: in Chrome open chrome://flags, find “Insecure origins treated as secure”, add the dash’s address (e.g. http://10.42.0.1:8080), relaunch, and allow location when asked. The tablet sleeps when the truck is off, so parked features (theft and tow alerts, where the truck is) still need a puck or the LTE-M watch.{health?.gps === 'tablet' ? ' Using the tablet’s GPS now.' : ''}</p>
       </Section>
 
       <Section title="Relay names & power" help="The six upfit relays in the truck box, and what each load draws when on (from its label or manual). Nothing measures current, so the Control screen's watts are these numbers.">

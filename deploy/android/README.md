@@ -68,6 +68,21 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    to the front).
 7. Developer options › **Stay awake** (screen stays on while charging), and
    Settings › Display › screen timeout as you like for when it's unplugged.
+8. **The tablet as the truck's GPS** (optional: skip it if a USB GPS puck is
+   on the Pi). The dash page sends the tablet's own location to the brain,
+   which uses it whenever no puck has a fix (`brain/src/tabletGps.ts`).
+   Browsers only share location with secure pages, and the dash is plain http
+   on the truck's Wi-Fi, so once in Chrome on the tablet:
+   - open `chrome://flags`, search **Insecure origins treated as secure**,
+     add `http://10.42.0.1:8080` (the dash address you use), Enable, Relaunch;
+   - open the dash and **Allow** location when Chrome asks (Android Settings ›
+     Location must be on, with Chrome allowed **precise** location).
+
+   Settings › Truck shows "Using the tablet's GPS now" and the header's GPS
+   pill reads `tablet`. The Wi-Fi Galaxy Tab S7 FE has its own GNSS receiver;
+   check another tablet with a GPS test app first. The tablet sleeps when the
+   truck is off, so parked features (theft and tow alerts, where the truck is)
+   need a puck or the LTE-M watch. Turn it off in Settings › Truck.
 
 ## Desk test (before the truck)
 
