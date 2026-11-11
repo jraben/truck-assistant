@@ -65,7 +65,10 @@ async function getJson(url: string, fetchFn: typeof fetch): Promise<unknown> {
   let res: Response;
   try { res = await fetchFn(url, { signal: AbortSignal.timeout(20_000), headers: { accept: 'application/json' } }); }
   catch (e) { throw new FeedError(`not reachable (${(e as Error).message})`); }
-  if (res.status === 401 || res.status === 403) throw new FeedError('refused the developer key (check it on the settings page)');
+  const refused = 'refused the developer key (check it on the settings page)';
+  if (res.status === 401 || res.status === 403) throw new FeedError(refused);
+  // AZ511 answers a bad key with 400 and an XML body: <Error><Message>Invalid Key</Message></Error> (seen 2026-11-11).
+  if (res.status === 400 && /invalid\s*key/i.test(await res.text().catch(() => ''))) throw new FeedError(refused);
   if (res.status === 429) throw new FeedError('rate-limited (ten calls a minute); will retry');
   if (!res.ok) throw new FeedError(`answered ${res.status}`);
   try { return await res.json(); } catch { throw new FeedError('sent something that is not JSON (the API may differ for this state)'); }

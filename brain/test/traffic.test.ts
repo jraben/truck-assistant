@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { openDb } from '../src/db.ts';
 import { defaultSettings, maskSettings, mergeSettings } from '../src/settings.ts';
-import { parseCameras, parseEvents } from '../src/traffic/feed.ts';
+import { fetchEvents, parseCameras, parseEvents } from '../src/traffic/feed.ts';
 import { ahead, bearing } from '../src/traffic/ahead.ts';
 import { enforcementQuery, parseEnforcement } from '../src/traffic/enforcement.ts';
 import { statesAt, STATES_511 } from '../src/traffic/states.ts';
@@ -44,6 +44,13 @@ describe('511 feeds', () => {
     expect(statesAt(33.45, -112.07).map((s) => s.id)).toEqual(['az']);
     expect(statesAt(43.07, -89.4).map((s) => s.id)).toContain('wi');
     expect(STATES_511.filter((s) => s.checked).map((s) => s.id)).toEqual(['az', 'wi']);
+  });
+
+  it('reads a 400 "Invalid Key" as a refused key, any other 400 as itself', async () => {
+    const az = STATES_511.find((s) => s.id === 'az')!;
+    const answer = (status: number, body: string) => (async () => new Response(body, { status })) as unknown as typeof fetch;
+    await expect(fetchEvents(az, 'x', answer(400, '<Error><Message>Invalid Key</Message></Error>'))).rejects.toThrow(/refused the developer key/);
+    await expect(fetchEvents(az, 'x', answer(400, 'bad request'))).rejects.toThrow(/answered 400/);
   });
 });
 
