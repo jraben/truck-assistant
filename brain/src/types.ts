@@ -154,6 +154,8 @@ export type Settings = {
   placesFeed: { url: string | null };
   homeWifi: WifiNet | null;
   saveDataOnHotspot: boolean;
+  /** Pop up "Who's driving?" when the ignition comes on (off: the driver is picked quietly from phone presence, or stays). */
+  askDriver: boolean;
   truck: TruckLook;                 // Track A: what the truck looks like (tilt drawing)
   drive: DriveSettings;             // Track A
   payoffGoal: PayoffGoal;           // "pay off the truck with gas savings"

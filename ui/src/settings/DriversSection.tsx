@@ -79,7 +79,7 @@ export function DriversSection({ settings }: { settings: Settings }) {
   return (
     <section class="card" id="drivers">
       <h2>Drivers</h2>
-      <p class="help">Each driver has their own theme, layout, charging preferences and comparison vehicle. Trips, stops and charges are labelled with whoever was driving. The cockpit suggests a driver when the ignition comes on (from Home Assistant phone presence) and never switches by itself during a trip.</p>
+      <p class="help">Each driver has their own theme, layout, charging preferences and comparison vehicle. Trips, stops and charges are labelled with whoever was driving. When the truck starts, the driver whose phone is at the truck (Home Assistant) is picked; the cockpit never switches by itself during a trip. The “Who’s driving?” pop-up is off unless you turn it on under Drive.</p>
       <div class="row wrap" role="tablist" aria-label="Driver to edit">
         {settings.drivers.map((x) => (
           <button type="button" role="tab" aria-selected={x.id === d.id} class={`btn ${x.id === d.id ? 'primary' : ''}`} onClick={() => setSel(x.id)}>

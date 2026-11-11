@@ -242,3 +242,15 @@ describe('relay and tablet watts (Control screen estimates)', () => {
     expect(() => loadSettings({ tabletWatts: 500 })).toThrow();
   });
 });
+
+describe('askDriver (the "Who\'s driving?" pop-up)', () => {
+  it('is off by default and a PUT can turn it on and off', async () => {
+    const { mergeSettings, defaultSettings } = await import('../src/settings.ts');
+    const base = defaultSettings();
+    expect(base.askDriver).toBe(false);
+    const on = mergeSettings(base, { askDriver: true });
+    expect(on.askDriver).toBe(true);
+    expect(mergeSettings(on, { askDriver: false }).askDriver).toBe(false);
+    expect(mergeSettings(on, { askDriver: 'yes' }).askDriver).toBe(false);
+  });
+});

@@ -429,11 +429,13 @@ export class Brain extends EventEmitter {
 
   /**
    * On ignition: whose phone is at the truck? Exactly one tracker within
-   * PRESENCE_M, heard in the last PRESENCE_MAX_AGE_MS: preselect that driver.
-   * Otherwise the last driver stays. Never changes a trip that's under way.
+   * PRESENCE_M, heard in the last PRESENCE_MAX_AGE_MS: that driver, quietly.
+   * Otherwise the last driver stays. Never asks (the driver badge on the rail
+   * is how to change it) and never changes a trip that's under way.
    */
   async suggestDriver(): Promise<void> {
     const cur = this.activeDriver();
+    const ask = this.settings.get().askDriver;
     const gps = this.s.gps?.fix ? this.s.gps : null;
     let reason = 'Last driver';
     let pick: Driver | null = null;
@@ -454,6 +456,8 @@ export class Brain extends EventEmitter {
     const t = this.s.trip;
     const young = !t || (Date.now() - Date.parse(t.startedAt) < SUGGEST_WINDOW_MS && t.miles < SUGGEST_WINDOW_MI);
     if (pick && pick.id !== cur.id && young) this.setDriver(pick.id);
+    // Settings › Drive › "Ask who's driving": off by default, so the cockpit never pops this up on its own.
+    if (!ask) return;
     const shown = pick && young ? pick : cur;
     this.s.driverSuggestion = { id: shown.id, name: shown.name, reason };
     this.changed();
@@ -699,8 +703,8 @@ export class Brain extends EventEmitter {
     void this.pollPower(now);
     try { this.updatePeak(now); } catch (e) { console.error('[charges] peak', e); }
     // The ignition prompt goes away once the drive is properly under way.
-    const t = this.s.trip;
-    if (this.s.driverSuggestion && t && (now - Date.parse(t.startedAt) > SUGGEST_WINDOW_MS || t.miles > SUGGEST_WINDOW_MI)) {
+    const tr = this.s.trip;
+    if (this.s.driverSuggestion && tr && (now - Date.parse(tr.startedAt) > SUGGEST_WINDOW_MS || tr.miles > SUGGEST_WINDOW_MI)) {
       this.s.driverSuggestion = null;
       this.changed();
     }

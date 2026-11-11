@@ -94,6 +94,7 @@ export function defaultSettings(): Settings {
     placesFeed: { url: null },
     homeWifi: null,
     saveDataOnHotspot: true,
+    askDriver: false,
     truck: defaultTruck(),
     drive: defaultDrive(),
     payoffGoal: defaultPayoffGoal(),
@@ -464,6 +465,7 @@ export function validate(s: Settings): Settings {
   if (g.pick !== 'cheapest' && g.pick !== 'average') throw new SettingsError('gas.pick must be cheapest or average');
   s.homeWifi = validateWifi(s.homeWifi, 'homeWifi');
   if (typeof s.saveDataOnHotspot !== 'boolean') s.saveDataOnHotspot = true;
+  if (typeof s.askDriver !== 'boolean') s.askDriver = false;
   if (!isObj(s.placesFeed)) s.placesFeed = { url: null };
   const fu = s.placesFeed.url as unknown;
   if (fu === undefined || fu === '' || fu === null) s.placesFeed.url = null;

@@ -617,3 +617,4 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 .healthpanel .hico svg { width: 22px; height: 22px; }
 @media (prefers-reduced-motion: no-preference) { .pill.health.has-bad .hgauge path.bad { animation: hpulse 1.6s ease-in-out infinite; } }
 @keyframes hpulse { 50% { opacity: .45; } }
+.dprompt .dnever { min-height: var(--tap); margin-top: var(--s1); }

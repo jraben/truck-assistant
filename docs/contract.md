@@ -190,7 +190,7 @@ type State = {
   truckbox: boolean;                // truck box online
   nowPlaying: NowPlaying | null;    // from the cockpit's CarPlay; null = nothing playing or CarPlay not connected
   driver: { id: string; name: string; initials: string; color: string } | null;  // active driver
-  driverSuggestion: { id: string; name: string; reason: string } | null;  // set on ignition until picked or dismissed
+  driverSuggestion: { id: string; name: string; reason: string } | null;  // set on ignition (only with settings.askDriver on) until picked or dismissed
   place: { stopId: number; name: string | null; since: string } | null;  // the stop the truck is at; null while driving
   network: NetworkStatus;           // how the cockpit is online (docs/connectivity.md)
   chargePeak: ChargePeak | null;    // charging at home during on-peak (see "Charging on-peak")
@@ -245,6 +245,7 @@ type Settings = {
   homeLocation: { lat: number; lon: number } | null;  // within 150 m = a home charge session
   homeWifi: { ssid: string; password?: string } | null;  // password masked like keys
   saveDataOnHotspot: boolean;       // default true: pause radar animation / internet radio on a phone link
+  askDriver: boolean;               // default false: pop up "Who's driving?" on ignition
   payoffGoal: PayoffGoal;           // see "Payoff goal"
   drivers: Driver[];                // always has a Guest; seeded Jeff/Sam/Jordan when empty
 };

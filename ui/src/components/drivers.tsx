@@ -1,5 +1,6 @@
 // Who's driving: big tap targets on the Drive view (after ignition) and from the rail.
-import { api, pickDriver, settingsStore, stateStore, useStore, type Driver } from '../lib/brain.ts';
+import { useState } from 'preact/hooks';
+import { api, pickDriver, settingsStore, stateStore, toast, useStore, type Driver, type Settings } from '../lib/brain.ts';
 
 type BadgeDriver = { id?: string; initials: string; color: string; photo?: string | { updatedAt: string } | null };
 /** The photo URL: the live state carries it ready-made; a settings Driver carries the record. Pure. */
@@ -45,8 +46,17 @@ export function DriverGrid({ onPicked }: { onPicked?: () => void }) {
 /** Shown on the Drive view when the ignition comes on, until a driver is picked or it's dismissed. */
 export function DriverPrompt() {
   const s = useStore(stateStore);
+  const [never, setNever] = useState(false);
   const sug = s?.driverSuggestion;
   if (!sug) return null;
+  // Close the prompt; with "Don't ask again" ticked, also turn the setting off (Settings › "Ask who's driving").
+  const done = async () => {
+    if (never) {
+      try { settingsStore.set(await api<Settings>('/api/settings', { method: 'PUT', body: JSON.stringify({ askDriver: false }) })); }
+      catch (e) { toast((e as Error).message); }
+    }
+    await api('/api/driver/dismiss', { method: 'POST' });
+  };
   return (
     <div class="card dprompt" role="dialog" aria-label="Who's driving?">
       <div class="row between">
@@ -54,9 +64,10 @@ export function DriverPrompt() {
           <div class="lbl">Who's driving?</div>
           <div class="dimtxt" style="font-size:var(--fs-body-sm)">{sug.reason}</div>
         </div>
-        <button class="btn" type="button" onClick={() => void api('/api/driver/dismiss', { method: 'POST' })}>{sug.name}, go</button>
+        <button class="btn" type="button" onClick={() => void done()}>{sug.name}, go</button>
       </div>
-      <DriverGrid onPicked={() => void api('/api/driver/dismiss', { method: 'POST' })} />
+      <DriverGrid onPicked={() => void done()} />
+      <label class="check dnever"><input type="checkbox" checked={never} onChange={(e) => setNever((e.target as HTMLInputElement).checked)} /> Don't ask again</label>
     </div>
   );
 }

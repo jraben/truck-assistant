@@ -296,6 +296,8 @@ export function SettingsApp() {
         <p class="help">Charging within 150 m of home is priced from your home rate below.</p>
         <label class="check"><input type="checkbox" checked={draft.tabletGps !== false} onChange={(e) => set('tabletGps', (e.target as HTMLInputElement).checked)} /> Use the dash tablet’s GPS when there’s no GPS puck</label>
         <p class="help">The dash page sends the tablet’s own location, so a USB GPS puck is optional for driving. A puck, when fitted, always wins. One-time setup on the tablet: in Chrome open chrome://flags, find “Insecure origins treated as secure”, add the dash’s address (e.g. http://10.42.0.1:8080), relaunch, and allow location when asked. The tablet’s location stops when its screen sleeps (below), so parked features (theft and tow alerts, where the truck is) still need a puck or the LTE-M watch.{health?.gps === 'tablet' ? ' Using the tablet’s GPS now.' : ''}</p>
+        <label class="check"><input type="checkbox" checked={draft.askDriver === true} onChange={(e) => set('askDriver', (e.target as HTMLInputElement).checked)} /> Ask “Who’s driving?” when the truck starts</label>
+        <p class="help">Off: the cockpit never asks. If exactly one driver’s phone is at the truck (Home Assistant) it picks them quietly; otherwise the last driver stays. Tap the driver badge at the bottom of the rail to change it any time.</p>
         <h3 class="sub">Dash tablet when the truck turns off</h3>
         {(() => {
           const ts = draft.tabletSleep ?? { minutes: 2, never: false, minBattery: 30 };
