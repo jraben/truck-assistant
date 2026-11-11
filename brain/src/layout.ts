@@ -14,6 +14,24 @@ export function migrateChargeLayout(l: Layout): Layout {
   return { ...l, views };
 }
 
+/** The Cams view before the grid view existed: four separate camera tiles in narrow columns. */
+const LEGACY_CAMS = JSON.stringify([['cam', 1, 1, 3, 2, 'Rear'], ['cam', 4, 1, 3, 2, 'Bed'], ['cam', 7, 1, 3, 2, 'Front'], ['cam', 10, 1, 3, 2, 'Hitch']]);
+
+/**
+ * A layout whose Cams view is still that old default gets the grid view (each
+ * feed fitted to its tile, the rear camera by itself in reverse). Those four
+ * tiles were tall and narrow, so every 16:9 feed sat in a band of black, and
+ * Hitch showed "not set up". A customised Cams view is left alone. Pure.
+ */
+export function migrateCamsLayout(l: Layout): Layout {
+  const i = l.views.findIndex((v) => v.id === 'cams');
+  if (i < 0 || JSON.stringify(l.views[i].widgets.map((w) => [w.type, w.col, w.row, w.w, w.h, String(w.props?.label ?? '')])) !== LEGACY_CAMS) return l;
+  const views = l.views.slice();
+  const def = DEFAULT_LAYOUT.views.find((v) => v.id === 'cams')!;
+  views[i] = { ...structuredClone(def), label: l.views[i].label };
+  return { ...l, views };
+}
+
 /**
  * Layouts saved before the Road trip screen existed get it, once, right after
  * Charge. A layout that already has a roadTrip widget anywhere is left alone,

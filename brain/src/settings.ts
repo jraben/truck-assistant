@@ -4,7 +4,7 @@ import path from 'node:path';
 import { validateRailOrder } from './rail.ts';
 import type { ChargingPrefs, CompareVehicle, Driver, Layout, PayoffGoal, Settings, WifiNet } from './types.ts';
 import { STATE_IDS } from './traffic/states.ts';
-import { DEFAULT_LAYOUT, migrateChargeLayout, migrateRoadTripLayout, migrateTrafficLayout } from './layout.ts';
+import { DEFAULT_LAYOUT, migrateCamsLayout, migrateChargeLayout, migrateRoadTripLayout, migrateTrafficLayout } from './layout.ts';
 import { defaultAlertOn } from './charges/peak.ts';
 import { driverPhotoOf } from './drive/driverPhoto.ts';
 import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
@@ -361,7 +361,7 @@ export function validateDriver(d: unknown, idHint: string | number = '?'): Drive
   if (x.tracker === undefined || x.tracker === '') x.tracker = null;
   if (x.tracker !== null && (typeof x.tracker !== 'string' || !/^(person|device_tracker)\.[a-z0-9_]+$/.test(x.tracker))) throw new SettingsError(`${where}: tracker must look like person.jeff or device_tracker.jeffs_iphone`);
   try { x.theme = validateThemeSettings(x.theme); } catch (e) { if (e instanceof ThemeError) throw new SettingsError(`${where}: ${e.message}`); throw e; }
-  x.layout = migrateChargeLayout(migrateDriveLayout(validateLayout(x.layout, `${where} layout`)));
+  x.layout = migrateCamsLayout(migrateChargeLayout(migrateDriveLayout(validateLayout(x.layout, `${where} layout`))));
   x.charging = validateCharging(x.charging, `${where} charging`);
   if (!Array.isArray(x.favouritePlaceIds) || x.favouritePlaceIds.some((n) => !Number.isInteger(n))) x.favouritePlaceIds = [];
   if (x.guest) x.favouritePlaceIds = [];
