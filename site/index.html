@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Truck Assistant · a DIY touchscreen dash for the Slate pickup</title>
+  <meta name="description" content="Truck Assistant is an open-source, do-it-yourself touchscreen dash for the Slate electric pickup: CarPlay, charging and trip info, cameras, Home Assistant and switches for the accessories you add.">
+  <meta property="og:title" content="Truck Assistant">
+  <meta property="og:description" content="An open-source, DIY touchscreen dash for the Slate electric pickup.">
+  <meta property="og:image" content="https://truck-assistant.com/img/demo-poster.jpg">
+  <meta property="og:url" content="https://truck-assistant.com/">
+  <meta name="theme-color" content="#0d1114">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap nav-row">
+      <a class="brand" href="#top" aria-label="Truck Assistant home"><img src="img/icon.svg" alt="" width="36" height="36"><span>Truck Assistant</span></a>
+      <nav aria-label="Main">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#build">Build one</a>
+        <a href="https://github.com/jraben/truck-assistant/wiki">Docs</a>
+        <a class="btn btn-sm" href="https://github.com/jraben/truck-assistant">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Open source · DIY · MIT licensed</p>
+          <h1>The dash your Slate didn't come with.</h1>
+          <p class="lede">The Slate pickup ships with no screen, no radio and no modem. Truck Assistant adds one clean touchscreen: CarPlay, charging and trip info, cameras, Home Assistant and switches for the accessories you add.</p>
+          <div class="cta">
+            <a class="btn btn-primary" href="https://youtu.be/WZFJHZxagOI">▶ Watch the 30-second demo</a>
+            <a class="btn" href="https://github.com/jraben/truck-assistant">Get it on GitHub</a>
+          </div>
+          <p class="note">Runs today on a desk with a simulated truck. Slate deliveries are expected in 2027.</p>
+        </div>
+        <a class="hero-shot" href="https://youtu.be/WZFJHZxagOI" aria-label="Watch the demo on YouTube">
+          <img src="img/demo-poster.jpg" alt="The Truck Assistant cockpit: speed, range, the truck's tilt, now playing and trip distance on one screen" width="1280" height="720">
+          <span class="play" aria-hidden="true">▶</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="band" id="features">
+      <div class="wrap">
+        <h2>Everything on one screen</h2>
+        <p class="section-lede">Big, glanceable controls for driving, and a lot more once you're parked.</p>
+        <div class="shots">
+          <figure class="card shot">
+            <img src="img/cockpit-drive.jpg" alt="Drive screen with speedometer, range, tilt and trip cards" loading="lazy">
+            <figcaption><h3>Drive</h3><p>Speed, range for city or highway, the truck's tilt, weather and what's playing. Driving locks out the fiddly stuff.</p></figcaption>
+          </figure>
+          <figure class="card shot">
+            <img src="img/cockpit-carplay-sim.jpg" alt="CarPlay showing on the dash tablet" loading="lazy">
+            <figcaption><h3>CarPlay &amp; media</h3><p>Wired CarPlay through a Carlinkit adapter, plus Spotify, internet radio, AM/FM, HD Radio, Plex and your own files.</p></figcaption>
+          </figure>
+          <figure class="card shot">
+            <img src="img/cockpit-cams.jpg" alt="Four camera views around the truck" loading="lazy">
+            <figcaption><h3>Cameras</h3><p>A reverse view that pops up on its own, all-round cameras, a dashcam with "save clip", and motion alerts while parked.</p></figcaption>
+          </figure>
+          <figure class="card shot">
+            <img src="img/cockpit-control.jpg" alt="Switches for lights and accessories with their power draw" loading="lazy">
+            <figcaption><h3>Truck control</h3><p>Switch the lights and accessories you add, see what each one draws, and keep the 12 V battery safe.</p></figcaption>
+          </figure>
+        </div>
+
+        <ul class="features">
+          <li class="card"><span class="ico" aria-hidden="true">⚡</span><h3>Charging &amp; costs</h3><p>Chargers along your way, what every session cost, on-peak warnings and how much you're saving over gas.</p></li>
+          <li class="card"><span class="ico" aria-hidden="true">🗺️</span><h3>Road trips</h3><p>A trip planner with charging stops, live stall checks, traffic, weather and fires ahead on the route.</p></li>
+          <li class="card"><span class="ico" aria-hidden="true">✈️</span><h3>Airport pickup</h3><p>Follows the flight live and tells you when to leave so you're out front when they are.</p></li>
+          <li class="card"><span class="ico" aria-hidden="true">🏕️</span><h3>Parked mode</h3><p>Camp lighting, games, karaoke, a tow and theft watch, and more for when the truck isn't moving.</p></li>
+          <li class="card"><span class="ico" aria-hidden="true">🏠</span><h3>Home Assistant</h3><p>Open the garage, see the house, and let your home see the truck's charge, location and alerts.</p></li>
+          <li class="card"><span class="ico" aria-hidden="true">👥</span><h3>Drivers &amp; trips</h3><p>Each driver gets their own theme and layout; every trip, stop and charge is logged with who was driving.</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <p class="section-lede">Three parts, all off-the-shelf hardware you can buy today.</p>
+        <ol class="parts">
+          <li class="card"><span class="num">1</span><h3>The brain</h3><p>A Raspberry Pi under the dash runs the software. It keeps your trips and settings, makes the truck's own Wi-Fi, and serves the screens.</p></li>
+          <li class="card"><span class="num">2</span><h3>The cockpit</h3><p>An Android tablet in the dash mount shows the screens full time. CarPlay comes through a small adapter plugged into it.</p></li>
+          <li class="card"><span class="num">3</span><h3>The truck box</h3><p>A small ESP32 relay board switches the lights and accessories you add, and reads ignition, reverse, cabin temperature and the 12 V battery.</p></li>
+        </ol>
+        <figure class="diagram card">
+          <img src="img/truck-layout.svg" alt="Where each part goes in the truck" loading="lazy">
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="build">
+      <div class="wrap">
+        <h2>Build one</h2>
+        <p class="section-lede">Start on your desk with no truck at all, then move to real hardware when you're ready.</p>
+        <ol class="steps">
+          <li class="card">
+            <span class="num">1</span>
+            <h3>Try it on your computer</h3>
+            <p>Install, run it with a simulated truck, and click around every screen. Free, about 15 minutes.</p>
+            <a class="link" href="https://github.com/jraben/truck-assistant/blob/main/docs/install/desk.md">Desk install guide →</a>
+          </li>
+          <li class="card">
+            <span class="num">2</span>
+            <h3>Bench kit</h3>
+            <p>The Pi, the screen, CarPlay, GPS and the truck box, wired up on a bench with a 12 V supply. About $734 in parts.</p>
+            <a class="link" href="https://github.com/jraben/truck-assistant/blob/main/docs/bom.md">Parts list →</a>
+          </li>
+          <li class="card">
+            <span class="num">3</span>
+            <h3>Put it in the truck</h3>
+            <p>Fuse taps, cameras, mounts and calibration, step by step with pictures. About $1,470 for the full build.</p>
+            <a class="link" href="https://github.com/jraben/truck-assistant/blob/main/docs/install/truck.md">Truck install guide →</a>
+          </li>
+        </ol>
+
+        <div class="shop">
+          <div class="card soon">
+            <h3>Printed parts</h3>
+            <p>Mounts, brackets and enclosures, 3D-printed and ready to install. Coming soon.</p>
+          </div>
+          <div class="card soon">
+            <h3>Parts kits</h3>
+            <p>Links to every part on the list, in one place. Coming soon.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="open">
+      <div class="wrap open">
+        <div>
+          <h2>Free and open source</h2>
+          <p class="section-lede">MIT licensed. Read the code, change it, and share what you build.</p>
+        </div>
+        <div class="cta">
+          <a class="btn btn-primary" href="https://github.com/jraben/truck-assistant">View on GitHub</a>
+          <a class="btn" href="https://github.com/jraben/truck-assistant/wiki">Read the docs</a>
+          <a class="btn" href="https://github.com/jraben/truck-assistant/issues">Ask a question</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot">
+      <img src="img/logo-lockup.svg" alt="Truck Assistant" width="200" height="80">
+      <p><strong>Not affiliated with Slate Auto.</strong> Truck Assistant is an independent DIY project. It is not made, endorsed or supported by Slate Auto. Working on your truck's electrical system is at your own risk: read the safety notes in the install guide first.</p>
+      <p class="small">MIT licensed · <a href="https://github.com/jraben/truck-assistant">Source</a> · <a href="https://github.com/jraben/truck-assistant/wiki">Docs</a></p>
+    </div>
+  </footer>
+</body>
+</html>
