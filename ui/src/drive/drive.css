@@ -122,7 +122,33 @@
 .cbig { font-family: var(--display); font-weight: 800; font-size: clamp(44px, 18cqi, 60px); line-height: 1; }
 .cbig small { font-size: var(--fs-section); color: var(--dim); font-weight: 600; margin-left: var(--s1); letter-spacing: .1em; }
 .cfacts { display: flex; flex-wrap: wrap; gap: var(--s05) var(--s2); font-size: var(--fs-body); color: var(--dim); }
-.np-card img, .np-card .noart { width: 76px; height: 76px; border-radius: var(--radius); object-fit: cover; flex: none; background: var(--panel-2); display: grid; place-items: center; font-size: 32px; color: var(--dim); }
+/* Now playing: big art, song over artist over album, a soft wash of the art behind. */
+.np-card { position: relative; overflow: hidden; display: block; padding: 0; isolation: isolate; container-type: size; }
+.np-card .np-inner { position: absolute; inset: 0; display: flex; align-items: center; gap: var(--s2); padding: var(--s15); }
+.np-card .np-bg { position: absolute; inset: -24px; z-index: -1; background-size: cover; background-position: center; filter: blur(28px) saturate(1.3); opacity: .22; }
+.np-card .np-art { flex: none; align-self: center; width: clamp(64px, min(36cqi, 80cqh), 140px); aspect-ratio: 1; border-radius: var(--radius); overflow: hidden; background: var(--panel-2);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--media-bg) 28%, transparent); }
+.np-card .np-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.np-card .noart { display: grid; place-items: center; width: 100%; height: 100%; font-size: 36px; color: var(--dim); }
+.np-card .np-text { display: flex; flex-direction: column; justify-content: center; gap: var(--s05); min-width: 0; }
+.np-card .np-src { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--fs-caption); font-weight: var(--fw-semibold); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.np-card .np-title { font-family: var(--display); font-weight: var(--fw-semibold); font-size: var(--fs-title); line-height: 1.2; color: var(--fg); }
+.np-card .np-artist { font-size: var(--fs-body); font-weight: var(--fw-medium); color: var(--fg); }
+.np-card .np-album { font-size: var(--fs-caption); color: var(--dim); }
+.np-card .np-progress { margin-top: var(--s05); }
+.np-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; }
+.np-eq b { width: 3px; height: 100%; border-radius: 1px; background: currentColor; transform-origin: bottom; }
+@media (prefers-reduced-motion: no-preference) {
+  .np-eq b { animation: npeq 1s ease-in-out infinite; } .np-eq b:nth-child(2) { animation-delay: -.4s; } .np-eq b:nth-child(3) { animation-delay: -.7s; }
+}
+/* A tall card (the Drive column has room): art on top, words underneath, like a player. */
+@container (min-height: 250px) {
+  .np-card .np-inner { flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--s15); padding: var(--s2); }
+  .np-card .np-art { align-self: flex-start; width: min(100cqi - 32px, 100cqh - 150px, 220px); }
+  .np-card .np-text { width: 100%; flex: none; }
+  .np-card .np-title { font-size: var(--fs-display-sm); }
+}
+@keyframes npeq { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
 .tiltcard { flex-direction: column; align-items: stretch; justify-content: space-between; gap: var(--s1); }
 
 .photocard { gap: var(--s1); padding: var(--s1) var(--s15); }

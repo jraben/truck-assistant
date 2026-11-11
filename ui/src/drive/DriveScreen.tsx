@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { SPEEDO_STYLES, type SpeedoStyle } from '../../../brain/src/drive/types.ts';
 import { api, putDriver, toast, useStore, type State } from '../lib/brain.ts';
-import { SOURCE_LABEL, useAnyNowPlaying } from '../media/nowplaying.tsx';
+import { SOURCE_LABEL, SpotifyProgress, useAnyNowPlaying } from '../media/nowplaying.tsx';
 import { pollMediaStatus } from '../media/status.ts';
 import { V, whyGps, whySoc, whyTruck } from '../components/common.tsx';
 import { socLabel, type WP } from '../components/drive.tsx';
@@ -160,15 +160,25 @@ function HeroZone({ s, go }: { s: State | null; go: WP['go'] }) {
 
 // ---- context cards ----------------------------------------------------------------
 
-/** Whatever is playing, from any source (the same pick as the Media view): CarPlay, radio, FM, Plex, Spotify, files. */
+/** Whatever is playing, from any source (the same pick as the Media view): art, song, artist, album. */
 function NowPlayingCard({ s, go }: { s: State | null; go: WP['go'] }) {
   const np = useAnyNowPlaying(s);
   if (!np) return null;
   const radio = np.source === 'radio' || np.source === 'fm';
+  const src = [SOURCE_LABEL[np.source] ?? 'Media', np.app].filter(Boolean).join(' · ');
   return (
-    <button type="button" class="ccard np-card" onClick={() => go(np.source === 'carplay' ? 'carplay' : 'media')}>
-      {np.art ? <img src={np.art} alt="" /> : <span class="noart" aria-hidden="true">{radio ? '📻' : '♪'}</span>}
-      <span class="grow ccol"><span class="lbl">Now playing · {SOURCE_LABEL[np.source] ?? 'Media'}</span><b class="ellip">{np.title ?? '—'}</b><span class="ellip dimtxt">{np.artist ?? ''}</span></span>
+    <button type="button" class="ccard np-card" onClick={() => go(np.source === 'carplay' ? 'carplay' : 'media')} aria-label={`Now playing: ${[np.title, np.artist].filter(Boolean).join(' by ')}`}>
+      {np.art && <span class="np-bg" style={{ backgroundImage: `url("${np.art}")` }} aria-hidden="true" />}
+      <span class="np-inner">
+      <span class="np-art">{np.art ? <img src={np.art} alt="" /> : <span class="noart" aria-hidden="true">{radio ? '📻' : '♪'}</span>}</span>
+      <span class="grow np-text">
+        <span class="np-src"><i class="np-eq" aria-hidden="true"><b /><b /><b /></i>{src}</span>
+        <b class="np-title clamp2">{np.title ?? '—'}</b>
+        {np.artist && <span class="np-artist ellip">{np.artist}</span>}
+        {np.album && np.album !== np.title && <span class="np-album ellip">{np.album}</span>}
+        {np.source === 'spotify' && <SpotifyProgress />}
+      </span>
+      </span>
     </button>
   );
 }
