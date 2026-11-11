@@ -28,7 +28,7 @@ export function DriversSection({ settings }: { settings: Settings }) {
   const [draft, setDraft] = useState<DDraft>(() => toDraft(d));
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [newName, setNewName] = useState('');
-  useEffect(() => { setDraft(toDraft(d)); setMsg(null); }, [d.id]);
+  useEffect(() => { setDraft(toDraft(d)); setMsg(null); setPhotoMsg(null); }, [d.id]);
 
   const set = <K extends keyof DDraft>(k: K, v: DDraft[K]) => setDraft({ ...draft, [k]: v });
   const setCh = <K extends keyof Driver['charging']>(k: K, v: Driver['charging'][K]) => setDraft({ ...draft, charging: { ...draft.charging, [k]: v } });
@@ -53,10 +53,13 @@ export function DriversSection({ settings }: { settings: Settings }) {
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };
   const [photoBusy, setPhotoBusy] = useState(false);
+  // Its own message, beside the button: the profile's message sits by Save at the
+  // bottom of a long form, so a failed upload looked like nothing happened.
+  const [photoMsg, setPhotoMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const photoRun = async (text: string, f: () => Promise<unknown>) => {
-    setPhotoBusy(true); setMsg(null);
-    try { await f(); await loadSettings(); setMsg({ ok: true, text }); }
-    catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
+    setPhotoBusy(true); setPhotoMsg(null);
+    try { await f(); await loadSettings(); setPhotoMsg({ ok: true, text }); }
+    catch (e) { setPhotoMsg({ ok: false, text: `Photo not saved: ${(e as Error).message}` }); }
     finally { setPhotoBusy(false); }
   };
   const uploadPhoto = (f: File | undefined) => f && photoRun(`Saved ${d.name}'s photo.`, async () => {
@@ -105,7 +108,9 @@ export function DriversSection({ settings }: { settings: Settings }) {
             <input type="file" accept="image/*" hidden disabled={photoBusy} onChange={(e) => { const i = e.target as HTMLInputElement; void uploadPhoto(i.files?.[0]); i.value = ''; }} />
           </label>
           {d.photo && <button class="btn sm danger" type="button" disabled={photoBusy} onClick={() => void removePhoto()}>Remove photo</button>}
-          <span class="dimtxt" style="font-size:var(--fs-caption)">{photoBusy ? 'Saving…' : 'Shown instead of the initials. Cropped to a square and shrunk on this device; kept on the truck only.'}</span>
+          {photoMsg && !photoBusy
+            ? <span class={photoMsg.ok ? 'okmsg' : 'err'} role="status">{photoMsg.text}</span>
+            : <span class="dimtxt" style="font-size:var(--fs-caption)">{photoBusy ? 'Saving…' : 'Shown instead of the initials. Cropped to a square and shrunk on this device; kept on the truck only.'}</span>}
         </div>
         {d.guest && <p class="help">The Guest profile keeps no history beyond the trip itself and can't be deleted.</p>}
 

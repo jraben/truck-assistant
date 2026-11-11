@@ -246,7 +246,7 @@ function Cards({ s, go }: { s: State | null; go: WP['go'] }) {
   const np = useAnyNowPlaying(s);
   useEffect(() => pollMediaStatus(false), []); // Spotify's art and words
   const { g } = useGoal();
-  const cards = pickCards(s, !!np, !!g?.startDate);
+  const cards = pickCards(s, !!np, !!g);
   return (
     <section class={`dz dz-cards n${cards.length}`} aria-label="Context">
       {cards.map((c) => c === 'np' ? <NowPlayingCard s={s} go={go} /> : c === 'since' ? <SinceChargeCard s={s} go={go} /> : c === 'trip' ? <TripCard s={s} go={go} /> : c === 'goal' ? <GoalDriveCard go={go} /> : <TiltCard s={s} />)}
