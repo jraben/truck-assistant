@@ -1,15 +1,16 @@
 // Builds truck-assistant.com into _site/: the page, its CSS, CNAME, and the images
 // it uses, copied from the repo (one copy of each screenshot lives in docs/).
-// Run: node site/build.mjs   (GitHub Actions: .github/workflows/pages.yml)
-import { cpSync, mkdirSync, rmSync } from 'node:fs';
+// Run: node site/build.mjs, then upload _site/ to the GoDaddy cPanel docroot (see site/README.md).
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, '_site');
-rmSync(out, { recursive: true, force: true });
+// Empty _site rather than removing it (Windows refuses while a shell sits in it).
+if (existsSync(out)) for (const f of readdirSync(out)) rmSync(join(out, f), { recursive: true, force: true });
 mkdirSync(join(out, 'img'), { recursive: true });
-for (const f of ['index.html', 'style.css', 'CNAME']) cpSync(join(root, 'site', f), join(out, f));
+for (const f of ['index.html', 'style.css', '.htaccess']) cpSync(join(root, 'site', f), join(out, f));
 const IMAGES = {
   'ui/public/icon.svg': 'icon.svg',
   'ui/public/logo-lockup.svg': 'logo-lockup.svg',
