@@ -1,7 +1,10 @@
 # truck-assistant.com on GoDaddy cPanel (Apache): HTTPS only, one host, sane caching.
 RewriteEngine On
+# Let AutoSSL's domain check (/.well-known/) through over plain http.
+RewriteCond %{REQUEST_URI} !^/\.well-known/
 RewriteCond %{HTTPS} off
 RewriteRule ^ https://truck-assistant.com%{REQUEST_URI} [L,R=301]
+RewriteCond %{REQUEST_URI} !^/\.well-known/
 RewriteCond %{HTTP_HOST} ^www\. [NC]
 RewriteRule ^ https://truck-assistant.com%{REQUEST_URI} [L,R=301]
 <IfModule mod_headers.c>
