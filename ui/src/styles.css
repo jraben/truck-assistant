@@ -290,6 +290,10 @@ table.ledger tr.mrow td { border-top: 1px solid var(--hairline); }
   box-shadow: 0 8px 24px color-mix(in srgb, var(--bg) 40%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 .peakbanner b { font-size: var(--fs-caption); font-weight: var(--fw-semibold); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 .peakbanner.bad b { color: var(--bad); } .peakbanner.ok b { color: var(--ok); } .peakbanner:not(.bad):not(.ok) b { color: var(--warn); }
+/* Several at once: the first (most urgent, App.tsx order) in full, the rest one line each, so they
+   don't stack down over the right-hand cards. Each is still a tap target to its screen. */
+.banners > .peakbanner ~ .peakbanner { flex-direction: row; align-items: center; gap: var(--s1); padding: var(--s1) var(--s2); }
+.banners > .peakbanner ~ .peakbanner span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kv { display: grid; grid-template-columns: 1fr auto; gap: var(--s05) var(--s15); font-size: var(--fs-body-sm); }
 .kv span:nth-child(even) { font-family: var(--mono); text-align: right; }
 

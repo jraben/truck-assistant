@@ -194,11 +194,12 @@ export function App() {
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
       <div class="banners">
-        <PeakBanner s={s} />
-        <TripBanner s={s} go={go} />
-        <TrafficBanner s={s} go={go} />
-        <PickupBanner s={s} go={go} />
+        {/* Most urgent first: only the first is shown in full, the rest as one line each (styles.css .banners). */}
         <TireBanner s={s} go={go} />
+        <TrafficBanner s={s} go={go} />
+        <TripBanner s={s} go={go} />
+        <PeakBanner s={s} />
+        <PickupBanner s={s} go={go} />
       </div>
       <ChargePrompt />
       <WeatherOverlay s={s} />
