@@ -42,7 +42,7 @@ export function TrafficAhead({ s }: WP) {
   const [big, setBig] = useState<string | null>(null);
   const keyedNames = v.states.filter((s) => s.keyed).map((s) => s.name.replace(/ \(.*\)$/, '')).join(', ');
   return (
-    <div class="tfgrid">
+    <div class={`tfgrid ${v.cameras.length ? '' : 'nocams'}`}>
       <Card label="Cameras ahead" right={<span class="dimtxt" style="font-size:var(--fs-caption)">{FOLLOW[v.following]}</span>}>
         {(err || v.message) && <div class="banner" style="font-size:var(--fs-body-sm)">{err ?? v.message}{v.message?.includes('settings page') && <> <a href="/settings#traffic">Open settings</a></>}</div>}
         {!v.cameras.length && !v.message && <div class="dimtxt">No 511 cameras ahead.</div>}

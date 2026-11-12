@@ -52,11 +52,12 @@ export type SinceCharge = {
   since: string;                          // when the last charge session ended
   sessionId: number;
   miles: number;
-  kwh: number;                            // estimate until CAN
+  kwh: number | null;                     // estimate until CAN; null when `missed`
   kwhSource: 'soc' | 'miles';             // from the SoC drop (CAN only), or miles / per-mode efficiency
   miPerKwh: number | null;
   pctUsed: number | null;                 // SoC points since the charge (CAN), else kWh as a share of the pack
   costPerMile: number | null;             // that charge's $/kWh x kWh used / miles
+  missed: boolean;                        // more than a pack's worth of miles since: a charge went unlogged
 };
 
 export type WeatherIcon = 'clear' | 'few' | 'partly' | 'cloudy' | 'fog' | 'haze' | 'smoke' | 'dust' | 'wind' | 'rain' | 'showers' | 'storm' | 'snow' | 'sleet' | 'hot' | 'cold' | 'unknown';

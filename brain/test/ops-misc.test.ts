@@ -34,6 +34,10 @@ describe('maintenance due logic', () => {
   it('whichever comes first', () => {
     expect(dueStatus(rem({ everyMiles: 10000, everyMonths: 24 }), 11500, now).state).toBe('due');
   });
+  it('a due item names only what is overdue', () => {
+    expect(dueStatus(rem({ everyMiles: 10000, everyMonths: 24 }), 11500, now).why).toBe('500 mi overdue');
+    expect(dueStatus(rem({ everyMiles: 10000, everyMonths: 24 }), 2000, now).why).toMatch(/in 9000 mi · in \d+ days/);
+  });
   it('miles with no odometer reading', () => {
     expect(dueStatus(rem({ everyMiles: 5000 }), null, now).state).toBe('needs-odometer');
     expect(dueStatus(rem({ everyMiles: 5000, since: { at: now.toISOString(), odometer: null } }), 3000, now).state).toBe('needs-odometer');

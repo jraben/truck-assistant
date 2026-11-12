@@ -50,8 +50,10 @@ export function dueStatus(r: Reminder, odometer: number | null, now = new Date()
   else if (r.everyMiles && milesLeft === null && !r.everyMonths) state = 'needs-odometer';
   else state = 'ok';
   if (state === 'unset') why.push(r.note || OWNER_MANUAL);
-  if (milesLeft !== null) why.push(milesLeft <= 0 ? `${-milesLeft} mi overdue` : `in ${milesLeft} mi`);
-  if (daysLeft !== null) why.push(daysLeft <= 0 ? `${-daysLeft} days overdue` : `in ${daysLeft} days`);
+  // Due: name only what is overdue ("1644 mi overdue", never "1644 mi overdue · in 31 days").
+  const overMi = milesLeft !== null && milesLeft <= 0, overDays = daysLeft !== null && daysLeft <= 0;
+  if (milesLeft !== null && (state !== 'due' || overMi)) why.push(overMi ? `${-milesLeft} mi overdue` : `in ${milesLeft} mi`);
+  if (daysLeft !== null && (state !== 'due' || overDays)) why.push(overDays ? `${-daysLeft} days overdue` : `in ${daysLeft} days`);
   return { ...r, state, milesLeft, daysLeft, dueAtMiles, dueOn, why: why.join(' · ') };
 }
 

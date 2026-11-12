@@ -198,6 +198,7 @@ export function App() {
         <TripBanner s={s} go={go} />
         <TrafficBanner s={s} go={go} />
         <PickupBanner s={s} go={go} />
+        <TireBanner s={s} go={go} />
       </div>
       <ChargePrompt />
       <WeatherOverlay s={s} />
@@ -242,11 +243,22 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
 
 export type { State };
 
-/** Airport pickup: time to leave, landed, at the gate. */
+/** Airport pickup: shown the whole time one is on (it used to appear only at "leave now",
+ *  taxiing or at the gate, so a pickup set mid-drive showed nothing until then). */
 function PickupBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
   const p = s?.pickup;
-  if (!p || !(p.leaveNow || p.phase === 'taxiing' || p.phase === 'at-gate')) return null;
-  return <button type="button" class={`banner ${p.leaveNow ? '' : 'ok'} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>{p.leaveNow ? 'Leave now' : 'Pickup'}</b><span>{p.line}</span></button>;
+  if (!p) return null;
+  const urgent = p.leaveNow || p.phase === 'taxiing' || p.phase === 'at-gate';
+  return <button type="button" class={`banner ${p.leaveNow ? '' : urgent ? 'ok' : 'calm'} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>{p.leaveNow ? 'Leave now' : 'Pickup'}</b><span>{p.line}</span></button>;
+}
+
+/** Below this a tire is low: the phone alert's default (alertMeta.tirePressure). */
+const LOW_TIRE_PSI = 30;
+/** A low tire on the dash itself, not only on the phone and the tire widget. */
+function TireBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
+  const low = s?.tpms ? (Object.entries(s.tpms) as [string, { psi: number | null }][]).filter(([, t]) => t.psi !== null && t.psi < LOW_TIRE_PSI) : [];
+  if (!low.length) return null;
+  return <button type="button" class="banner bad peakbanner tripbanner" role="status" onClick={() => go('control')}><b>Tire low</b><span>{low.map(([w, t]) => `${w.toUpperCase()} ${Math.round(t.psi!)} psi`).join(', ')}</span></button>;
 }
 
 /** A crash or closure close ahead, or an enforcement camera coming up. */

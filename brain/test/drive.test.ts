@@ -116,6 +116,13 @@ describe('since last charge', () => {
       expect(r.costPerMile).toBeNull();
     }
   });
+  it('says a charge was missed instead of a share over 100% of the pack', () => {
+    const long = [{ startedAt: '2027-05-03T10:00:00Z', endedAt: '2027-05-03T20:00:00Z', miles: 400, cityMiles: 400, highwayMiles: 0 }];
+    const r = sinceCharge(session({}), long, { soc: 70, socReal: false, packKwh: 50, eff: { city: 4, highway: 3.2 } });
+    expect(r).toMatchObject({ miles: 400, missed: true, kwh: null, pctUsed: null, miPerKwh: null, costPerMile: null });
+    const ok = sinceCharge(session({}), trips, { soc: 70, socReal: false, packKwh: 50, eff: { city: 4, highway: 3.2 } });
+    expect(ok.missed).toBe(false);
+  });
   it('zero miles is zero, not NaN', () => {
     const r = sinceCharge(session({ endSoc: null }), [], { soc: null, socReal: false, packKwh: 50, eff: { city: 4, highway: 3.2 } });
     expect(r).toMatchObject({ miles: 0, kwh: 0, miPerKwh: null, costPerMile: null, pctUsed: 0 });

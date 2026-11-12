@@ -12,7 +12,7 @@ import { Card, Modal } from '../components/common.tsx';
 import type { WP } from '../components/drive.tsx';
 import { mbPerHour, player, playerStore, type Track } from './player.ts';
 import { mediaStatusStore, pollMediaStatus, refreshMediaStatus, type LocalListing, type LocalTrack, type MediaStatus, type PlexItem, type PlexSection, type RadioStation, type SpotifyPlaylist } from './status.ts';
-import { FmTab, fmNetTrack, fmTrack, presetTrack } from './FmTab.tsx';
+import { FmTab, fmNetTrack, fmTrack, presetTrack, type FmSourceNow } from './FmTab.tsx';
 import { ShortcutsTab } from './Shortcuts.tsx';
 import { fully, isSourceId, phonePlaying, SOURCES, sourceById, type HandOff, type Source, type SourceId } from './sources.ts';
 import type { NowPlaying } from '../carplay/media.ts';
@@ -43,11 +43,14 @@ export function MediaW({ go }: WP) {
   useEffect(() => pollMediaStatus(true), []);
   const pick = (t: SourceId | 'home') => { setTab(t); lsSet(LS_TAB, t); };
   const ms = useStore(mediaStatusStore);
+  // Whether AM/FM comes off a tuner (no data) or an internet stream: the banner must not promise "no data" for a stream.
+  const [fmSrc, setFmSrc] = useState<FmSourceNow | null>(null);
+  useEffect(() => { if (ms?.saveData) api<{ source: FmSourceNow }>('/api/media/fm/status').then((f) => setFmSrc(f.source), () => setFmSrc(null)); }, [ms?.saveData]);
   const src = tab === 'home' ? null : sourceById(tab);
   return (
     <div class="card media">
       {src && <SourceHeader src={src} pick={pick} />}
-      {ms?.saveData && STREAMS.has(tab) && <div class="banner" style="font-size:var(--fs-body-sm)">On a phone hotspot with "save data" on: streaming asks first. AM/FM, Files and the phone's own apps use no truck data.</div>}
+      {ms?.saveData && STREAMS.has(tab) && <div class="banner" style="font-size:var(--fs-body-sm)">On a phone hotspot with "save data" on: streaming asks first. {fmSrc === null || fmSrc === 'tuner' ? "AM/FM, Files and the phone's own apps use no truck data." : "With no radio tuner, AM/FM plays over the internet and asks too; Files and the phone's own apps use no truck data."}</div>}
       <div class="mbody">
         {tab === 'home' && <MediaHome pick={pick} />}
         {tab === 'spotify' && <SpotifyTab go={go} />}

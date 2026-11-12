@@ -116,7 +116,7 @@ function HeroZone({ s, go }: { s: State | null; go: WP['go'] }) {
     <section class="dz dz-hero" aria-label="Range and battery">
       <div class="herotop">
         <div>
-          <div class="lbl">Range · {MODE_LABEL[mode]}{d?.override === 'auto' && d.avgMph2min !== null ? <span class="dimmable"> · {Math.round(d.avgMph2min)} mph avg</span> : null}</div>
+          <div class="lbl">Range · {MODE_LABEL[mode]}{d?.override === 'auto' && d.avgMph2min !== null && Math.round(d.avgMph2min) > 0 ? <span class="dimmable"> · {Math.round(d.avgMph2min)} mph avg</span> : null}</div>
           <div class="hero num"><V v={cur === null ? null : String(cur)} why={soc === null ? whySoc(s) : 'Not known'} /><small>mi</small></div>
         </div>
         <div class="heroside">
@@ -189,7 +189,12 @@ function SinceChargeCard({ s, go }: { s: State | null; go: WP['go'] }) {
     <button type="button" class="ccard" onClick={() => go('charge')}>
       <span class="grow ccol">
         <span class="lbl">Since charge{sc ? ` · ${fmtTime(sc.since)}` : ''}</span>
-        {sc ? (
+        {sc?.missed ? (
+          <>
+            <span class="cbig num">{sc.miles.toFixed(1)}<small>mi</small></span>
+            <span class="cfacts dimmable"><span>More than a full battery since then: a charge wasn't logged. Tap to log it.</span></span>
+          </>
+        ) : sc ? (
           <>
             <span class="cbig num">{sc.miles.toFixed(1)}<small>mi</small></span>
             <span class="cfacts num dimmable">

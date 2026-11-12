@@ -542,6 +542,9 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 
 /* ---- Traffic (components/traffic.tsx) ---- */
 .tfgrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: var(--gap); height: 100%; min-height: 0; }
+/* No cameras ahead: the road-ahead list gets the room, the empty camera card stays small. */
+.tfgrid.nocams { grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); }
+.tfgrid.nocams > .card:first-child { align-self: start; }
 .tfside { display: grid; gap: var(--gap); align-content: start; overflow-y: auto; min-height: 0; }
 .tfcams { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s1); }
 .tfcam { padding: 0; border: 0; border-radius: var(--radius); overflow: hidden; background: var(--panel-2); text-align: left; color: var(--fg); cursor: pointer; }
@@ -555,6 +558,7 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 .tripbanner { background: color-mix(in srgb, var(--warn) 18%, var(--panel)); }
 .tripbanner.bad { background: color-mix(in srgb, var(--bad) 18%, var(--panel)); }
 .tripbanner.ok { background: color-mix(in srgb, var(--ok) 18%, var(--panel)); }
+.tripbanner.calm { background: var(--panel); }
 .rtplaces { display: grid; gap: var(--s1); }
 .rtplace { display: flex; gap: var(--s1); align-items: center; padding: var(--s1) var(--s1); border-radius: var(--radius); background: var(--panel-2); }
 .rtvia { display: grid; gap: var(--s1); padding: var(--s1); border-radius: var(--radius); border: 1px dashed var(--line); }

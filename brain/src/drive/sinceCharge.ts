@@ -19,6 +19,9 @@ export function lastEndedCharge(sessions: ChargeSession[]): ChargeSession | null
  *   else city miles / city mi/kWh + highway miles / highway mi/kWh (+ unsplit at city).
  * - % used: the SoC drop, or kWh as a share of the pack when estimated.
  * - cost per mile: what the charge cost per kWh x kWh used / miles; null without both cost and kWh.
+ * - missed: the miles-only estimate is more than one full pack, so a charge since then
+ *   was never logged. kWh, mi/kWh, % used and cost per mile are then null rather than
+ *   a number like "1234% used"; miles are still true.
  */
 export function sinceCharge(charge: ChargeSession, trips: SinceTrip[], now: { soc: number | null; socReal: boolean; packKwh: number; eff: { city: number; highway: number } }): SinceCharge {
   const since = charge.endedAt!;
@@ -38,6 +41,9 @@ export function sinceCharge(charge: ChargeSession, trips: SinceTrip[], now: { so
     const k = (drop / 100) * now.packKwh;
     if (miles === 0 ? drop === 0 : k > 0 && miles / k >= 1 && miles / k <= 8) { kwh = k; kwhSource = 'soc'; pctUsed = drop; }
   }
+  if (kwhSource === 'miles' && now.packKwh > 0 && est > now.packKwh) {
+    return { since, sessionId: charge.id, miles: Math.round(miles * 10) / 10, kwh: null, kwhSource, miPerKwh: null, pctUsed: null, costPerMile: null, missed: true };
+  }
   const perKwh = charge.cost !== null && charge.kwh !== null && charge.kwh > 0 ? charge.cost / charge.kwh : null;
   return {
     since, sessionId: charge.id,
@@ -47,5 +53,6 @@ export function sinceCharge(charge: ChargeSession, trips: SinceTrip[], now: { so
     miPerKwh: kwh > 0 && miles > 0 ? Math.round((miles / kwh) * 100) / 100 : null,
     pctUsed: pctUsed === null ? null : Math.round(pctUsed * 10) / 10,
     costPerMile: perKwh !== null && miles > 0 ? Math.round(((perKwh * kwh) / miles) * 1000) / 1000 : null,
+    missed: false,
   };
 }
