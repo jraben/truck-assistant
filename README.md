@@ -43,6 +43,9 @@ Step by step, with pictures, for a first-time installer:
   Env (plumbing only; API keys go on the settings page): `PORT` (8080),
   `DATA_DIR` (./data: settings.json + cockpit.db), `SIM=1`, `SIM_SPEEDUP`,
   `GLOBE_FEED=1`/`GLOBE_CALLSIGN` (the truck on a God's Eye View globe, below),
+  `TRACCAR_URL`/`TRACCAR_ID` (the truck on a Traccar map, beside other
+  vehicles' trackers: OsmAnd reports every 30 s driving, 10 min parked, with
+  battery and range as attributes; off unless set; `brain/src/traccar.ts`),
   `MQTT_URL` (mqtt://localhost:1883), `MQTT_DISABLED=1`, `GPSD_HOST`/`GPSD_PORT`.
   No MQTT broker or gpsd needed on a desk: the brain reports them in
   `/api/health` and keeps working. Pi install: `sudo ./deploy/pi/install.sh`

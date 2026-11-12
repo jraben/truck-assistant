@@ -36,6 +36,10 @@ export const config = {
   globeFeed: demo || flag(process.env.SIM) || flag(process.env.GLOBE_FEED),
   /** The truck's name on the globe (8 letters or digits at most). */
   globeCallsign: process.env.GLOBE_CALLSIGN ?? 'TRUCK',
+  /** Traccar's OsmAnd port (src/traccar.ts), e.g. http://192.168.1.219:5056. Unset: off. Never under DEMO. */
+  traccarUrl: demo ? '' : (process.env.TRACCAR_URL ?? ''),
+  /** This truck's identifier in Traccar (the device's "Identifier" there). */
+  traccarId: process.env.TRACCAR_ID ?? 'slate',
   mqttUrl: process.env.MQTT_URL ?? 'mqtt://localhost:1883',
   mqttDisabled: demo || flag(process.env.MQTT_DISABLED),
   gpsdHost: process.env.GPSD_HOST ?? '127.0.0.1',

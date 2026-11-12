@@ -13,6 +13,7 @@ import { applyPendingRestore } from './ops/backup.ts';
 import { registerParked } from './parkedRoutes.ts';
 import { registerSim } from './simRoutes.ts';
 import { registerGlobe } from './globe.ts';
+import { startTraccar } from './traccar.ts';
 import { seedDemo } from './demo/seed.ts';
 
 async function main() {
@@ -38,6 +39,7 @@ async function main() {
   brain.pickup.setNextAppointment(() => { const n = wopr.getNext().next; return n ? { title: n.title, location: n.location } : null; });
   registerPickup(app, brain.pickup);
   registerGlobe(app, () => brain.getState(), { enabled: config.globeFeed, callsign: config.globeCallsign, plane: () => brain.pickup.plane() });   // the truck on a God's Eye View globe
+  const stopTraccar = config.traccarUrl ? startTraccar(() => brain.getState(), { url: config.traccarUrl, id: config.traccarId }) : () => {};   // the truck on the home Traccar map
   brain.start();
   await app.listen({ port: config.port, host: config.host });
   await remote.start();
@@ -48,7 +50,7 @@ async function main() {
     if (stopping) return; stopping = true;
     console.log(`[brain] ${sig}, shutting down`);
     const force = setTimeout(() => process.exit(1), 5000);
-    try { await app.close(); remote.stop(); await brain.stop(); db.close(); } catch (e) { console.error(e); }
+    try { stopTraccar(); await app.close(); remote.stop(); await brain.stop(); db.close(); } catch (e) { console.error(e); }
     clearTimeout(force);
     process.exit(0);
   };
