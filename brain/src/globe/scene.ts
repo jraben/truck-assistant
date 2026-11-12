@@ -82,13 +82,23 @@ export function tripBundle(o: { title: string; route: ScenePoint[]; stops: Scene
     for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + haversineMi(pts[i - 1], pts[i]));
     const total = cum[cum.length - 1];
     const n = Math.min(CHASE_MAX_SHOTS, Math.max(4, Math.round(total / CHASE_MI_PER_SHOT) + 1));
-    const atMi = (mi: number) => { let i = cum.findIndex((c) => c >= mi); if (i < 0) i = pts.length - 1; return i; };
+    // The point `mi` along the track, between GPS fixes: on a long straight the fixes can be
+    // miles apart, and snapping to them put several shots on one spot (the camera stopped,
+    // then jumped).
+    const atMi = (mi: number): ScenePoint => {
+      const i = cum.findIndex((c) => c >= mi);
+      if (i <= 0) return i === 0 ? pts[0] : pts[pts.length - 1];
+      const a = pts[i - 1], b = pts[i], span = cum[i] - cum[i - 1];
+      const t = span > 0 ? (mi - cum[i - 1]) / span : 0;
+      const elevM = a.elevM != null && b.elevM != null ? a.elevM + (b.elevM - a.elevM) * t : (a.elevM ?? b.elevM ?? null);
+      return { lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t, elevM };
+    };
     const look = Math.max(0.15, total / n); // heading over the next stretch, not the next GPS point
     let prev: Record<string, unknown> | null = null;
     for (let k = 0; k < n; k++) {
       const mi = (k / (n - 1)) * total;
-      const p = pts[atMi(mi)], ahead = pts[atMi(Math.min(total, mi + look))];
-      const head: number = p === ahead ? (prev?.heading as number | undefined) ?? 0 : bearing(p, ahead);
+      const p = atMi(mi), ahead = atMi(Math.min(total, mi + look));
+      const head: number = p.lat === ahead.lat && p.lon === ahead.lon ? (prev?.heading as number | undefined) ?? 0 : bearing(p, ahead);
       const back = CHASE_BACK_M / 111_000;
       const camera: Record<string, number | string> = { lat: r6(p.lat - Math.cos(head * Math.PI / 180) * back), lon: r6(p.lon - Math.sin(head * Math.PI / 180) * back / Math.cos(p.lat * Math.PI / 180)), alt: Math.round((p.elevM ?? 0) + CHASE_ALT_M), heading: head, pitch: CHASE_PITCH, roll: 0, altitudeReference: 'ellipsoid' };
       shots.push({

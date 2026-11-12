@@ -61,6 +61,21 @@ describe("God's Eye scene bundle", () => {
     for (const s of fly) { expect(s.camera.pitch).toBeLessThan(-20); expect(s.camera.alt).toBeGreaterThan(350); expect(s.camera.altitudeReference).toBe('ellipsoid'); }
   });
 
+  it('spaces the chase evenly along a track whose GPS fixes are miles apart (no shot repeats a spot)', () => {
+    // 0.2 mi of close fixes, one 3-mile straight with no fixes, then close fixes again.
+    const sparse = [
+      ...Array.from({ length: 5 }, (_, i) => ({ lat: 33.50 - i * 0.0007, lon: -111.97, elevM: 380 })),
+      ...Array.from({ length: 5 }, (_, i) => ({ lat: 33.4535 - i * 0.0007, lon: -111.97, elevM: 370 })),
+    ];
+    const fly = (tripBundle({ title: 'Trip', route: sparse, stops: [], attribution: 'x', flyAlong: true }).project.scenes[0].shots as Record<string, any>[])
+      .filter((s) => String(s.id).startsWith('fly-'));
+    expect(fly.length).toBeGreaterThan(4);
+    const lats = fly.map((s) => s.camera.lat);
+    for (let k = 1; k < lats.length; k++) expect(lats[k]).toBeLessThan(lats[k - 1]); // always moving on, south
+    const steps = lats.slice(1).map((v, k) => lats[k] - v);
+    expect(Math.max(...steps) / Math.min(...steps)).toBeLessThan(1.5); // a steady pace
+  });
+
   it('keeps the GeoJSON inside the pack limits, with unique string ids and heights', () => {
     const big = Array.from({ length: 20000 }, (_, i) => ({ lat: 33 + i * 1e-4, lon: -112, elevM: null }));
     const g = routeGeoJson(big, stops, 'x');
