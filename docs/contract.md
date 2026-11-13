@@ -522,7 +522,7 @@ type DriveState = {
   speedLimit: { mph: number | null; raw: string | null; road: string | null; wayId: number; at: string } | null;
   speedLimitWhy: string | null;
   weather: WeatherBrief | null; weatherWhy: string | null;
-  lockout: { locked: boolean; bigTargets: boolean };   // locked: over drive.lockoutMph (unlocks after 5 s at or under); bigTargets: >= 25 mph
+  lockout: { locked: boolean; bigTargets: boolean; passenger: boolean };   // locked: over drive.lockoutMph (unlocks after 5 s at or under); bigTargets: >= 25 mph; passenger: passenger mode is on
   heat: { cpuC: number | null; source: 'thermal' | 'vcgencmd' | 'sim' | null; level: 'ok' | 'throttle' | 'warn' | 'shutdown'; parkedInSun: boolean; message: string | null };
   brightness: { pct: number | null; auto: boolean; lux: number | null; night: boolean; backend: 'ddcutil' | 'sysfs' | 'sim' | 'none'; error: string | null };
   tilt: { warnDeg: number; dangerDeg: number; level: 'ok' | 'warn' | 'danger' | null };
@@ -628,6 +628,18 @@ browser views (Track B) should wrap their video and browser panes in it. At
 `lockout.bigTargets` the app root gets `.at-speed` (larger hit targets; the
 Theme and Settings rail buttons step aside); at heat level `throttle` and above
 it gets `.calm` (no transitions or animations).
+
+**Passenger mode** (`POST /api/drive/passenger {on: boolean}`, switched in
+Settings, Truck) lifts the content lockouts while moving: `<DrivingLock>`, the
+traffic camera pictures, and the parked apps (Watch, Games, Karaoke, Plex
+video). `lockout.locked` keeps meaning "moving", so camp/pet mode still end,
+the light strip still goes off and the Lights tab stays parked only. The app
+root gets `.passenger`: the Settings rail button stays at speed, and a
+"Passenger" pill in the top strip turns it off. Tapping anything a lockout
+paused (except the Lights tab) asks "Are you the passenger?" and turns it on.
+Not saved: it lasts until the brain next starts, or until it is turned off. Code that
+gates on-screen content uses `useLockout().locked` (or `locked &&
+!passenger`); code that means "the truck is moving" uses `lockout.locked`.
 
 ### Brightness and heat on the Pi
 

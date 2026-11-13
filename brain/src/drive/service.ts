@@ -49,6 +49,8 @@ export class DriveService {
   private timer: NodeJS.Timeout | null = null;
   private n = 0;
   private lock: LockState = { locked: false, slowSince: null };
+  /** Passenger mode (drive/lockout.ts): until the next startup. */
+  private passenger = false;
   private since: SinceCharge | null = null;
   private sinceWhy: string | null = 'No charge logged yet';
   private limit: SpeedLimit | null = null;
@@ -122,6 +124,13 @@ export class DriveService {
       this.d.db.prepare('UPDATE trips SET city_kwh = ?, highway_kwh = ?, kwh_est = ? WHERE id = ?').run(r.city_miles === null ? null : Math.round(ck * 100) / 100, r.highway_miles === null ? null : Math.round(hk * 100) / 100, Math.round((ck + hk) * 100) / 100, id);
     } catch (e) { console.error('[drive] trip end', e); }
     this.refreshSince();
+  }
+
+  /** Passenger mode on or off (Settings, Drive). Not saved: see drive/lockout.ts. */
+  setPassenger(on: boolean) {
+    this.passenger = on;
+    console.log(`[drive] passenger mode ${on ? 'on' : 'off'}`);
+    this.d.changed();
   }
 
   setOverride(m: RangeOverride) { this.range.override = m; this.save(true); this.d.changed(); }
@@ -238,7 +247,7 @@ export class DriveService {
       speedLimitWhy: this.limit ? null : !st.drive.speedLimits ? 'Speed limits are off in settings' : !pos ? 'No GPS fix' : !i.online ? 'Offline: limits come from OpenStreetMap' : this.limits.error ?? 'No limit mapped for this road yet',
       weather: r ? { ...briefOf(r, now), place: this.placeNow ?? r.place } : null,
       weatherWhy: r ? null : !pos ? 'Waiting for a GPS fix' : !i.online ? 'Offline: no weather yet' : this.weather.error ?? 'Fetching weather…',
-      lockout: { locked: this.lock.locked, bigTargets: bigTargets(i.speedMph) },
+      lockout: { locked: this.lock.locked, bigTargets: bigTargets(i.speedMph), passenger: this.passenger },
       heat: { cpuC: this.cpu.c, source: this.cpu.source, level, parkedInSun: sun, message: heatMessage(level, this.cpu.c, sun, i.cabinTempF) },
       brightness: { pct: this.bright.pct, auto: st.drive.brightness.auto, lux: now - this.luxAt < 60_000 ? this.lux : null, night: !isDaytime(new Date(now), pos), backend: this.bright.backend?.kind ?? 'none', error: this.bright.error },
       tilt: { warnDeg: st.drive.tilt.warnDeg, dangerDeg: st.drive.tilt.dangerDeg, level: worst === null ? null : worst >= st.drive.tilt.dangerDeg ? 'danger' : worst >= st.drive.tilt.warnDeg ? 'warn' : 'ok' },

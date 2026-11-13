@@ -238,9 +238,10 @@
 /* ---- at speed / hot ------------------------------------------------------------------ */
 .app.at-speed { --hit: 72px; }
 /* at speed: the parked-only tools (theme, logs, test panel, settings) leave the rail, the rest grow to fill it */
-.app.at-speed .rail > .park-only { display: none; }
+/* ...unless passenger mode is on: the passenger needs Settings (and its switch to turn passenger mode off) */
+.app.at-speed:not(.passenger) .rail > .park-only { display: none; }
 .app.at-speed .rail > .slot { max-height: none; }
-.app.at-speed .rail svg { width: 30px; height: 30px; }
+.app.at-speed:not(.passenger) .rail svg { width: 30px; height: 30px; }
 .app.at-speed .btn { min-height: 60px; }
 .app.calm *, .app.calm *::before, .app.calm *::after { transition: none !important; animation: none !important; }
 .app.calm .sp-sweep .trail, .app.calm .sp-57 .f-needle { filter: none; }
@@ -362,3 +363,8 @@
 @keyframes rg-drift { from { transform: translateX(-60px); } to { transform: translateX(300px); } }
 @keyframes rg-wave { to { transform: translateX(-80px); } }
 @media (prefers-reduced-motion: reduce) { .sp-ring *, .sp-ring .r-out, .sp-ring .r-regen { animation: none !important; transition: none !important; } }
+
+/* passenger mode: the top-strip pill that says the lockouts are lifted (tap to turn off) */
+.passenger-pill { background: var(--accent); color: var(--accent-ink); font-weight: 600; flex: none; }
+.passenger-pill:hover { background: var(--accent); filter: brightness(1.1); }
+.tap-passenger { cursor: pointer; }
