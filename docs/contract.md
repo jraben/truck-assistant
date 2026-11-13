@@ -1609,3 +1609,19 @@ graphhopper: {ok, info: {bbox, profiles, elevation, dataDate, version}} |
 {ok: false, error} | null, towing: {trailer, mph} | null, osrm}`; `PUT
 /api/routing {graphhopperUrl?, publicOsrm?, towMph? (35-80)}`. Default
 `graphhopperUrl` is `GRAPHHOPPER_URL`. Kept in the kv table (`routing`).
+
+## Version line and update size
+
+The cockpit's bottom line (`ui/src/components/VersionBar.tsx`, hidden at speed):
+`TA_v<version>[+<sha7>] · updated <installedAt>`, from `GET /api/update`
+(re-read every 10 min), plus an **Update available** chip when `phase` is
+`available` (or progress while installing). Tapping it shows the running and new
+versions, `latest.download`, home-Wi-Fi advice from `State.network.link`, the
+first release notes, and a link to Settings, Updates (installing stays there).
+
+`Release.download = {bytes, exact, packagesChanged}`: a release's prebuilt
+asset size is exact (GitHub's `assets[].size`); a source install estimates from
+the last download (`release.json` `downloadBytes`, written by
+`deploy/pi/updater/update.sh`); on `main`, `packagesChanged` is whether
+`package-lock.json` differs between the installed and latest commits (GitHub
+compare), meaning `npm ci` fetches new packages too.

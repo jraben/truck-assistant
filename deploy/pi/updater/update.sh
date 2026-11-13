@@ -86,6 +86,7 @@ if [ ! -f "$DIR/brain/dist/index.js" ]; then
     curl -fsSL --retry 3 -o "$BUILD.tgz" "$TARBALL" || fail "download failed (offline?)"
     tar xzf "$BUILD.tgz" -C "$BUILD" --strip-components=1 || fail "source tarball unreadable"
   fi
+  DLBYTES="$(stat -c %s "$BUILD.tgz" 2>/dev/null || echo '')"
   rm -f "$BUILD.tgz"
   cd "$BUILD" || fail "build dir missing"
   if [ "$PREBUILT" = 1 ] && [ -f brain/dist/index.js ]; then
@@ -95,7 +96,7 @@ if [ ! -f "$DIR/brain/dist/index.js" ]; then
     status building "npm ci and build (several minutes on a Pi)"
     { npm ci --no-audit --no-fund && npm run build && npm prune --omit=dev --no-audit --no-fund; } >"$UPD/build.log" 2>&1 || fail "build failed (see $UPD/build.log)"
   fi
-  node -e 'const [f,tag,sha,channel]=process.argv.slice(1);require("fs").writeFileSync(f,JSON.stringify({tag,sha:sha||null,channel,installedAt:new Date().toISOString()},null,2))' "$BUILD/release.json" "$TAG" "$SHA" "$CHANNEL"
+  node -e 'const [f,tag,sha,channel,dl]=process.argv.slice(1);require("fs").writeFileSync(f,JSON.stringify({tag,sha:sha||null,channel,installedAt:new Date().toISOString(),downloadBytes:dl?Number(dl):null},null,2))' "$BUILD/release.json" "$TAG" "$SHA" "$CHANNEL" "$DLBYTES"
   rm -rf "$DIR"; mv "$BUILD" "$DIR"
 fi
 
