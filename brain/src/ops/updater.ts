@@ -75,7 +75,16 @@ export class GithubSource {
     return (await res.json()) as T;
   }
 
-  async list(repoUrl: string, channel: 'stable' | 'main', installedSha: string | null): Promise<Release[]> {
+  /** Did package-lock.json change between two commits? null when GitHub can't say. */
+  private async packagesChanged(base: string, from: string | null, to: string | null): Promise<boolean | null> {
+    if (!from || !to || from === to) return from && to ? false : null;
+    try {
+      const c = await this.get<{ files?: { filename: string }[] }>(`${base}/compare/${from}...${to}`);
+      return Array.isArray(c.files) ? c.files.some((f) => /(^|\/)package-lock\.json$/.test(f.filename)) : null;
+    } catch { return null; }
+  }
+
+  async list(repoUrl: string, channel: 'stable' | 'main', installedSha: string | null, lastDownloadBytes: number | null = null): Promise<Release[]> {
     const r = parseRepo(repoUrl);
     if (!r) throw new OpsInputError('repo must look like https://github.com/owner/name');
     const base = `https://api.github.com/repos/${r.owner}/${r.repo}`;
@@ -85,16 +94,22 @@ export class GithubSource {
       const since: string[] = [];
       for (const c of commits) { if (c.sha === installedSha) break; since.push(`- ${c.commit.message.split('\n')[0]} (${c.sha.slice(0, 7)})`); }
       const top = commits[0];
-      return [{ tag: `main@${top.sha.slice(0, 7)}`, name: 'main', sha: top.sha, publishedAt: top.commit.committer?.date ?? null, notes: since.join('\n') || 'No new commits.', tarballUrl: `https://github.com/${r.owner}/${r.repo}/archive/${top.sha}.tar.gz`, assetUrl: null, prerelease: true }];
+      const download = { bytes: lastDownloadBytes, exact: false, packagesChanged: await this.packagesChanged(base, installedSha, top.sha) };
+      return [{ tag: `main@${top.sha.slice(0, 7)}`, name: 'main', sha: top.sha, publishedAt: top.commit.committer?.date ?? null, notes: since.join('\n') || 'No new commits.', tarballUrl: `https://github.com/${r.owner}/${r.repo}/archive/${top.sha}.tar.gz`, assetUrl: null, prerelease: true, download }];
     }
-    type GhRelease = { tag_name: string; name: string | null; body: string | null; draft: boolean; prerelease: boolean; published_at: string | null; tarball_url: string; assets: { name: string; browser_download_url: string }[] };
+    type GhRelease = { tag_name: string; name: string | null; body: string | null; draft: boolean; prerelease: boolean; published_at: string | null; tarball_url: string; assets: { name: string; browser_download_url: string; size?: number }[] };
     const rel = await this.get<GhRelease[]>(`${base}/releases?per_page=15`);
-    const out: Release[] = rel.filter((x) => !x.draft && !x.prerelease).map((x) => ({
-      tag: x.tag_name, name: x.name || x.tag_name, sha: null, publishedAt: x.published_at, notes: x.body ?? '',
-      tarballUrl: `https://github.com/${r.owner}/${r.repo}/archive/refs/tags/${x.tag_name}.tar.gz`,
-      assetUrl: x.assets.find((a) => a.name === `slate-cockpit-${x.tag_name}.tar.gz`)?.browser_download_url ?? null,
-      prerelease: false,
-    }));
+    const out: Release[] = rel.filter((x) => !x.draft && !x.prerelease).map((x) => {
+      const asset = x.assets.find((a) => a.name === `slate-cockpit-${x.tag_name}.tar.gz`);
+      return {
+        tag: x.tag_name, name: x.name || x.tag_name, sha: null, publishedAt: x.published_at, notes: x.body ?? '',
+        tarballUrl: `https://github.com/${r.owner}/${r.repo}/archive/refs/tags/${x.tag_name}.tar.gz`,
+        assetUrl: asset?.browser_download_url ?? null,
+        prerelease: false,
+        // The prebuilt bundle is exact; without one it's a source build (estimate from the last download).
+        download: asset && typeof asset.size === 'number' ? { bytes: asset.size, exact: true, packagesChanged: null } : { bytes: lastDownloadBytes, exact: false, packagesChanged: null },
+      };
+    });
     if (out.length) return out.sort((a, b) => compareVersions(b.tag, a.tag));
     // No releases yet: plain version tags.
     const tags = await this.get<{ name: string; commit: { sha: string } }[]>(`${base}/tags?per_page=30`);
@@ -106,7 +121,7 @@ export class GithubSource {
 export function readInstalled(appRoot: string, version: string): Installed {
   try {
     const j = JSON.parse(readFileSync(path.join(appRoot, 'release.json'), 'utf8')) as Partial<Installed>;
-    return { version, tag: j.tag ?? null, sha: j.sha ?? null, channel: j.channel ?? null, installedAt: j.installedAt ?? null };
+    return { version, tag: j.tag ?? null, sha: j.sha ?? null, channel: j.channel ?? null, installedAt: j.installedAt ?? null, downloadBytes: typeof j.downloadBytes === 'number' ? j.downloadBytes : null };
   } catch { return { version, tag: null, sha: null, channel: null, installedAt: null }; }
 }
 
@@ -229,7 +244,7 @@ export class Updater {
     this.set('checking');
     try {
       const inst = this.installed();
-      const rel = await this.source.list(c.repo, c.channel, inst.sha);
+      const rel = await this.source.list(c.repo, c.channel, inst.sha, inst.downloadBytes ?? null);
       this.s.releases = rel; this.s.latest = rel[0] ?? null; this.s.checkedAt = new Date(this.now()).toISOString();
       if (!this.s.latest) this.set('up-to-date', c.channel === 'stable' ? 'No releases published yet' : 'No commits on main');
       else if (isNewer(this.s.latest, inst, c.channel)) this.set('available', `${this.s.latest.tag} is available`);

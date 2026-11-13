@@ -22,6 +22,7 @@ import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
+import { VersionBar } from './VersionBar.tsx';
 import { PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
 import { RelayDots } from './RelayDots.tsx';
@@ -198,6 +199,7 @@ export function App() {
       {healthOpen && <HealthPanel s={s} connected={link.connected} onClose={() => setHealthOpen(false)} onNetwork={() => { setHealthOpen(false); setNetOpen(true); }} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
+      {!s?.drive?.lockout.bigTargets && <VersionBar />}
       <div class="banners">
         {/* Most urgent first: only the first is shown in full, the rest as one line each (styles.css .banners). */}
         <TireBanner s={s} go={go} />

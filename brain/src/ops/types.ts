@@ -104,9 +104,16 @@ export type Release = {
   tarballUrl: string;                 // source tarball
   assetUrl: string | null;            // prebuilt slate-cockpit-<tag>.tar.gz from the release workflow
   prerelease: boolean;
+  /**
+   * How much the install downloads. `bytes`: exact for a prebuilt release asset;
+   * for a source install, what the last source download was (an estimate), or null.
+   * `packagesChanged`: package-lock.json differs from the installed version, so the
+   * build fetches new packages too (can be much more); null when not known.
+   */
+  download?: { bytes: number | null; exact: boolean; packagesChanged: boolean | null };
 };
 
-export type Installed = { version: string; tag: string | null; sha: string | null; channel: string | null; installedAt: string | null };
+export type Installed = { version: string; tag: string | null; sha: string | null; channel: string | null; installedAt: string | null; downloadBytes?: number | null };
 
 export type Phase = 'idle' | 'checking' | 'up-to-date' | 'available' | 'requested' | 'downloading' | 'building' | 'restarting' | 'verifying' | 'done' | 'rolled-back' | 'failed';
 
