@@ -23,6 +23,7 @@
     "hls.js": "^1.5.20",
     "leaflet": "^1.9.4",
     "preact": "^10.27.0",
+    "protomaps-leaflet": "^5.1.0",
     "uqr": "^0.1.2"
   },
   "devDependencies": {
