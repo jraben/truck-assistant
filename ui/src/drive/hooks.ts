@@ -1,8 +1,9 @@
 // Track A helpers for any view: the drive state, the truck's look, the
 // speedometer style, and the driving lockout other tracks can honour.
+import { contentLocked } from '../../../brain/src/drive/lockout.ts';
 import { defaultDriverDrive, defaultTruck } from '../../../brain/src/drive/settings.ts';
 import type { DriverDrive, SpeedoStyle, TruckLook } from '../../../brain/src/drive/types.ts';
-import { activeDriver, settingsStore, stateStore, useStore, type Driver, type Settings, type State } from '../lib/brain.ts';
+import { activeDriver, api, settingsStore, stateStore, useStore, type Driver, type Settings, type State } from '../lib/brain.ts';
 import { allThemes } from '../lib/theme.ts';
 
 export const truckOf = (s: Settings | null): TruckLook => (s as (Settings & { truck?: TruckLook }) | null)?.truck ?? defaultTruck();
@@ -21,10 +22,21 @@ export function speedoStyle(d: Driver | null): SpeedoStyle {
 
 export { overLimit } from './logic.ts';
 
-/** Moving over the lockout speed: video, the browser and long scrolling lists pause. */
-export function useLockout(): { locked: boolean; bigTargets: boolean } {
+/**
+ * Whether video, the browser and long scrolling lists pause: moving over the
+ * lockout speed, unless passenger mode is on. `moving` is the plain "over the
+ * lockout speed" for anything that isn't about what's on screen.
+ */
+export function useLockout(): { locked: boolean; moving: boolean; bigTargets: boolean; passenger: boolean } {
   const s = useStore(stateStore);
-  return s?.drive?.lockout ?? { locked: false, bigTargets: false };
+  const l = s?.drive?.lockout;
+  const moving = !!l?.locked, passenger = !!l?.passenger;
+  return { locked: contentLocked(moving, passenger), moving, bigTargets: !!l?.bigTargets, passenger };
+}
+
+/** Turn passenger mode on or off; the brain answers through the live state. */
+export async function setPassenger(on: boolean): Promise<void> {
+  await api('/api/drive/passenger', { method: 'POST', body: JSON.stringify({ on }) });
 }
 
 export function useActiveDriver(): { s: State | null; settings: Settings | null; driver: Driver | null } {

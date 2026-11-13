@@ -10,6 +10,12 @@ export function registerDriveRoutes(app: FastifyInstance, drive: DriveService) {
     drive.setOverride(mode);
     return drive.state();
   });
+  app.post('/api/drive/passenger', async (req, reply) => {
+    const on = (req.body as { on?: unknown } | null)?.on;
+    if (typeof on !== 'boolean') return reply.code(400).send({ error: 'on must be true or false' });
+    drive.setPassenger(on);
+    return drive.state().lockout;
+  });
   app.get('/api/weather', async (_req, reply) => {
     const r = drive.weather.report;
     if (!r) return reply.code(503).send({ error: drive.state().weatherWhy ?? 'No weather yet' });

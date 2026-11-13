@@ -17,3 +17,13 @@ export function lockStep(prev: LockState, speedMph: number | null, now: number, 
 }
 
 export const bigTargets = (speedMph: number | null) => speedMph !== null && speedMph >= BIG_TARGET_MPH;
+
+// Passenger mode: someone other than the driver is using the tablet, so the
+// content lockouts (video, the browser, long lists, typing, parked-only apps)
+// stay open while moving. It never touches what keeps the truck safe: `locked`
+// still means "moving", so camp/pet mode still end and the light strip still
+// goes off. It is not saved: it lasts until the brain next starts (the truck's
+// next startup), or until someone turns it off.
+
+/** Whether video, the browser and long lists pause: moving over the lockout speed with no passenger at the tablet. */
+export const contentLocked = (locked: boolean, passenger: boolean) => locked && !passenger;

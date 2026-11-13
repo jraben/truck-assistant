@@ -9,6 +9,7 @@ import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
+import { PassengerSetting } from '../drive/Passenger.tsx';
 import { TrackBSections } from './TrackBSections.tsx';
 import { RemoteSection } from './RemoteSection.tsx';
 import { OpsSections } from '../ops/OpsSettings.tsx';
@@ -53,7 +54,7 @@ function tabFromHash(): TabId {
 }
 /** Anchors other screens link to, for before the sections have rendered. */
 const OLD_ANCHORS: Record<string, TabId> = {
-  charge: 'charging', gas: 'charging', drivers: 'drivers', themes: 'drivers', drive: 'truck', 'set-side': 'truck', 'set-rear': 'truck',
+  charge: 'charging', gas: 'charging', drivers: 'drivers', themes: 'drivers', drive: 'truck', passenger: 'truck', 'set-side': 'truck', 'set-rear': 'truck',
   network: 'connections', ha: 'connections', import: 'connections', places: 'connections',
   wopr: 'media', spotify: 'media', radio: 'media', fm: 'media', plex: 'media', files: 'media', receipts: 'media',
   remote: 'cameras', cameras: 'cameras', dashcam: 'cameras', alerts: 'cameras',
@@ -342,6 +343,7 @@ export function SettingsApp() {
         </div>
       </Section>
 
+      <PassengerSetting />
       <DriveSection settings={settings} />
       </div>
 

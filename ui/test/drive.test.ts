@@ -4,7 +4,7 @@ import type { State } from '../../brain/src/types.ts';
 
 const st = (o: { locked?: boolean; tilt?: 'ok' | 'warn' | 'danger' | null; trip?: boolean }): State => ({
   trip: o.trip ? { id: 1, startedAt: '', miles: 1 } : null,
-  drive: { lockout: { locked: !!o.locked, bigTargets: false }, tilt: { warnDeg: 20, dangerDeg: 30, level: o.tilt ?? 'ok' } },
+  drive: { lockout: { locked: !!o.locked, bigTargets: false, passenger: false }, tilt: { warnDeg: 20, dangerDeg: 30, level: o.tilt ?? 'ok' } },
 } as unknown as State);
 
 describe('Drive screen context cards', () => {

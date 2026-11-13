@@ -7,6 +7,7 @@ import type { TrafficView } from '../../../brain/src/types.ts';
 import type { HazardView } from '../../../brain/src/hazards/service.ts';
 import { fmtTime } from '../lib/fmt.ts';
 import { Card } from './common.tsx';
+import { askPassenger } from '../drive/Passenger.tsx';
 import type { WP } from './drive.tsx';
 
 const EMPTY: TrafficView = { cameras: [], events: [], enforcement: [], states: [], message: null, following: 'nearby' };
@@ -36,8 +37,8 @@ const bust = (url: string, n: number) => `${url}${url.includes('?') ? '&' : '?'}
 
 export function TrafficAhead({ s }: WP) {
   const { v, err } = useTraffic();
-  // Driving lockout (drive/lockout.ts): pictures pause while moving, like video does; the list stays.
-  const locked = !!s?.drive?.lockout.locked;
+  // Driving lockout (drive/lockout.ts): pictures pause while moving, like video does, unless passenger mode is on; the list stays.
+  const locked = !!s?.drive?.lockout.locked && !s.drive.lockout.passenger;
   const minute = useMinute();
   const [big, setBig] = useState<string | null>(null);
   const keyedNames = v.states.filter((s) => s.keyed).map((s) => s.name.replace(/ \(.*\)$/, '')).join(', ');
@@ -50,8 +51,8 @@ export function TrafficAhead({ s }: WP) {
           {v.cameras.map((c) => {
             const view = c.views[0];
             return (
-              <button type="button" class="tfcam" onClick={() => setBig(big === c.key ? null : c.key)} aria-label={`${c.location ?? c.roadway}, ${c.distMi} miles`}>
-                {locked ? <div class="tfpaused">Picture paused while driving</div> : <img src={bust(view.url, minute)} alt="" loading="lazy" />}
+              <button type="button" class="tfcam" onClick={(e) => (locked ? askPassenger(e) : setBig(big === c.key ? null : c.key))} aria-label={`${c.location ?? c.roadway}, ${c.distMi} miles`}>
+                {locked ? <div class="tfpaused">Picture paused while driving. Passenger? Tap</div> : <img src={bust(view.url, minute)} alt="" loading="lazy" />}
                 <div class="tfcap num"><b>{c.distMi} mi</b> · {c.location ?? c.roadway ?? 'Camera'}</div>
               </button>
             );
