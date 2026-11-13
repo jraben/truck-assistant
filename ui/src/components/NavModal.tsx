@@ -1,11 +1,12 @@
 // "Navigate": every place the cockpit sends somewhere (chargers, road-trip
-// stops, the airport pickup, calendar appointments) opens this. Waze goes to the
-// iPhone and CarPlay as before; Organic Maps navigates on the dash tablet itself
-// and keeps working with no signal. lib/nav.ts builds the links.
+// stops, the airport pickup, calendar appointments) opens this. Waze goes to
+// the iPhone and CarPlay; CoMaps, Organic Maps and OsmAnd navigate on the dash
+// tablet itself, offline; ABRP gets the place to paste. lib/nav.ts builds the
+// links; Settings, Truck, Navigation picks which apps show and which comes first.
 import { useMemo, useState } from 'preact/hooks';
 import { renderSVG } from 'uqr';
 import { stateStore, useStore } from '../lib/brain.ts';
-import { androidIntent, getNavPref, isAndroid, organicLink, pickApp, wazeLink, type NavApp, type NavTarget } from '../lib/nav.ts';
+import { ABRP_URL, abrpText, appLabel, comapsLink, getNavPref, getOsmandPackage, getShownApps, isAndroid, NAV_APPS, organicLink, osmandLink, pickApp, tabletLink, wazeLink, type NavApp, type NavTarget } from '../lib/nav.ts';
 import { CarPlayWazeHint } from './carplay.tsx';
 import { Modal } from './common.tsx';
 
@@ -26,14 +27,21 @@ function Link({ url, label }: { url: string; label: string }) {
   );
 }
 
+const NOTHING = <div class="dimtxt">No address or position to send.</div>;
+
 export function NavModal({ target, where, onClose }: { target: NavTarget; where?: string | null; onClose: () => void }) {
   const s = useStore(stateStore);
   const offline = s?.network?.link === 'offline';
-  const [app, setApp] = useState<NavApp>(() => pickApp(getNavPref(), offline));
+  const shown = getShownApps();
+  const [app, setApp] = useState<NavApp>(() => pickApp(getNavPref(), offline, shown));
+  const [copied, setCopied] = useState(false);
   const from = s?.gps?.fix ? { lat: s.gps.lat, lon: s.gps.lon } : null;
-  const waze = wazeLink(target);
-  const om = organicLink(target, from);
   const android = isAndroid(navigator.userAgent);
+  const isOffline = NAV_APPS.find((a) => a.id === app)!.offline;
+  const raw = app === 'organic' ? organicLink(target, from) : app === 'comaps' ? comapsLink(target, from) : app === 'osmand' ? osmandLink(target, from) : null;
+  const tablet = tabletLink(app, target, from, getOsmandPackage());
+  const routeFromTruck = !!from && target.lat != null;
+  const text = abrpText(target);
   return (
     <Modal title="Navigate" onClose={onClose}>
       <div style="display:grid;gap:var(--s15)">
@@ -42,27 +50,42 @@ export function NavModal({ target, where, onClose }: { target: NavTarget; where?
           {where && <div class="dimtxt">{where}</div>}
         </div>
         <div class="mtabs" role="tablist">
-          <button type="button" role="tab" aria-selected={app === 'waze'} onClick={() => setApp('waze')}>Waze</button>
-          <button type="button" role="tab" aria-selected={app === 'organic'} onClick={() => setApp('organic')}>Organic Maps (offline)</button>
+          {shown.map((a) => <button type="button" role="tab" aria-selected={app === a} onClick={() => { setApp(a); setCopied(false); }}>{appLabel(a)}{NAV_APPS.find((x) => x.id === a)!.offline ? ' (offline)' : ''}</button>)}
         </div>
+
+        {offline && !isOffline && <div class="banner">The truck has no internet right now, and {appLabel(app)} needs signal. CoMaps, Organic Maps and OsmAnd work offline.</div>}
+
         {app === 'waze' && (
           <>
-            {offline && <div class="banner">The truck has no internet right now, and Waze needs signal on the phone. Organic Maps works offline.</div>}
             <CarPlayWazeHint />
-            {waze ? <Link url={waze} label="Waze" /> : <div class="dimtxt">No address or position to send.</div>}
+            {(() => { const w = wazeLink(target); return w ? <Link url={w} label="Waze" /> : NOTHING; })()}
           </>
         )}
-        {app === 'organic' && (
-          om ? (
+
+        {isOffline && (
+          !raw ? (app === 'osmand' && target.query ? <div class="dimtxt">OsmAnd's link needs a position, and this is a typed address. Use CoMaps or Organic Maps, which can search for it.</div> : NOTHING) : (
             <>
-              {android && <a class="btn big primary" href={androidIntent(om)}>{from && target.lat != null ? 'Start route in Organic Maps' : 'Open in Organic Maps'}</a>}
+              {android && tablet && <a class="btn big primary" href={tablet}>{routeFromTruck ? `Start route in ${appLabel(app)}` : `Open in ${appLabel(app)}`}</a>}
               <div class="dimtxt">
-                Navigates on {android ? 'this tablet' : 'a device with Organic Maps'} with no signal needed, in any state downloaded inside Organic Maps
-                (Settings, Truck, Navigation has the setup). {android ? 'Not installed? The button opens its Play Store page.' : 'Scan with a phone that has Organic Maps.'}
+                Navigates on {android ? 'this tablet' : `a device with ${appLabel(app)}`} with no signal needed, in any region downloaded inside {appLabel(app)} (Settings, Truck, Navigation has the setup).
+                {android ? ' Not installed? The button opens its Play Store page.' : ` Scan with a phone that has ${appLabel(app)}.`}
               </div>
-              {!android && <Link url={om} label="Organic Maps" />}
+              {!android && <Link url={raw} label={appLabel(app)} />}
             </>
-          ) : <div class="dimtxt">No address or position to send.</div>
+          )
+        )}
+
+        {app === 'abrp' && (
+          text ? (
+            <>
+              <div class="dimtxt">ABRP has no link that carries a destination, so copy it and paste it into ABRP's destination box.</div>
+              <div class="row wrap" style="gap:var(--s15);align-items:center">
+                <code style="font-size:var(--fs-title)">{text}</code>
+                <button type="button" class="btn" onClick={() => { void navigator.clipboard?.writeText(text).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy'}</button>
+                <a class="btn primary" href={ABRP_URL} target="_blank" rel="noreferrer">Open ABRP</a>
+              </div>
+            </>
+          ) : NOTHING
         )}
       </div>
     </Modal>

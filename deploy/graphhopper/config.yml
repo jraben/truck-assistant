@@ -1,0 +1,48 @@
+# GraphHopper 10.x for the truck's offline road-trip routing (see README.md).
+# Built on the homelab (build-graph.sh), served on the Pi (graphhopper.service).
+# Paths and port are overridable on the command line, e.g.
+#   java -Ddw.graphhopper.datareader.file=az.osm.pbf -Ddw.graphhopper.graph.location=graph -jar graphhopper-web.jar server config.yml
+graphhopper:
+  datareader.file: region.osm.pbf
+  graph.location: graph-cache
+
+  # What the car profile and the towing cap (a per-request custom model) need.
+  graph.encoded_values: car_access, car_average_speed, road_class, road_environment, road_access, max_speed, surface, toll
+
+  profiles:
+    - name: car
+      custom_model_files: [car.json]
+
+  # Landmarks, not CH: CH is fastest but can't take the per-request custom model
+  # the towing speed cap sends. LM keeps those requests quick on a state-sized graph.
+  profiles_ch: []
+  profiles_lm:
+    - profile: car
+  prepare.lm.landmarks: 16
+
+  # Roads a truck never takes: smaller graph, less memory on the Pi.
+  import.osm.ignored_highways: footway,cycleway,path,pedestrian,steps,bridleway,construction,proposed
+
+  # Elevation from SRTM, downloaded once during the build (needs internet on the build machine).
+  # Lets the road-trip planner count climbs with no internet. Uncomment to use; adds disk and build time.
+  # graph.elevation.provider: srtm
+  # graph.elevation.cache_dir: ./srtm-cache
+
+  graph.dataaccess.default_type: RAM_STORE
+  routing.max_visited_nodes: 1000000
+
+server:
+  application_connectors:
+    - type: http
+      port: 8989
+      bind_host: 127.0.0.1
+  request_log:
+    appenders: []
+  admin_connectors:
+    - type: http
+      port: 8990
+      bind_host: 127.0.0.1
+logging:
+  appenders:
+    - type: console
+      threshold: WARN

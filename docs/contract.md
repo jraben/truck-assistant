@@ -1567,24 +1567,48 @@ layout), `ui/src/lib/basemap.ts` and `ui/src/settings/MapsSection.tsx`.
   outside the areas the online map shows through, and with no signal only the
   areas draw. The trip energy map uses it too.
 
-## Navigation hand-off (Waze or Organic Maps)
+## Navigation hand-off
 
 Every Navigate button (charge stops, road-trip stops, the airport pickup,
-calendar appointments) opens `ui/src/components/NavModal.tsx`, which offers
-two apps; links come from `ui/src/lib/nav.ts`:
+calendar appointments) opens `ui/src/components/NavModal.tsx`; links come from
+`ui/src/lib/nav.ts`. Link formats are from each app's own source (manifest
+intent-filters and URL parsers); Chrome on Android launches an app only through
+a BROWSABLE intent-filter.
 
-- **Waze** (the iPhone, through CarPlay; needs signal): `https://waze.com/ul?ll=<lat>,<lon>&navigate=yes`,
-  or `?q=<address>` for a typed place. Shown as a QR code and link, as before.
-- **Organic Maps** (free OpenStreetMap navigation on the dash tablet; works
-  with no signal in states downloaded inside the app): `om://route?sll=<truck>&saddr=Truck&dll=<dest>&daddr=<name>&type=vehicle`
-  with a GPS fix, `om://map?ll=…&n=…` without one, `om://search?query=…` for
-  an address. On Android it opens as `intent://…#Intent;scheme=om;package=app.organicmaps;S.browser_fallback_url=<Play Store>;end`;
-  elsewhere as a QR code.
+| App | Link | On the tablet (Chrome) |
+|---|---|---|
+| Waze (iPhone, CarPlay; needs signal) | `https://waze.com/ul?ll=…&navigate=yes`, or `?q=` for an address | QR code and link |
+| Organic Maps (offline) | `om://route?sll=<truck>&saddr=Truck&dll=<dest>&daddr=<name>&type=vehicle` (all five, in order); `om://map?ll=…&n=…` without a fix; `om://search?query=…&cll=<truck>&map` | `intent://…;scheme=om;package=app.organicmaps;…` |
+| CoMaps (offline) | the same under `cm://` (it does not open `om://`) | `intent://…;scheme=cm;` with no package, so the Play (`app.comaps.google`) and F-Droid (`app.comaps.fdroid`) builds both answer; fallback to Play |
+| OsmAnd (offline) | `https://osmand.net/map/?start=<truck>&end=<dest>&profile=car` (needs a point) | `intent://osmand.net/map/…;scheme=https;package=net.osmand` (or `net.osmand.plus`) |
+| ABRP | no documented destination link | the place to copy, and a link to ABRP |
 
-Which opens first is per screen (`localStorage` `slate.nav.app`:
-`auto` | `waze` | `organic`, set in Settings, Truck, **Navigation**); `auto`
-picks Organic Maps when `State.network.link` is `offline`. Organic Maps keeps
-its own map downloads, and the Navigation card explains how to set them up.
+Per screen (`localStorage`): `slate.nav.apps` (which show; default all),
+`slate.nav.app` (`auto` or an app; `auto` is Waze with signal, else the first
+offline app shown, from `State.network.link`), `slate.nav.osmand` (package).
+Set in Settings, Truck, **Navigation**, which also explains setting up offline maps
+inside each app.
+
+## Route planning (local GraphHopper)
+
+Road routes for the road-trip planner and the airport pickup
+(`brain/src/roadtrip/route.ts` `fetchRoute`) come from, in order:
+
+1. **A local GraphHopper** (`graphhopperUrl`; set up with `deploy/graphhopper/`):
+   `POST /route {points, profile: car, points_encoded: false, elevation}` with
+   `elevation` only when `/info` says the graph has it (then climbs need no
+   internet; `addElevation` skips Open-Meteo). While a trailer is hitched
+   (`modes.activeTrailer`), the request adds `custom_model: {speed: [{if: true,
+   limit_to: <towMph in km/h>}]}` and `ch.disable: true` (the graph uses LM).
+2. **OSRM**: `ROUTER_URL`, else the public demo when `publicOsrm` is on.
+3. **A straight line** plus 25%, labelled `routeSource: 'straight'`.
+
+`routeSource` is `graphhopper | osrm | straight`. Settings, Truck, **Route
+planning**: `GET /api/routing` → `{graphhopperUrl, publicOsrm, towMph,
+graphhopper: {ok, info: {bbox, profiles, elevation, dataDate, version}} |
+{ok: false, error} | null, towing: {trailer, mph} | null, osrm}`; `PUT
+/api/routing {graphhopperUrl?, publicOsrm?, towMph? (35-80)}`. Default
+`graphhopperUrl` is `GRAPHHOPPER_URL`. Kept in the kv table (`routing`).
 
 ## Version line and update size
 
