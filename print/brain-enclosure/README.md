@@ -3,14 +3,14 @@
 A vented box for a Raspberry Pi 4 or 5 with a CarPiHAT-style car power HAT on
 top. A bay beside the Pi takes a USB SSD; it is sized for a Samsung T7, or use
 an M.2-in-USB caddy. Mounting ears with slots go to the lower dash rail.
-Source: `brain-enclosure.scad`. STLs and previews: `stl/`.
+Source: `brain-enclosure.scad`. STLs and previews: `stl/` (`lid.png` is the lid from above, as fitted).
 
 ## Parts (print orientation)
 
 | STL | Size (mm) | Notes |
 |---|---|---|
 | `box` | 130 × 139 × 50 (93 × 126 body, plus ears and lugs) | Floor down. |
-| `lid` | 103 × 139 × 5.5 | Top face down, lip up. Mount for a 40 mm fan over the Pi. |
+| `lid` | 103 × 139 × 5.5 | Top face down, lip up. Mount for a 40 mm fan over the Pi. The Truck Assistant glyph and name are engraved 0.6 mm into the top face (`logo = false` in the `.scad` leaves it plain). |
 
 The openings:
 - **+X end:** a window for the USB-A ports and Ethernet.
