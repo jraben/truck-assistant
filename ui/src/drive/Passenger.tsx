@@ -9,10 +9,16 @@ import { setPassenger, useLockout } from './hooks.ts';
 
 const CONFIRM = 'Are you the passenger?\n\nPassenger mode keeps video, the browser, games and typing open while the truck is moving. The driver should not watch or use the screen while driving.\n\nIt stays on until the truck next starts up. Tap the Passenger pill at the top to turn it off sooner.';
 
-async function flip(on: boolean, setBusy: (b: boolean) => void) {
-  if (on && !confirm(CONFIRM)) return;
+/** Turn passenger mode on (asking first) or off. True when it changed. */
+async function flip(on: boolean, setBusy: (b: boolean) => void): Promise<boolean> {
+  if (on && !confirm(CONFIRM)) return false;
   setBusy(true);
-  try { await setPassenger(on); toast(on ? 'Passenger mode on' : 'Passenger mode off'); } catch (e) { toast(`Not changed: ${(e as Error).message}`); } finally { setBusy(false); }
+  try { await setPassenger(on); toast(on ? 'Passenger mode on' : 'Passenger mode off'); return true; } catch (e) { toast(`Not changed: ${(e as Error).message}`); return false; } finally { setBusy(false); }
+}
+
+/** A parked-only tool tapped while driving: ask, and on yes turn passenger mode on and carry on to it. */
+export function askPassengerThen(then: () => void) {
+  void flip(true, () => {}).then((ok) => { if (ok) then(); });
 }
 
 /** Tapped something a lockout paused: ask, and on yes turn passenger mode on. */

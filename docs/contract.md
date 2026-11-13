@@ -626,7 +626,7 @@ over `drive.lockoutMph` its children are replaced by a "paused while driving"
 notice. The Trips lists use it, and the Settings link is disabled. Media and
 browser views (Track B) should wrap their video and browser panes in it. At
 `lockout.bigTargets` the app root gets `.at-speed` (larger hit targets; the
-Theme and Settings rail buttons step aside); at heat level `throttle` and above
+Theme, Logs and Settings rail buttons stay but dim, and tapping one while driving asks "Are you the passenger?" first; yes turns passenger mode on and opens it); at heat level `throttle` and above
 it gets `.calm` (no transitions or animations).
 
 **Passenger mode** (`POST /api/drive/passenger {on: boolean}`, switched in
