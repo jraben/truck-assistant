@@ -10,7 +10,7 @@ import { scoreCharger, type Station } from '../chargers/score.ts';
 import type { ChargerAvailability } from '../types.ts';
 import { coach, type Coach } from './coach.ts';
 import { planLegs, energyModel, type Candidate, type PlanResult, type PlanStop } from './planner.ts';
-import { addElevation, fetchRouteVia, locate, samplePoints, type LatLon, type Route } from './route.ts';
+import { addElevation, fetchRouteVia, locate, samplePoints, type LatLon, type Route, type RouteOpts } from './route.ts';
 import { rateKw, type SampleStore } from './samples.ts';
 import type { Destination, PlannedWaypoint, RoadTripBrief, RoadTripView, TripAlert, TripPlan, TripPreset, TripProgress, TripWaypoint } from './types.ts';
 export type { RoadTripBrief, RoadTripView, TripAlert, TripPlan, TripProgress } from './types.ts';
@@ -54,6 +54,8 @@ export type RoadTripDeps = {
   /** Ready-made trips (from, to, starting charge), e.g. the demo's factory pickup. */
   presets?: () => TripPreset[];
   router?: string;
+  /** Where routes come from right now (roadtrip/routing.ts): local GraphHopper, OSRM, towing cap. */
+  routing?: () => RouteOpts;
   fetchFn?: typeof fetch;
 };
 
@@ -108,10 +110,13 @@ export class RoadTripService {
     const s = this.d.settings();
     const warnings: string[] = [];
     const via = (req.via ?? []).slice(0, MAX_VIA);
-    const { route: joined, legEnds } = await fetchRouteVia([from, ...via, req.to], { router: this.d.router, fetchFn: this.d.fetchFn });
+    const ro = this.d.routing?.() ?? { router: this.d.router };
+    const { route: joined, legEnds } = await fetchRouteVia([from, ...via, req.to], { ...ro, fetchFn: this.d.fetchFn });
     const route = await addElevation(joined, this.d.fetchFn);
     const stopsAt = via.map((w, i) => ({ ...w, routeMi: legEnds[i] }));
     if (route.source === 'straight') warnings.push('No road route (router unreachable): distances are a straight line plus 25%.');
+    if (ro.towMph && route.source === 'graphhopper') warnings.push(`Towing: routed at no more than ${ro.towMph} mph.`);
+    else if (ro.towMph) warnings.push(`Towing, but the speed cap needs the local router (GraphHopper); this route assumes normal speeds.`);
     if (!route.elevation) warnings.push('No elevation data: climbs are not counted.');
 
     // Chargers near the route, one search per sample point, merged by id.

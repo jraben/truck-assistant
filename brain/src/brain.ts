@@ -22,6 +22,7 @@ import { chargePeakState, powerKw } from './charges/peak.ts';
 import { ChargeStore } from './charges/store.ts';
 import { SampleStore } from './roadtrip/samples.ts';
 import { RoadTripService } from './roadtrip/service.ts';
+import { RoutingSettings } from './roadtrip/routing.ts';
 import { TrafficService } from './traffic/service.ts';
 import { ContactService, SYNC_MS as CONTACT_SYNC_MS } from './contacts/service.ts';
 import { PickupService } from './pickup/service.ts';
@@ -81,6 +82,7 @@ export class Brain extends EventEmitter {
   readonly samples: SampleStore;
   /** Road-trip planner and the active trip. */
   readonly roadTrip: RoadTripService;
+  readonly routing: RoutingSettings;
   /** 511 cameras and incidents ahead, and enforcement cameras (OpenStreetMap). */
   readonly traffic: TrafficService;
   /** Address books (Outlook, Google, CardDAV), synced: trip destinations and call buttons. */
@@ -200,8 +202,9 @@ export class Brain extends EventEmitter {
     this.charges.onChange(() => this.drive.refreshSince());
     this.samples = new SampleStore(db, { sim: config.sim });
     this.finder.setPerformance((lat, lon) => this.samples.sitePerformance(lat, lon));
+    this.routing = new RoutingSettings(db, config.routerUrl);
     this.roadTrip = new RoadTripService({
-      db, finder: this.finder, samples: this.samples, router: config.routerUrl,
+      db, finder: this.finder, samples: this.samples, router: config.routerUrl, routing: () => this.routing.opts(),
       presets: () => (config.demo ? DEMO_TRIPS : []),
       gasCompare: () => {
         const v = this.compareVehicle(this.driverId);
@@ -232,7 +235,7 @@ export class Brain extends EventEmitter {
       demoPlaces: config.demo ? DEMO_CONTACTS : undefined,
     });
     this.pickup = new PickupService({
-      db, router: config.routerUrl,
+      db, router: config.routerUrl, routing: () => this.routing.opts(),
       gps: () => (this.s.gps?.fix ? { lat: this.s.gps.lat, lon: this.s.gps.lon } : null),
       online: () => this.net.status?.link !== 'offline',
       notify: async (title, message, clickUrl) => { if (this.pushToPhone) await this.pushToPhone(title, message, clickUrl); },

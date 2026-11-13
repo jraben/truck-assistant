@@ -1,9 +1,12 @@
-// A road route for trip planning: geometry and duration from an OSRM server,
-// elevation from Open-Meteo, and the geometry helpers the planner needs
-// (miles along the route, where a charger sits on it, how far off it is).
+// A road route for trip planning: geometry and duration from a local
+// GraphHopper on the Pi (offline; deploy/graphhopper/), else an OSRM server
+// (the public demo by default), else a straight line; elevation from
+// GraphHopper's graph when it has it, else Open-Meteo; and the geometry
+// helpers the planner needs (miles along the route, where a charger sits on
+// it, how far off it is).
 //
-// Navigation itself stays in Waze; this route only has to be good enough to
-// say how much energy each leg takes and which chargers are on the way.
+// Navigation itself stays in Waze or an offline app; this route only has to be
+// good enough to say how much energy each leg takes and which chargers are on the way.
 import { haversineMi } from '../geo.ts';
 
 /** OSRM's public demo server. Light personal use only; ROUTER_URL points at your own. */
@@ -20,11 +23,82 @@ export type Route = {
   /** The router's driving time, minutes. */
   minutes: number;
   /** Where the route came from: the router, or a straight line when none answered. */
-  source: 'osrm' | 'straight';
+  source: 'graphhopper' | 'osrm' | 'straight';
   elevation: boolean;
 };
 
 type FetchFn = typeof fetch;
+
+/**
+ * Where routes come from. `graphhopper`: a local GraphHopper's base URL, tried
+ * first. `publicOsrm`: false never asks the public OSRM demo (ROUTER_URL, if
+ * set, still counts as your own). `towMph`: towing, so cap the speed (needs a
+ * GraphHopper with flexible routing, LM or none, for its custom model).
+ */
+export type RouteOpts = { router?: string; graphhopper?: string | null; publicOsrm?: boolean; towMph?: number | null; fetchFn?: FetchFn };
+
+/** GraphHopper's POST /route body: one car route, points as GeoJSON, with elevation if its graph has it. Pure. */
+export function graphhopperBody(from: LatLon, to: LatLon, o: { elevation: boolean; towMph?: number | null }): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    points: [[from.lon, from.lat], [to.lon, to.lat]],
+    profile: 'car', points_encoded: false, instructions: false, calc_points: true, elevation: o.elevation,
+  };
+  if (o.towMph) {
+    // Towing: no faster than the trailer's limit on any road (GraphHopper speeds are km/h).
+    body.custom_model = { speed: [{ if: 'true', limit_to: String(Math.round(o.towMph * 1.609344)) }] };
+    body['ch.disable'] = true;
+  }
+  return body;
+}
+
+export type GhPath = { meters: number; ms: number; coords: [number, number, number?][] };
+/** The first path of a GraphHopper /route answer, or an error message. Pure. */
+export function parseGraphhopper(j: unknown): GhPath | string {
+  const o = j as { message?: unknown; paths?: { distance?: unknown; time?: unknown; points?: { coordinates?: unknown } }[] };
+  if (typeof o?.message === 'string' && !o.paths) return o.message;
+  const p = o?.paths?.[0];
+  const c = p?.points?.coordinates;
+  if (!p || typeof p.distance !== 'number' || typeof p.time !== 'number' || !Array.isArray(c) || c.length < 2) return 'no route';
+  return { meters: p.distance, ms: p.time, coords: c as [number, number, number?][] };
+}
+
+/** What a GraphHopper serves: its bounding box, profiles, whether it has elevation, and its data date. */
+export type GhInfo = { bbox: [number, number, number, number] | null; profiles: string[]; elevation: boolean; dataDate: string | null; version: string | null };
+export function parseGhInfo(j: unknown): GhInfo {
+  const o = (j ?? {}) as { bbox?: unknown; profiles?: unknown; elevation?: unknown; data_date?: unknown; import_date?: unknown; version?: unknown };
+  const bbox = Array.isArray(o.bbox) && o.bbox.length === 4 && o.bbox.every((n) => typeof n === 'number') ? o.bbox as GhInfo['bbox'] : null;
+  const profiles = Array.isArray(o.profiles) ? o.profiles.map((p) => (typeof p === 'string' ? p : (p as { name?: unknown })?.name)).filter((n): n is string => typeof n === 'string') : [];
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  const date = str(o.data_date) ?? str(o.import_date);
+  return { bbox, profiles, elevation: o.elevation === true, dataDate: date, version: typeof o.version === 'string' ? o.version : null };
+}
+
+const infoCache = new Map<string, { at: number; info: GhInfo }>();
+/** /info from a GraphHopper, cached for 10 minutes (it only changes when the graph is rebuilt). */
+export async function graphhopperInfo(base: string, fetchFn: FetchFn = fetch, fresh = false): Promise<GhInfo> {
+  const b = base.replace(/\/$/, '');
+  const hit = infoCache.get(b);
+  if (!fresh && hit && Date.now() - hit.at < 600_000) return hit.info;
+  const r = await fetchFn(`${b}/info`, { signal: AbortSignal.timeout(5000) });
+  if (!r.ok) throw new Error(`GraphHopper /info answered ${r.status}`);
+  const info = parseGhInfo(await r.json());
+  infoCache.set(b, { at: Date.now(), info });
+  return info;
+}
+
+async function graphhopperRoute(base: string, from: LatLon, to: LatLon, f: FetchFn, towMph: number | null | undefined): Promise<Route> {
+  const b = base.replace(/\/$/, '');
+  const info = await graphhopperInfo(b, f);
+  const r = await f(`${b}/route`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(graphhopperBody(from, to, { elevation: info.elevation, towMph })), signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const p = parseGraphhopper(await r.json().catch(() => ({ message: `answered ${r.status}` })));
+  if (typeof p === 'string') throw new Error(`GraphHopper: ${p}`);
+  const pts = thin(p.coords.map(([lon, lat, ele]) => ({ lat, lon, ele })), 1) as (LatLon & { ele?: number })[];
+  const withMi = withMiles(pts);
+  const routerMi = p.meters / 1609.344;
+  const k = withMi.at(-1)!.mi > 0 ? routerMi / withMi.at(-1)!.mi : 1;
+  withMi.forEach((q, i) => { q.mi *= k; const e = pts[i].ele; q.elevM = typeof e === 'number' && Number.isFinite(e) ? e : null; });
+  return { points: withMi, miles: routerMi, minutes: p.ms / 60_000, source: 'graphhopper', elevation: withMi.every((q) => q.elevM !== null) };
+}
 
 /** Thin the polyline to about one point per `stepMi`, keeping the ends. */
 export function thin(points: LatLon[], stepMi: number): LatLon[] {
@@ -47,12 +121,21 @@ export function withMiles(points: LatLon[]): RoutePoint[] {
   });
 }
 
-/** Road route from the router, or (offline) a straight line padded by 25% for roads and labelled as such. */
-export async function fetchRoute(from: LatLon, to: LatLon, opts: { router?: string; fetchFn?: FetchFn } = {}): Promise<Route> {
+/**
+ * Road route: the local GraphHopper first, then OSRM, then (offline, or
+ * outside the local graph with no internet) a straight line padded by 25% for
+ * roads and labelled as such.
+ */
+export async function fetchRoute(from: LatLon, to: LatLon, opts: RouteOpts = {}): Promise<Route> {
   const f = opts.fetchFn ?? fetch;
-  const base = (opts.router ?? DEFAULT_ROUTER).replace(/\/$/, '');
+  const why: string[] = [];
+  if (opts.graphhopper) {
+    try { return await graphhopperRoute(opts.graphhopper, from, to, f, opts.towMph); } catch (e) { why.push((e as Error).message); }
+  }
+  const base = (opts.router ?? (opts.publicOsrm === false ? '' : DEFAULT_ROUTER)).replace(/\/$/, '');
   const url = `${base}/route/v1/driving/${from.lon},${from.lat};${to.lon},${to.lat}?overview=full&geometries=geojson&alternatives=false&steps=false`;
   try {
+    if (!base) throw new Error(why.length ? why.join('; ') : 'no router set');
     const r = await f(url, { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'user-agent': 'truck-assistant (DIY dash)' } });
     if (!r.ok) throw new Error(`router answered ${r.status}`);
     const j = await r.json() as { code?: string; routes?: { distance: number; duration: number; geometry: { coordinates: [number, number][] } }[] };
@@ -70,7 +153,7 @@ export async function fetchRoute(from: LatLon, to: LatLon, opts: { router?: stri
     const n = Math.max(2, Math.ceil(miles / 5));
     const pts = Array.from({ length: n + 1 }, (_, i) => ({ lat: from.lat + (to.lat - from.lat) * (i / n), lon: from.lon + (to.lon - from.lon) * (i / n) }));
     const withMi = withMiles(pts).map((p) => ({ ...p, mi: p.mi * 1.25 }));
-    console.warn(`[roadtrip] no road route (${(e as Error).message}); planning on a straight line`);
+    console.warn(`[roadtrip] no road route (${[...why, (e as Error).message].filter((m, i, a) => a.indexOf(m) === i).join('; ')}); planning on a straight line`);
     return { points: withMi, miles, minutes: (miles / 60) * 60, source: 'straight', elevation: false };
   }
 }
@@ -81,6 +164,7 @@ export async function fetchRoute(from: LatLon, to: LatLon, opts: { router?: stri
  * and answers 429 past its free per-minute limit). A failure leaves them null.
  */
 export async function addElevation(route: Route, fetchFn: FetchFn = fetch): Promise<Route> {
+  if (route.elevation) return route; // GraphHopper's graph had it already: no internet needed
   const idx: number[] = [];
   let last = -Infinity;
   const step = Math.max(2, route.miles / 300);
@@ -179,7 +263,7 @@ export function samplePoints(route: Route, stepMi: number): RoutePoint[] {
  * A route through stops: each leg fetched on its own and joined into one, with
  * the mile where each leg ends (the stops, then the destination).
  */
-export async function fetchRouteVia(points: LatLon[], opts: { router?: string; fetchFn?: FetchFn } = {}): Promise<{ route: Route; legEnds: number[] }> {
+export async function fetchRouteVia(points: LatLon[], opts: RouteOpts = {}): Promise<{ route: Route; legEnds: number[] }> {
   if (points.length < 2) throw new Error('a route needs a start and an end');
   const legs: Route[] = [];
   for (let i = 0; i < points.length - 1; i++) legs.push(await fetchRoute(points[i], points[i + 1], opts));
@@ -191,5 +275,6 @@ export async function fetchRouteVia(points: LatLon[], opts: { router?: string; f
     offset += l.miles; minutes += l.minutes;
     legEnds.push(offset);
   });
-  return { route: { points: out, miles: offset, minutes, source: legs.every((l) => l.source === 'osrm') ? 'osrm' : 'straight', elevation: false }, legEnds };
+  const source: Route['source'] = legs.some((l) => l.source === 'straight') ? 'straight' : legs.every((l) => l.source === 'graphhopper') ? 'graphhopper' : 'osrm';
+  return { route: { points: out, miles: offset, minutes, source, elevation: legs.every((l) => l.elevation) }, legEnds };
 }
