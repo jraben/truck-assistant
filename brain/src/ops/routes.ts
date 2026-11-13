@@ -216,7 +216,7 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
       if (repo && !/^(https?:\/\/)?(www\.)?github\.com\/[\w.-]+\/[\w.-]+?(\.git)?\/?$/i.test(repo)) return reply.code(400).send({ error: 'repo must look like https://github.com/owner/name' });
       const channel = b.channel === undefined ? cur.channel : b.channel;
       if (channel !== 'stable' && channel !== 'main') return reply.code(400).send({ error: 'channel is stable or main' });
-      ops.store.set('updater', { repo, channel, auto });
+      ops.store.set('updater', { repo, channel, channelChosen: b.channel !== undefined ? true : cur.channelChosen === true, auto });
       return ops.updater.status();
     });
 

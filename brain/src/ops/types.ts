@@ -40,7 +40,8 @@ export type OpsConfig = {
     notifyService: string | null;          // HA notify service, e.g. "mobile_app_jeffs_iphone"
     notifiedOn: Record<string, string>;    // reminder id -> last day notified (YYYY-MM-DD)
   };
-  updater: { repo: string | null; channel: 'stable' | 'main'; auto: AutoUpdate };
+  /** channelChosen: someone picked the channel in Settings (else it follows the default, main). */
+  updater: { repo: string | null; channel: 'stable' | 'main'; channelChosen?: boolean; auto: AutoUpdate };
   backup: {
     enabled: boolean;
     hour: number;                          // local hour to run, when on home Wi-Fi

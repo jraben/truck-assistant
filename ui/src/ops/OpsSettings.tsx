@@ -33,7 +33,7 @@ export function UpdatesSection() {
     <Section id="updates" title="Software updates" help="Checks GitHub for new releases. Installing builds the new version beside the running one, restarts, checks /api/health, and goes back by itself if the new one doesn't come up. The previous version is kept for a one-tap rollback.">
       <div class="fields form">
         <label class="f"><span>GitHub repository</span><input type="url" value={repo} placeholder="https://github.com/owner/slate-cockpit" onInput={(e) => setRepo(val(e))} /></label>
-        <label class="f"><span>Channel</span><select value={s.channel} onChange={(e) => void act(() => put('/api/update/config', { channel: (e.target as HTMLSelectElement).value }))}><option value="stable">Stable (release tags)</option><option value="main">main (latest commit)</option></select></label>
+        <label class="f"><span>Channel</span><select value={s.channel} onChange={(e) => void act(() => put('/api/update/config', { channel: (e.target as HTMLSelectElement).value }))}><option value="main">main: latest changes (recommended)</option><option value="stable">Stable: published releases only (none yet)</option></select></label>
       </div>
       <div class="row wrap">
         <button class="btn sm" type="button" disabled={repo === (s.repo ?? '')} onClick={() => void act(() => put('/api/update/config', { repo: repo || null }))}>Save repository</button>

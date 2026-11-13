@@ -39,7 +39,8 @@ export function defaultOps(): OpsConfig {
   return {
     mileage: { odometerAnchor: null, rates: structuredClone(DEFAULT_RATES), driverDefaults: {}, placeTags: {}, feedIsBusiness: true },
     maintenance: { reminders: defaultReminders(), notifyService: null, notifiedOn: {} },
-    updater: { repo: null, channel: 'stable', auto: { enabled: false, when: 'parked' } },
+    // main by default: the repo publishes no releases, so stable never had anything to install.
+    updater: { repo: null, channel: 'main', channelChosen: false, auto: { enabled: false, when: 'parked' } },
     backup: { enabled: false, hour: 2, target: { kind: 'none' }, keep: 14, keepLocal: 3, includeSecrets: false },
     auth: { passwordHash: null, trustLocal: true },
     setup: { done: false, steps: {} },
@@ -61,6 +62,9 @@ export function loadOps(raw: unknown): OpsConfig {
   const c = out as unknown as OpsConfig;
   const a = (isObj(c.updater.auto) ? c.updater.auto : {}) as Record<string, unknown>;
   c.updater.auto = { enabled: a.enabled === true, when: a.when === 'home-wifi' ? 'home-wifi' : 'parked' };
+  // A file saved before main became the default has channel 'stable' only because that was the default:
+  // until someone picks a channel in Settings, follow the default.
+  if (c.updater.channelChosen !== true) { c.updater.channel = 'main'; c.updater.channelChosen = false; }
   return c;
 }
 
