@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, toast } from '../lib/brain.ts';
 import type { PickupView } from '../../../brain/src/pickup/service.ts';
-import { fmtTime, wazeUrl } from '../lib/fmt.ts';
+import { fmtTime } from '../lib/fmt.ts';
+import { NavModal } from './NavModal.tsx';
 import { Card } from './common.tsx';
 import { DrivingLock } from '../drive/Lock.tsx';
 
@@ -21,6 +22,7 @@ export function PickupCard() {
   const [who, setWho] = useState('');
   const [bags, setBags] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [nav, setNav] = useState(false);
   const load = async () => { try { setV(await api<PickupView>('/api/pickup')); } catch { /* keep */ } };
   useEffect(() => { void load(); const id = setInterval(() => void load(), 15_000); return () => clearInterval(id); }, []);
   const start = async (f: string) => {
@@ -56,7 +58,8 @@ export function PickupCard() {
           {s?.readyAt && <div><b class="num">{fmtTime(s.readyAt)}</b><small>out front{p.bags ? ' (bags)' : ''}</small></div>}
           {s?.leaveAt && s.phase !== 'at-gate' && <div><b class="num">{Date.parse(s.leaveAt) <= Date.now() ? 'Now' : fmtTime(s.leaveAt)}</b><small>leave{s.driveMin !== null ? ` (${s.driveMin} min drive)` : ''}</small></div>}
         </div>
-        {p.dest && <a class="btn primary" href={wazeUrl(p.dest.lat, p.dest.lon)} target="_blank" rel="noreferrer">Waze to {p.dest.iata ?? 'the airport'}</a>}
+        {p.dest && <button type="button" class="btn primary" onClick={() => setNav(true)}>Navigate to {p.dest.iata ?? 'the airport'}</button>}
+        {nav && p.dest && <NavModal target={{ name: p.dest.iata ? `${p.dest.iata} pickup` : 'Airport pickup', lat: p.dest.lat, lon: p.dest.lon }} onClose={() => setNav(false)} />}
         {v?.error && <div class="dimtxt" style="font-size:var(--fs-caption)">{v.error}</div>}
         <div class="attrib">Position: ADS-B via adsb.fi (open data); route: adsbdb. Landing time is an estimate from distance and speed.{v?.officialOn ? ' Gate, bags and delays: FlightAware AeroAPI.' : ' The gate and bag carousel need a FlightAware key (Settings → Traffic cameras and incidents).'}</div>
       </Card>

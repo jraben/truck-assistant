@@ -1518,3 +1518,22 @@ stops as one GeoJSON data pack (`scene-bundle` source, exact `byteLength` and
 `sha256`), an overview shot and a shot at each stop (or a fly-along for a driven
 trip). IMPORT it in God's Eye's Scenes panel. Checked against God's Eye's own
 `parseSceneShare`.
+
+## Navigation hand-off (Waze or Organic Maps)
+
+Every Navigate button (charge stops, road-trip stops, the airport pickup,
+calendar appointments) opens `ui/src/components/NavModal.tsx`, which offers
+two apps; links come from `ui/src/lib/nav.ts`:
+
+- **Waze** (the iPhone, through CarPlay; needs signal): `https://waze.com/ul?ll=<lat>,<lon>&navigate=yes`,
+  or `?q=<address>` for a typed place. Shown as a QR code and link, as before.
+- **Organic Maps** (free OpenStreetMap navigation on the dash tablet; works
+  with no signal in states downloaded inside the app): `om://route?sll=<truck>&saddr=Truck&dll=<dest>&daddr=<name>&type=vehicle`
+  with a GPS fix, `om://map?ll=…&n=…` without one, `om://search?query=…` for
+  an address. On Android it opens as `intent://…#Intent;scheme=om;package=app.organicmaps;S.browser_fallback_url=<Play Store>;end`;
+  elsewhere as a QR code.
+
+Which opens first is per screen (`localStorage` `slate.nav.app`:
+`auto` | `waze` | `organic`, set in Settings, Truck, **Navigation**); `auto`
+picks Organic Maps when `State.network.link` is `offline`. Organic Maps keeps
+its own map downloads, and the Navigation card explains how to set them up.

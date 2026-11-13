@@ -254,8 +254,8 @@ function PlanCard({ p, busy, onStart, onDiscard }: { p: TripPlan; busy: string |
         <button class="btn" type="button" disabled={!!busy} onClick={onDiscard}>Discard</button>
         <a class="btn" href="/api/roadtrip/scene.gevbundle.json" download title="A God's Eye View scene: IMPORT it in God's Eye's Scenes panel">Fly it in God's Eye</a>
       </div>
-      <div class="attrib">Route: {p.routeSource === 'osrm' ? 'OpenStreetMap via OSRM' : 'straight line (no router)'}{p.elevation ? '; elevation: Open-Meteo' : ''}. {p.candidates} fast chargers near the route. Navigation stays in Waze.</div>
-      {waze && <WazeModal ch={waze as never} onClose={() => setWaze(null)} />}
+      <div class="attrib">Route: {p.routeSource === 'osrm' ? 'OpenStreetMap via OSRM' : 'straight line (no router)'}{p.elevation ? '; elevation: Open-Meteo' : ''}. {p.candidates} fast chargers near the route. Navigation: Waze, or Organic Maps offline.</div>
+      {waze && <WazeModal ch={waze} onClose={() => setWaze(null)} />}
     </Card>
   );
 }
@@ -290,7 +290,7 @@ function ChargeRow({ s, n, sel, done, onWaze }: { s: PlanStop; n: number; sel: b
           <h4 class="clamp2">{s.name}</h4>
           <div class="chmeta num">mile {Math.round(s.routeMi)} · {s.maxKw ? `${Math.round(s.maxKw)} kW` : 'kW ?'} · {s.network ?? 'Network unknown'}{s.offMi >= 1 ? ` · ${s.offMi} mi off route` : ''}</div>
         </div>
-        <button class="gobtn" type="button" onClick={() => onWaze(s)} aria-label={`Send ${s.name} to Waze`} title="Send to Waze">
+        <button class="gobtn" type="button" onClick={() => onWaze(s)} aria-label={`Navigate to ${s.name}`} title="Navigate">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z" /></svg>
         </button>
       </div>
@@ -338,7 +338,7 @@ function ActiveTrip({ v, busy, onReplan, onEnd }: { v: RoadTripView; busy: strin
             <div class="rtnextname">{ns.name}</div>
             <div class="num">{pr?.atStop ? <>Charge to <b>{ns.departSoc}%</b>, leave by {fmtTime(ns.departAt)}</> : <>Arrive ~<b>{pr?.nextArriveSoc ?? ns.arriveSoc}%</b> (plan {ns.arriveSoc}%) · charge to {ns.departSoc}%</>}</div>
             <div class="row wrap">
-              <button class="btn primary" type="button" onClick={() => setWaze(ns)}>Waze to this stop</button>
+              <button class="btn primary" type="button" onClick={() => setWaze(ns)}>Navigate to this stop</button>
               {ns.backup && <span class="dimtxt" style="font-size:var(--fs-body-sm)">Backup: {ns.backup.name}</span>}
             </div>
           </div>
@@ -353,7 +353,7 @@ function ActiveTrip({ v, busy, onReplan, onEnd }: { v: RoadTripView; busy: strin
       <Card label="Stops">
         <Stops stops={stops} via={p.via ?? []} next={next} onWaze={setWaze} />
       </Card>
-      {waze && <WazeModal ch={waze as never} onClose={() => setWaze(null)} />}
+      {waze && <WazeModal ch={waze} onClose={() => setWaze(null)} />}
     </div>
   );
 }

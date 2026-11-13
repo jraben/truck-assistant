@@ -213,7 +213,7 @@ Step by step, with pictures, for a first-time installer:
 ## Wants
 
 1. Charge info and where to charge, ranked by my preferences
-2. Waze for navigation
+2. Waze for navigation (or Organic Maps on the tablet, offline: Settings, Truck, Navigation)
 3. Media dashboard
 4. Super clean look, customizable
 5. Inexpensive yet reliable (Phoenix cab heat)
