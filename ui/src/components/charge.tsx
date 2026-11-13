@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useState } from 'preact/hooks';
-import { renderSVG } from 'uqr';
+import { useEffect, useState } from 'preact/hooks';
 import { send, type Charger } from '../lib/brain.ts';
 import { refreshChargers, useChargers } from '../lib/data.ts';
-import { wazeUrl } from '../lib/fmt.ts';
 import { Card, Modal, V, whySoc } from './common.tsx';
 import { socLabel, type WP } from './drive.tsx';
-import { CarPlayWazeHint } from './carplay.tsx';
+import { NavModal } from './NavModal.tsx';
 
 const NEG = /below|past your|avoid|unknown|No .* plug|needs an adapter|not checked|busy|out of service|Slow last time/i;
 const POS = /^You paid|stalls free|full speed last time/;
@@ -25,7 +23,7 @@ export function Chargers({ s }: WP) {
                 <h4 class="clamp2">{ch.name}</h4>
                 <div class="chmeta num">{ch.distanceMi.toFixed(1)} mi · {ch.maxKw ? `${Math.round(ch.maxKw)} kW` : 'kW ?'} · {ch.connectors.join('/') || 'plugs ?'}<span class="dimtxt"> · {ch.network ?? 'Network unknown'}</span></div>
               </div>
-              <button class="gobtn" type="button" onClick={() => setWaze(ch)} aria-label={`Send ${ch.name} to Waze`} title="Send to Waze">
+              <button class="gobtn" type="button" onClick={() => setWaze(ch)} aria-label={`Navigate to ${ch.name}`} title="Navigate">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8z" /></svg>
               </button>
             </div>
@@ -39,26 +37,9 @@ export function Chargers({ s }: WP) {
   );
 }
 
-export function WazeModal({ ch, onClose }: { ch: Charger; onClose: () => void }) {
-  const url = wazeUrl(ch.lat, ch.lon);
-  const svg = useMemo(() => renderSVG(url, { border: 1 }), [url]);
-  const [copied, setCopied] = useState(false);
-  return (
-    <Modal title="Send to Waze" onClose={onClose}>
-      <div class="row wrap" style="gap:var(--s3);align-items:flex-start">
-        <div class="qr" dangerouslySetInnerHTML={{ __html: svg }} aria-label="QR code for the Waze link" />
-        <div class="grow" style="display:grid;gap:var(--s1)">
-          <div style="font-family:var(--display);font-size:var(--fs-title);font-weight:600">{ch.name}</div>
-          <CarPlayWazeHint />
-          <code style="word-break:break-all;font-size:var(--fs-caption)">{url}</code>
-          <div class="row wrap">
-            <button class="btn" type="button" onClick={() => { void navigator.clipboard?.writeText(url).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy link'}</button>
-            <a class="btn" href={url} target="_blank" rel="noreferrer">Open link</a>
-          </div>
-        </div>
-      </div>
-    </Modal>
-  );
+/** Send a charger (or a road-trip stop) to navigation: Waze or Organic Maps (NavModal). */
+export function WazeModal({ ch, onClose }: { ch: Pick<Charger, 'name' | 'lat' | 'lon'>; onClose: () => void }) {
+  return <NavModal target={{ name: ch.name, lat: ch.lat, lon: ch.lon }} onClose={onClose} />;
 }
 
 export function SocSlider({ s }: WP) {

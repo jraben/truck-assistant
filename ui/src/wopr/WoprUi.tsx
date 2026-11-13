@@ -1,10 +1,9 @@
 // WOPR on the cockpit: the rail button, the subtitle, the next-appointment
 // card (one tap to Waze) and the gate-code card on arrival.
-import { useEffect, useMemo, useState } from 'preact/hooks';
-import { renderSVG } from 'uqr';
+import { useEffect, useState } from 'preact/hooks';
 import { api, stateStore, store, toast, useStore } from '../lib/brain.ts';
 import { Card, Icon, Modal } from '../components/common.tsx';
-import { CarPlayWazeHint } from '../components/carplay.tsx';
+import { NavModal } from '../components/NavModal.tsx';
 import type { WP } from '../components/drive.tsx';
 import type { NextStatus } from '../../../brain/src/wopr/calendar.ts';
 import type { GateStatus } from '../../../brain/src/wopr/gate.ts';
@@ -101,7 +100,7 @@ export function NextAppointment({ s }: WP) {
             <b class="ellip">{a.title}</b>
             <span class="ellip dimtxt">{a.location ?? 'No address on the event'}</span>
           </span>
-          {a.wazeUrl && <span class="btn primary">Waze</span>}
+          {a.wazeUrl && <span class="btn primary">Navigate</span>}
         </button>
       ) : (
         <div class="dimtxt">{n === null ? 'Asking WOPR…' : !n.configured ? 'Connect WOPR on the settings page to see your calendar.' : !n.online ? 'Offline: the calendar needs the internet.' : n.message ?? 'Nothing on the calendar in the next day and a half.'}</div>
@@ -113,26 +112,9 @@ export function NextAppointment({ s }: WP) {
 }
 
 /** Same as the Charge view's Waze modal, for an address instead of a charger. */
-export function WazeLinkModal({ title, where, url, onClose }: { title: string; where: string; url: string; onClose: () => void }) {
-  const svg = useMemo(() => renderSVG(url, { border: 1 }), [url]);
-  const [copied, setCopied] = useState(false);
-  return (
-    <Modal title="Send to Waze" onClose={onClose}>
-      <div class="row wrap" style="gap:var(--s3);align-items:flex-start">
-        <div class="qr" dangerouslySetInnerHTML={{ __html: svg }} aria-label="QR code for the Waze link" />
-        <div class="grow" style="display:grid;gap:var(--s1)">
-          <div style="font-family:var(--display);font-size:var(--fs-title);font-weight:600">{title}</div>
-          <div class="dimtxt">{where}</div>
-          <CarPlayWazeHint />
-          <code style="word-break:break-all;font-size:var(--fs-caption)">{url}</code>
-          <div class="row wrap">
-            <button class="btn" type="button" onClick={() => { void navigator.clipboard?.writeText(url).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy link'}</button>
-            <a class="btn" href={url} target="_blank" rel="noreferrer">Open link</a>
-          </div>
-        </div>
-      </div>
-    </Modal>
-  );
+/** An appointment's place to navigation: a typed address, so Waze and Organic Maps search for it. */
+export function WazeLinkModal({ title, where, onClose }: { title: string; where: string; url?: string; onClose: () => void }) {
+  return <NavModal target={{ name: title, query: where }} where={where} onClose={onClose} />;
 }
 
 // ---- gate code on arrival ----------------------------------------------------------------
