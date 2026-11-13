@@ -254,7 +254,7 @@ function PlanCard({ p, busy, onStart, onDiscard }: { p: TripPlan; busy: string |
         <button class="btn" type="button" disabled={!!busy} onClick={onDiscard}>Discard</button>
         <a class="btn" href="/api/roadtrip/scene.gevbundle.json" download title="A God's Eye View scene: IMPORT it in God's Eye's Scenes panel">Fly it in God's Eye</a>
       </div>
-      <div class="attrib">Route: {p.routeSource === 'osrm' ? 'OpenStreetMap via OSRM' : 'straight line (no router)'}{p.elevation ? '; elevation: Open-Meteo' : ''}. {p.candidates} fast chargers near the route. Navigation: Waze, or Organic Maps offline.</div>
+      <div class="attrib">Route: {p.routeSource === 'graphhopper' ? 'OpenStreetMap via the local router (GraphHopper, offline)' : p.routeSource === 'osrm' ? 'OpenStreetMap via OSRM' : 'straight line (no router)'}{p.elevation ? (p.routeSource === 'graphhopper' ? '; elevation: the local router' : '; elevation: Open-Meteo') : ''}. {p.candidates} fast chargers near the route. Navigation: Waze, or Organic Maps offline.</div>
       {waze && <WazeModal ch={waze} onClose={() => setWaze(null)} />}
     </Card>
   );
