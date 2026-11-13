@@ -22,7 +22,7 @@ import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
-import { PassengerPill } from '../drive/Passenger.tsx';
+import { PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
 import { RelayDots } from './RelayDots.tsx';
 import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
@@ -130,7 +130,7 @@ export function App() {
     { id: '@driver', label: s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver', short: s?.driver?.name ?? 'Driver', icon: <DriverBadge d={s?.driver ?? null} size={30} />, pressed: driverOpen, current: driverOpen, onTap: () => { setDriverOpen(!driverOpen); setPicker(false); } },
     { id: '@theme', parkOnly: true, label: 'Theme', icon: <Ico d={PALETTE} />, pressed: picker, current: picker, onTap: () => { setPicker(!picker); setDriverOpen(false); } },
     { id: '@logs', parkOnly: true, label: 'Mileage & maintenance', short: 'Logs', icon: <Ico d={LOGS} />, pressed: !!logs, current: !!logs, onTap: () => { closePanels(); setLogs(logs ? null : 'mileage'); } },
-    ...(simAvailable ? [{ id: '@sim', parkOnly: true, label: 'Test panel (SIM)', short: 'Test', icon: <Ico d={SIM_ICON} />, pressed: simOpen, current: simOpen, onTap: () => { closePanels(); setSimOpen(!simOpen); } }] : []),
+    ...(simAvailable ? [{ id: '@sim', parkOnly: false /* only exists in SIM, where nobody is really driving: it must stay reachable at speed to stop the truck */, label: 'Test panel (SIM)', short: 'Test', icon: <Ico d={SIM_ICON} />, pressed: simOpen, current: simOpen, onTap: () => { closePanels(); setSimOpen(!simOpen); } }] : []),
     { id: '@settings', parkOnly: true, label: 'Settings', icon: <Ico d={GEAR} />, href: '/settings' },
   ];
   const byId = new Map(entries.map((e) => [e.id, e]));
@@ -168,7 +168,8 @@ export function App() {
         <HealthButton s={s} connected={link.connected} open={healthOpen} onClick={() => { setHealthOpen(!healthOpen); setNetOpen(false); }} />
         {s?.place && <span class="pill place hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? s.area ?? 'Unnamed stop'}</span>}
         {!s?.place && s?.area && <span class="pill place hide-sm">{s.area}</span>}
-        {s?.drive?.lockout.passenger && <PassengerPill />}
+        {/* Moving: a way in for the passenger (Settings steps aside at speed); on: the way out. */}
+        {s?.drive?.lockout.passenger ? <PassengerPill /> : s?.drive?.lockout.locked ? <PassengerAsk /> : null}
         <span class="sp" />
         <WeatherStrip s={s} />
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>

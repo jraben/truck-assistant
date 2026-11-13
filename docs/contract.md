@@ -635,7 +635,9 @@ traffic camera pictures, and the parked apps (Watch, Games, Karaoke, Plex
 video). `lockout.locked` keeps meaning "moving", so camp/pet mode still end,
 the light strip still goes off and the Lights tab stays parked only. The app
 root gets `.passenger`: the Settings rail button stays at speed, and a
-"Passenger" pill in the top strip turns it off. Tapping anything a lockout
+"Passenger" pill in the top strip turns it off. While moving with it off, the
+top strip shows an outlined "Passenger?" button that asks and turns it on
+(Settings steps aside at speed, so this is the way in). Tapping anything a lockout
 paused (except the Lights tab) asks "Are you the passenger?" and turns it on.
 Not saved: it lasts until the brain next starts, or until it is turned off. Code that
 gates on-screen content uses `useLockout().locked` (or `locked &&

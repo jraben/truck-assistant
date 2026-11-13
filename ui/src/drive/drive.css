@@ -368,3 +368,5 @@
 .passenger-pill { background: var(--accent); color: var(--accent-ink); font-weight: 600; flex: none; }
 .passenger-pill:hover { background: var(--accent); filter: brightness(1.1); }
 .tap-passenger { cursor: pointer; }
+/* moving, passenger mode off: the outlined way in */
+.passenger-ask { border: 2px solid var(--accent); color: var(--fg); font-weight: 600; flex: none; background: transparent; }
