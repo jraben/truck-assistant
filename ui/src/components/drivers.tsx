@@ -72,12 +72,15 @@ export function DriverPrompt() {
   );
 }
 
-export function DriverPanel({ onClose }: { onClose: () => void }) {
+export function DriverPanel({ onClose, onTheme }: { onClose: () => void; onTheme?: () => void }) {
   return (
     <div class="card picker dpanel" role="dialog" aria-label="Driver">
       <div class="row between"><span class="lbl">Driver</span><button class="btn sm" type="button" onClick={onClose}>Close</button></div>
       <DriverGrid onPicked={onClose} />
-      <a class="btn" href="/settings#drivers">Edit profiles…</a>
+      <div class="row wrap" style="gap:var(--s1)">
+        {onTheme && <button class="btn" type="button" onClick={onTheme}>Theme…</button>}
+        <a class="btn" href="/settings#drivers">Edit profiles…</a>
+      </div>
     </div>
   );
 }

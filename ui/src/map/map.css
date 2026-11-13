@@ -10,3 +10,10 @@
 .mapv-status.bad { color: var(--bad); }
 .truck-arrow { background: none; border: 0; }
 .truck-arrow svg { transition: transform .4s; }
+
+/* Map | Traffic tabs (the Traffic screen folded into Map) */
+.mapv-wrap { display: flex; flex-direction: column; gap: var(--s1); height: 100%; min-height: 0; }
+.mapv-tabs { flex: none; }
+.mapv-pane { flex: 1; min-height: 0; overflow: auto; }
+.mapv-pane[hidden] { display: none; }
+.mapv-pane > .mapv { height: 100%; }

@@ -14,7 +14,8 @@ import { WeatherOverlay, WeatherStrip } from '../drive/WeatherStrip.tsx';
 import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
 import { GaragePrompt, HOME_ICON, withHomeView } from '../home/Home.tsx';
 import { ModeOverlays, PARKED_ICON, TabletHello, withParkedView } from '../parked/Parked.tsx';
-import { MAP_ICON, withMapView } from '../map/MapView.tsx';
+import { foldTrafficIntoMap, MAP_ICON, withMapView } from '../map/MapView.tsx';
+import { logsStore, mapTabStore } from '../lib/panels.ts';
 import { WoprButton } from '../wopr/WoprUi.tsx';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { LogsPanel } from '../ops/OpsSettings.tsx';
@@ -44,10 +45,8 @@ const ICONS: Record<string, string> = {
   map: MAP_ICON,
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
-const PALETTE = 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zM7.5 12a1 1 0 1 0 0-.01M10 8a1 1 0 1 0 0-.01M14 8a1 1 0 1 0 0-.01';
 const MIC = 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3';
 const SIM_ICON = 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3M7 15h10';
-const LOGS ='M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7';
 const Ico = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>;
 
 /** Back from cams this long after reverse ends (the plan's 3 s). */
@@ -63,8 +62,14 @@ function storage(): Storage | null {
   try { return localStorage; } catch { return null; }
 }
 
+/** Traffic lives in the Map screen's Traffic tab now (unless a layout kept its own Traffic view). */
+function resolveView(layout: Layout, id: string): string {
+  if (id === 'traffic' && !layout.views.some((v) => v.id === 'traffic') && layout.views.some((v) => v.id === 'map')) { mapTabStore.set('traffic'); return 'map'; }
+  return id;
+}
+
 function viewFromHash(layout: Layout) {
-  const h = location.hash.slice(1);
+  const h = resolveView(layout, location.hash.slice(1));
   return layout.views.some((v) => v.id === h) ? h : layout.views[0]?.id ?? 'drive';
 }
 
@@ -76,13 +81,14 @@ export function App() {
   const driver = activeDriver(settings, s);
   useTabletGps(); // the dash tablet's own GPS, when there's no puck (lib/tabletGps.ts)
   const base = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
-  const layout = useMemo(() => withMapView(withParkedView(withHomeView(withMediaView(base)))), [base]);
+  const layout = useMemo(() => foldTrafficIntoMap(withMapView(withParkedView(withHomeView(withMediaView(base))))), [base]);
   const [view, setView] = useState(() => viewFromHash(layout));
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);
   const [netOpen, setNetOpen] = useState(false);
   const [healthOpen, setHealthOpen] = useState(false);
-  const [logs, setLogs] = useState<null | 'mileage' | 'maintenance'>(null);
+  const logs = useStore(logsStore);
+  const setLogs = (v: null | 'mileage' | 'maintenance') => logsStore.set(v);
   const [editing, setEditing] = useState(false);
   const stripRef = useRef<HTMLElement>(null);
   useStripFit(stripRef);
@@ -95,7 +101,7 @@ export function App() {
   const setSimOpen = (on: boolean) => { setSimOpenRaw(on); try { if (on) localStorage.setItem('slate.simPanel', '1'); else localStorage.removeItem('slate.simPanel'); } catch { /* private window */ } };
   const now = useClock();
 
-  const go = (id: string) => { setView(id); history.replaceState(null, '', `#${id}`); };
+  const go = (raw: string) => { const id = resolveView(layout, raw); if (id === 'map' && raw === 'map') mapTabStore.set('map'); setView(id); history.replaceState(null, '', `#${id}`); };
   useEffect(() => { const f = () => setView(viewFromHash(layout)); addEventListener('hashchange', f); return () => removeEventListener('hashchange', f); }, [layout]);
 
   // Reverse: jump to Cams, return to where we were a moment after it ends.
@@ -130,8 +136,7 @@ export function App() {
     ...layout.views.map((v): RailEntry => ({ id: v.id, label: v.label, icon: v.id === 'control' ? <RelayDots relays={s?.relays} online={!!s?.truckbox} /> : <Ico d={ICONS[v.id] ?? ICONS.drive} />, href: `#${v.id}`, current: v.id === cur.id, onTap: () => go(v.id) })),
     { id: '@wopr', label: 'WOPR voice', short: 'WOPR', icon: <Ico d={MIC} />, cls: 'voice', live: <WoprButton />, holdToEdit: false },
     { id: '@driver', label: s?.driver ? `Driver: ${s.driver.name}` : 'Pick the driver', short: s?.driver?.name ?? 'Driver', icon: <DriverBadge d={s?.driver ?? null} size={30} />, pressed: driverOpen, current: driverOpen, onTap: () => { setDriverOpen(!driverOpen); setPicker(false); } },
-    { id: '@theme', parkOnly: true, label: 'Theme', icon: <Ico d={PALETTE} />, pressed: picker, current: picker, onTap: () => { setPicker(!picker); setDriverOpen(false); } },
-    { id: '@logs', parkOnly: true, label: 'Mileage & maintenance', short: 'Logs', icon: <Ico d={LOGS} />, pressed: !!logs, current: !!logs, onTap: () => { closePanels(); setLogs(logs ? null : 'mileage'); } },
+    // Theme is in the driver's panel (themes are per driver); the logs are on the Trips screen.
     ...(simAvailable ? [{ id: '@sim', parkOnly: false /* only exists in SIM, where nobody is really driving: it must stay reachable at speed to stop the truck */, label: 'Test panel (SIM)', short: 'Test', icon: <Ico d={SIM_ICON} />, pressed: simOpen, current: simOpen, onTap: () => { closePanels(); setSimOpen(!simOpen); } }] : []),
     { id: '@settings', parkOnly: true, label: 'Settings', icon: <Ico d={GEAR} />, href: '/settings' },
   ];
@@ -199,7 +204,7 @@ export function App() {
       <GaragePrompt />
       <ModeOverlays />
       <TabletHello />
-      {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} />}
+      {driverOpen && <DriverPanel onClose={() => setDriverOpen(false)} onTheme={driver ? () => { setDriverOpen(false); setPicker(true); } : undefined} />}
       {healthOpen && <HealthPanel s={s} connected={link.connected} onClose={() => setHealthOpen(false)} onNetwork={() => { setHealthOpen(false); setNetOpen(true); }} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}

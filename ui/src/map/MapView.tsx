@@ -4,30 +4,38 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { Layout } from '../../../brain/src/types.ts';
 import type { MapsView } from '../../../brain/src/maps/service.ts';
 import type { WP } from '../components/drive.tsx';
 import { addOfflineAreas, areaAt, osmLayer } from '../lib/basemap.ts';
+import { mapTabStore } from '../lib/panels.ts';
+import { useStore } from '../lib/brain.ts';
+import { TrafficAhead } from '../components/traffic.tsx';
 import { isLight } from '../lib/theme.ts';
 import './map.css';
 
-export const MAP_ICON = 'M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14';
-export const MAP_VIEW: Layout['views'][number] = { id: 'map', label: 'Map', widgets: [{ type: 'map', col: 1, row: 1, w: 12, h: 2 }] };
-/** Every layout gets the Map view, after Drive, unless it already has one. */
-export function withMapView(layout: Layout): Layout {
-  if (layout.views.some((v) => v.id === 'map')) return layout;
-  const i = layout.views.findIndex((v) => v.id === 'drive');
-  const views = [...layout.views];
-  views.splice(i >= 0 ? i + 1 : views.length, 0, MAP_VIEW);
-  return { ...layout, views };
-}
+export { foldTrafficIntoMap, MAP_ICON, MAP_VIEW, withMapView } from './views.ts';
 
 const cssVar = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const ARROW = (deg: number | null) => `<svg viewBox="0 0 40 40" width="40" height="40" style="transform:rotate(${deg ?? 0}deg)"><circle cx="20" cy="20" r="17" fill="var(--accent)" fill-opacity=".25"/><path d="M20 6 30 31 20 25 10 31z" fill="var(--accent)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`;
 
 type Area = MapsView['areas'][number];
 
-export function MapW({ s }: WP) {
+export function MapW(props: WP) {
+  const tab = useStore(mapTabStore);
+  return (
+    <div class="mapv-wrap">
+      <div class="mtabs mapv-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'map'} onClick={() => mapTabStore.set('map')}>Map</button>
+        <button type="button" role="tab" aria-selected={tab === 'traffic'} onClick={() => mapTabStore.set('traffic')}>Traffic</button>
+      </div>
+      {/* The map stays mounted (and keeps following the truck) while Traffic is shown. */}
+      <div class="mapv-pane" hidden={tab !== 'map'}><MapPane {...props} /></div>
+      {tab === 'traffic' && <div class="mapv-pane"><TrafficAhead {...props} /></div>}
+    </div>
+  );
+}
+
+function MapPane({ s }: WP) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const truck = useRef<L.Marker | null>(null);
