@@ -1,0 +1,12 @@
+/* The Map view (map/MapView.tsx) */
+.mapv { position: relative; height: 100%; padding: 0; overflow: hidden; }
+.mapv-map { position: absolute; inset: 0; background: var(--panel-2); }
+/* Dark themes: invert only the online raster map; the offline vector map has its own dark style. */
+.mapv-map.dark .leaflet-layer.osm-base { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); }
+.mapv-bar { position: absolute; top: var(--s15); left: var(--s15); right: var(--s15); display: flex; flex-wrap: wrap; gap: var(--s1); align-items: center; z-index: 500; pointer-events: none; }
+.mapv-bar > * { pointer-events: auto; }
+.mapv-bar .pill { background: var(--panel); box-shadow: 0 2px 10px color-mix(in srgb, var(--bg) 60%, transparent); color: var(--fg); text-decoration: none; }
+.mapv-status.ok { color: var(--ok); }
+.mapv-status.bad { color: var(--bad); }
+.truck-arrow { background: none; border: 0; }
+.truck-arrow svg { transition: transform .4s; }

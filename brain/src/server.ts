@@ -26,6 +26,7 @@ import { HaError, NOT_CONFIGURED } from './ha/client.ts';
 import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
+import { registerMapsRoutes } from './maps/routes.ts';
 import { registerVehiclePhoto } from './drive/photo.ts';
 import { registerDriverPhotos } from './drive/driverPhoto.ts';
 import { mountOps } from './ops/routes.ts';
@@ -310,6 +311,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
 
   registerGoalRoutes(app, brain.goal, () => brain.refreshGoal());
   registerDriveRoutes(app, brain.drive);
+  registerMapsRoutes(app, config.dataDir, brain.db, () => { const g = brain.getState().gps; return g?.fix ? { lat: g.lat, lon: g.lon } : null; });
   registerRoadTripRoutes(app, brain.roadTrip, brain.samples);
   app.get('/api/traffic', async () => brain.traffic.view());
   const sky = new SkyService();
