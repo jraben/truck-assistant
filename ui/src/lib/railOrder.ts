@@ -57,3 +57,8 @@ export function pickOrder(o: { driver: string | null; driverOrder: string[] | nu
   if (o.draft && o.draft.driver === o.driver) return o.draft.order;
   return o.driverOrder;
 }
+
+/** Move one id to the end (the driver's profile stays at the bottom of the rail). Pure. */
+export function pinLast(order: string[], id: string): string[] {
+  return order.includes(id) ? [...order.filter((x) => x !== id), id] : order;
+}

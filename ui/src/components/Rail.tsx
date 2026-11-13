@@ -33,10 +33,13 @@ const EDGE_PX = 36;
 
 type Gesture = { id: string; pid: number; x: number; y: number; timer: number; dragging: boolean };
 
-export function Rail({ entries, editing, onEdit, onReorder, locked }: {
+export function Rail({ entries, editing, onEdit, onReorder, locked, parkLocked, onParkLocked }: {
   entries: RailEntry[];
   /** At speed: no rearranging. */
   locked?: boolean;
+  /** Driving, passenger mode off: a parked-only tool asks "Are you the passenger?" first (onParkLocked), then opens. */
+  parkLocked?: boolean;
+  onParkLocked?: (then: () => void) => void;
   editing: boolean;
   onEdit: (on: boolean) => void;
   onReorder: (order: string[]) => void;
@@ -162,8 +165,12 @@ export function Rail({ entries, editing, onEdit, onReorder, locked }: {
           <div key={x.id} class={`slot ${dragId === x.id ? 'lift' : ''} ${x.current ? 'on' : ''} ${x.parkOnly ? 'park-only' : ''}`} data-id={x.id}
             onPointerDown={(e) => down(e, x)}>
             {!editing && x.live ? x.live
-              : x.href ? <a href={x.href} draggable={false} {...common} onClick={(e) => { if (x.href!.startsWith('#')) { e.preventDefault(); x.onTap?.(); } }}>{x.icon}<span class="rl" aria-hidden="true">{x.short ?? x.label}</span></a>
-              : <button type="button" {...common} aria-pressed={x.pressed} onClick={() => x.onTap?.()}>{x.icon}<span class="rl" aria-hidden="true">{x.short ?? x.label}</span></button>}
+              : x.href ? <a href={x.href} draggable={false} {...common} onClick={(e) => {
+                  const open = () => { if (x.href!.startsWith('#')) x.onTap?.(); else window.location.href = x.href!; };
+                  if (x.parkOnly && parkLocked && onParkLocked) { e.preventDefault(); onParkLocked(open); }
+                  else if (x.href!.startsWith('#')) { e.preventDefault(); x.onTap?.(); }
+                }}>{x.icon}<span class="rl" aria-hidden="true">{x.short ?? x.label}</span></a>
+              : <button type="button" {...common} aria-pressed={x.pressed} onClick={() => { if (x.parkOnly && parkLocked && onParkLocked) onParkLocked(() => x.onTap?.()); else x.onTap?.(); }}>{x.icon}<span class="rl" aria-hidden="true">{x.short ?? x.label}</span></button>}
           </div>
         );
       })}

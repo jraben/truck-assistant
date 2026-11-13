@@ -237,11 +237,10 @@
 
 /* ---- at speed / hot ------------------------------------------------------------------ */
 .app.at-speed { --hit: 72px; }
-/* at speed: the parked-only tools (theme, logs, test panel, settings) leave the rail, the rest grow to fill it */
-/* ...unless passenger mode is on: the passenger needs Settings (and its switch to turn passenger mode off) */
-.app.at-speed:not(.passenger) .rail > .park-only { display: none; }
+/* Driving, passenger mode off: the parked-only tools (theme, logs, settings) stay on the rail, dimmed;
+   tapping one asks "Are you the passenger?" first (Rail parkLocked). Hiding them made the rail jump. */
+.app.moving:not(.passenger) .rail > .park-only { opacity: .55; }
 .app.at-speed .rail > .slot { max-height: none; }
-.app.at-speed:not(.passenger) .rail svg { width: 30px; height: 30px; }
 .app.at-speed .btn { min-height: 60px; }
 .app.calm *, .app.calm *::before, .app.calm *::after { transition: none !important; animation: none !important; }
 .app.calm .sp-sweep .trail, .app.calm .sp-57 .f-needle { filter: none; }

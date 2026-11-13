@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { loadCache, mergeOrder, moveItem, pickOrder, RAIL_ORDER_KEY, saveCache } from '../src/lib/railOrder.ts';
+import { pinLast } from '../src/lib/railOrder.ts';
 import { RAIL_EXTRA_IDS } from '../../brain/src/rail.ts';
 import { DEFAULT_LAYOUT } from '../../brain/src/layout.ts';
 import { withMediaView } from '../src/media/trackb.tsx';
@@ -108,5 +109,12 @@ describe('Home view: house cameras', () => {
     expect(w).toContainEqual({ type: 'homeCams', col: 5, row: 1, w: 8, h: 1 });
     expect(w).toContainEqual({ type: 'haPanel', col: 5, row: 2, w: 8, h: 1 });
     expect(withHomeView(withHomeView(old))).toEqual(withHomeView(old));
+  });
+});
+
+describe('the profile stays at the bottom', () => {
+  it('moves the driver to the end, whatever order was saved', () => {
+    expect(pinLast(['drive', '@driver', 'map', '@settings'], '@driver')).toEqual(['drive', 'map', '@settings', '@driver']);
+    expect(pinLast(['drive', 'map'], '@driver')).toEqual(['drive', 'map']);
   });
 });

@@ -23,10 +23,10 @@ import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
 import { VersionBar } from './VersionBar.tsx';
-import { PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
+import { askPassengerThen, PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
 import { RelayDots } from './RelayDots.tsx';
-import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
+import { loadCache, mergeOrder, pickOrder, pinLast, saveCache, type CachedOrder } from '../lib/railOrder.ts';
 
 const ICONS: Record<string, string> = {
   drive: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
@@ -135,7 +135,8 @@ export function App() {
     { id: '@settings', parkOnly: true, label: 'Settings', icon: <Ico d={GEAR} />, href: '/settings' },
   ];
   const byId = new Map(entries.map((e) => [e.id, e]));
-  const order = mergeOrder(pickOrder({ driver: driver?.id ?? null, driverOrder: driver?.railOrder ?? null, draft, cache }), entries.map((e) => e.id));
+  // The driver's profile always sits last on the rail, whatever order the rest are dragged into.
+  const order = pinLast(mergeOrder(pickOrder({ driver: driver?.id ?? null, driverOrder: driver?.railOrder ?? null, draft, cache }), entries.map((e) => e.id)), '@driver');
   const persist = (d: CachedOrder) => {
     saveCache(storage(), d);
     const send = (x: CachedOrder) => {
@@ -160,7 +161,7 @@ export function App() {
   const rows = Math.max(1, ...cur.widgets.map((w) => w.row + w.h - 1));
 
   return (
-    <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive?.lockout.passenger ? 'passenger' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
+    <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive?.lockout.passenger ? 'passenger' : ''} ${s?.drive?.lockout.locked ? 'moving' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
       <header class="strip" ref={stripRef}>
         <span class="brand"><img class="brand-mark" src="/icon.svg" alt="" /><span class="brand-name">{PROJECT.shortName}</span></span>
         {editing
@@ -176,7 +177,8 @@ export function App() {
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
       </header>
 
-      <Rail entries={order.map((id) => byId.get(id)!)} editing={editing} onEdit={setEditing} onReorder={reorder} locked={!!s?.drive?.lockout.bigTargets} />
+      <Rail entries={order.map((id) => byId.get(id)!)} editing={editing} onEdit={setEditing} onReorder={reorder} locked={!!s?.drive?.lockout.bigTargets}
+        parkLocked={!!s?.drive?.lockout.locked && !s.drive.lockout.passenger} onParkLocked={askPassengerThen} />
 
       <main class="stage">
         <div class="grid" style={{ '--cols': cols, '--rows': rows } as Record<string, number>}>
