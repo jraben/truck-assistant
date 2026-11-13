@@ -246,7 +246,7 @@ export class Updater {
       const inst = this.installed();
       const rel = await this.source.list(c.repo, c.channel, inst.sha, inst.downloadBytes ?? null);
       this.s.releases = rel; this.s.latest = rel[0] ?? null; this.s.checkedAt = new Date(this.now()).toISOString();
-      if (!this.s.latest) this.set('up-to-date', c.channel === 'stable' ? 'No releases published yet' : 'No commits on main');
+      if (!this.s.latest) this.set('up-to-date', c.channel === 'stable' ? 'No releases published yet: switch the channel to main to get the latest' : 'No commits on main');
       else if (isNewer(this.s.latest, inst, c.channel)) this.set('available', `${this.s.latest.tag} is available`);
       else this.set('up-to-date', `${inst.tag ?? `v${inst.version}`} is the latest`);
     } catch (e) { this.set('failed', `Check failed: ${(e as Error).message}`); }

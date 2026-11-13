@@ -6,7 +6,9 @@ import type { Layout } from './types.ts';
  * adds (Media, Home, Parked) and the tools. The UI's rail entries (App.tsx) must
  * use these ids; anything else in a saved order is dropped.
  */
-export const RAIL_EXTRA_IDS = ['media', 'home', 'parked', '@wopr', '@driver', '@theme', '@logs', '@sim', '@settings'] as const;
+// Theme moved into the driver's panel and the logs onto Trips: '@theme' and '@logs' in an old
+// saved order are dropped. 'map' is the Map view the UI adds (map/MapView.tsx).
+export const RAIL_EXTRA_IDS = ['media', 'home', 'parked', 'map', '@wopr', '@driver', '@sim', '@settings'] as const;
 
 const MAX = 64;
 

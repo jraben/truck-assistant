@@ -4,6 +4,7 @@ import { fmtDate, fmtDuration, fmtTime } from '../lib/fmt.ts';
 import { Card, Modal, V } from './common.tsx';
 import type { WP } from './drive.tsx';
 import { DrivingLock, ModeSplit } from '../drive/Lock.tsx';
+import { logsStore } from '../lib/panels.ts';
 
 type Detail = Trip & { points: TripPoint[] };
 type Tab = 'day' | 'trips' | 'places';
@@ -74,6 +75,9 @@ export function Trips({ s }: WP) {
       <Card label="Trips" right={
         <div class="row" style="gap:var(--s05)">
           {(['day', 'trips', 'places'] as const).map((t) => <button type="button" class={`tag ${tab === t ? 'accent' : 'dim'}`} onClick={() => setTab(t)}>{t.toUpperCase()}</button>)}
+          {/* The mileage and maintenance logs (they had their own rail icon) */}
+          <button type="button" class="tag dim" onClick={() => logsStore.set('mileage')}>MILEAGE</button>
+          <button type="button" class="tag dim" onClick={() => logsStore.set('maintenance')}>MAINTENANCE</button>
         </div>}>
         <div class="row wrap" style="gap:var(--s1)" role="group" aria-label="Whose trips">
           <button type="button" class={`btn sm ${driver === '' ? 'primary' : ''}`} onClick={() => setDriver('')}>Everyone</button>

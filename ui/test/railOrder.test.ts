@@ -7,6 +7,7 @@ import { DEFAULT_LAYOUT } from '../../brain/src/layout.ts';
 import { withMediaView } from '../src/media/trackb.tsx';
 import { withHomeView } from '../src/home/Home.tsx';
 import { withParkedView } from '../src/parked/Parked.tsx';
+import { withMapView } from '../src/map/views.ts';
 
 const mem = () => {
   const m = new Map<string, string>();
@@ -56,11 +57,11 @@ describe('rail order: which one shows', () => {
 describe('rail order: the brain knows every rail id', () => {
   it('views the UI adds and the tools are in RAIL_EXTRA_IDS', () => {
     const known = new Set<string>([...DEFAULT_LAYOUT.views.map((v) => v.id), ...RAIL_EXTRA_IDS]);
-    const ids = withParkedView(withHomeView(withMediaView(DEFAULT_LAYOUT))).views.map((v) => v.id);
+    const ids = withMapView(withParkedView(withHomeView(withMediaView(DEFAULT_LAYOUT)))).views.map((v) => v.id);
     for (const id of ids) expect(known.has(id), id).toBe(true);
     const app = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
     const tools = [...app.matchAll(/id: '(@[a-z-]+)'/g)].map((m) => m[1]);
-    expect(tools.length).toBeGreaterThanOrEqual(6);
+    expect(tools.length).toBeGreaterThanOrEqual(4); // WOPR, driver, test panel, settings
     for (const id of tools) expect(known.has(id), id).toBe(true);
   });
 });
