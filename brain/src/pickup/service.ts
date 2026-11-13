@@ -43,6 +43,7 @@ export type PickupDeps = {
   /** The next calendar appointment's title and place (WOPR), to suggest a flight. */
   nextAppointment?: () => { title: string; location: string | null } | null;
   router?: string;
+  routing?: () => import('../roadtrip/route.ts').RouteOpts;
   fetchFn?: typeof fetch;
   /** A FlightAware AeroAPI key (Settings), or null: gate, bags and delays are off without one. */
   flightAwareKey?: () => string | null;
@@ -147,7 +148,7 @@ export class PickupService {
     if (!p?.dest || !g) return null;
     if (now - this.drive.at < DRIVE_MS) return this.drive.min;
     try {
-      const r = await fetchRoute(g, p.dest, { router: this.d.router, fetchFn: this.d.fetchFn });
+      const r = await fetchRoute(g, p.dest, { ...(this.d.routing?.() ?? { router: this.d.router }), fetchFn: this.d.fetchFn });
       this.drive = { at: now, min: Math.round(r.minutes) };
     } catch { this.drive = { at: now, min: this.drive.min }; }
     return this.drive.min;

@@ -1,0 +1,17 @@
+# The truck's offline router on the Pi. Installed by deploy/graphhopper/README.md.
+[Unit]
+Description=GraphHopper (offline road-trip routing)
+After=network.target
+
+[Service]
+User=slate
+WorkingDirectory=/opt/graphhopper
+# -Xmx: a little over the graph-cache folder's size (README: "Memory").
+Environment=HEAP=2g
+ExecStart=/bin/sh -c 'exec java -Xmx$HEAP -Ddw.graphhopper.graph.location=/opt/graphhopper/graph-cache -Ddw.graphhopper.datareader.file= -jar /opt/graphhopper/graphhopper-web.jar server /opt/graphhopper/config.yml'
+Restart=on-failure
+RestartSec=10
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
