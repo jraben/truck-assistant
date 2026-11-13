@@ -522,7 +522,7 @@ type DriveState = {
   speedLimit: { mph: number | null; raw: string | null; road: string | null; wayId: number; at: string } | null;
   speedLimitWhy: string | null;
   weather: WeatherBrief | null; weatherWhy: string | null;
-  lockout: { locked: boolean; bigTargets: boolean; passenger: boolean };   // locked: over drive.lockoutMph (unlocks after 5 s at or under); bigTargets: >= 25 mph; passenger: passenger mode is on
+  lockout: { locked: boolean; bigTargets: boolean; passenger: boolean };   // locked: over drive.lockoutMph (unlocks after 5 s at or under); bigTargets: on at >= 25 mph, off after 15 s at <= 15 mph (so it doesn't flicker around 25 or at a light); passenger: passenger mode is on
   heat: { cpuC: number | null; source: 'thermal' | 'vcgencmd' | 'sim' | null; level: 'ok' | 'throttle' | 'warn' | 'shutdown'; parkedInSun: boolean; message: string | null };
   brightness: { pct: number | null; auto: boolean; lux: number | null; night: boolean; backend: 'ddcutil' | 'sysfs' | 'sim' | 'none'; error: string | null };
   tilt: { warnDeg: number; dangerDeg: number; level: 'ok' | 'warn' | 'danger' | null };

@@ -625,6 +625,8 @@ export class Brain extends EventEmitter {
    * are priced from the rate, and a home charge counts for the on-peak warning.
    */
   private simChargeTick() {
+    // At 0% the simulated truck stops and charges itself (sim.ts setEmpty), as a real one would have to.
+    this.sim?.setEmpty(this.soc.value !== null && this.soc.value <= 0);
     const plug = this.sim?.status().charging ?? null;
     if (!plug) {
       if (this.simWasCharging) { this.simWasCharging = false; this.simChargeOwed = 0; this.setCanCharging(null); }
