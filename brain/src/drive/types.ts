@@ -103,7 +103,8 @@ export type DriveState = {
   sinceCharge: SinceCharge | null; sinceChargeWhy: string | null;
   speedLimit: SpeedLimit | null; speedLimitWhy: string | null;
   weather: WeatherBrief | null; weatherWhy: string | null;
-  lockout: { locked: boolean; bigTargets: boolean };
+  // locked: moving over lockoutMph. passenger: passenger mode is on, so the content lockouts are lifted (drive/lockout.ts).
+  lockout: { locked: boolean; bigTargets: boolean; passenger: boolean };
   heat: { cpuC: number | null; source: 'thermal' | 'vcgencmd' | 'sim' | null; level: HeatLevel; parkedInSun: boolean; message: string | null };
   brightness: { pct: number | null; auto: boolean; lux: number | null; night: boolean; backend: 'ddcutil' | 'sysfs' | 'sim' | 'none'; error: string | null };
   tilt: { warnDeg: number; dangerDeg: number; level: 'ok' | 'warn' | 'danger' | null };

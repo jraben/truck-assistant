@@ -24,6 +24,8 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   const modes = new Modes(db, brain, (kind, title, message) => remote.notify({ kind, title, message, priority: 'high' }));
   /** Moving = the drive lockout is on (over Settings' lockout speed), or over 2 mph when that isn't known. */
   const moving = () => { const s = brain.getState(); return s.drive?.lockout.locked ?? (s.speedMph ?? 0) >= 2; };
+  /** Apps and video are parked only, unless passenger mode is on. Camp/pet mode and the light strip still follow `moving`. */
+  const appsLocked = () => moving() && !brain.getState().drive?.lockout.passenger;
   const fail = (reply: FastifyReply, e: unknown) => {
     if (e instanceof ParkedError || e instanceof ModesError || e instanceof PlexError) return reply.code(e.status).send({ error: e.message });
     throw e;
@@ -33,7 +35,7 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   let wasMoving = false;
   const timer = setInterval(() => {
     const m = moving();
-    parked.guard(m);
+    parked.guard(appsLocked());
     try { modes.tick(); } catch (e) { console.error('[modes] tick', e); }
     if (m && !wasMoving) void modes.lightGuard();
     wasMoving = m;
@@ -41,11 +43,11 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   app.addHook('onClose', async () => clearInterval(timer));
 
   // ---- apps, games, karaoke --------------------------------------------------
-  app.get('/api/parked/apps', async (req) => ({ apps: parked.apps(isAndroid(req)).filter((a) => !config.demo || !PERSONAL_APPS.has(a.id)), ...parked.status(), moving: moving() }));
+  app.get('/api/parked/apps', async (req) => ({ apps: parked.apps(isAndroid(req)).filter((a) => !config.demo || !PERSONAL_APPS.has(a.id)), ...parked.status(), moving: appsLocked() }));
   app.post('/api/parked/launch', async (req, reply) => {
     const b = (req.body ?? {}) as { id?: unknown; q?: unknown };
     try {
-      const r = parked.launch(String(b.id ?? ''), moving(), { q: typeof b.q === 'string' ? b.q : undefined, android: isAndroid(req) });
+      const r = parked.launch(String(b.id ?? ''), appsLocked(), { q: typeof b.q === 'string' ? b.q : undefined, android: isAndroid(req) });
       if (r.tasker) {   // an Android app with no web address: Tasker on the tablet opens it
         const t = await tablet.launch(r.tasker);
         if (!t.ok) return reply.code(502).send({ error: t.error });
@@ -78,7 +80,7 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   pv<{ key?: string }>('/api/media/plex/video/children', (q) => video.children(String(q.key ?? '')));
   pv<{ q?: string }>('/api/media/plex/video/search', (q) => video.search(String(q.q ?? '')));
   app.post('/api/media/plex/video/start', async (req, reply) => {
-    if (moving()) return reply.code(409).send({ error: 'Video is parked only.' });
+    if (appsLocked()) return reply.code(409).send({ error: 'Video is parked only.' });
     const b = (req.body ?? {}) as { key?: unknown; offsetMs?: unknown; maxKbps?: unknown };
     try { return video.start(String(b.key ?? ''), Number(b.offsetMs) || 0, Math.min(20_000, Math.max(720, Number(b.maxKbps) || 4000))); } catch (e) { return fail(reply, e); }
   });
@@ -90,7 +92,7 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
     return { ok: true };
   });
   app.get<{ Params: { '*': string } }>('/api/media/plex/hls/*', async (req, reply) => {
-    if (moving()) return reply.code(409).send({ error: 'Video is parked only.' });
+    if (appsLocked()) return reply.code(409).send({ error: 'Video is parked only.' });
     const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : '';
     try {
       const r = await video.hls(req.params['*'], qs);

@@ -9,6 +9,7 @@ import 'leaflet/dist/leaflet.css';
 import { api } from '../lib/brain.ts';
 import { fmtDuration } from '../lib/fmt.ts';
 import { isLight } from '../lib/theme.ts';
+import { addOfflineAreas, osmLayer } from '../lib/basemap.ts';
 
 type Point = { t: string; mi: number; lat: number; lon: number; altM: number | null; speedMph: number | null; powerKw: number; measured: boolean };
 export type EnergyResp = {
@@ -139,9 +140,11 @@ function EnergyMap({ pts, hover }: { pts: Point[]; hover: number | null }) {
     if (!el.current || pts.length < 2) return;
     const m = L.map(el.current, { zoomControl: true, attributionControl: true, zoomSnap: 0.25 });
     m.getContainer().classList.toggle('wx-dark', !isLight(cssVar('--bg') || '#000000'));
-    const base = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' });
+    const base = osmLayer();
     base.on('tileerror', () => setTilesFailed(true));
     base.addTo(m);
+    // Downloaded areas (Settings, Offline maps) draw from the Pi with no signal. Light style: a dark theme inverts the whole tile pane (.wx-dark).
+    void addOfflineAreas(m, false);
     for (let i = 1; i < pts.length; i++) {
       L.polyline([[pts[i - 1].lat, pts[i - 1].lon], [pts[i].lat, pts[i].lon]], { color: rawColor(pts[i].powerKw), weight: 5, opacity: 0.9, interactive: false }).addTo(m);
     }
@@ -161,7 +164,7 @@ function EnergyMap({ pts, hover }: { pts: Point[]; hover: number | null }) {
     <div class="emapwrap">
       <div class="emap" ref={el} />
       <div class="elegend"><i style="background:var(--ok)" />regen <i style="background:var(--accent)" />under 12 kW <i style="background:var(--warn)" />12-30 <i style="background:var(--bad)" />30+ kW</div>
-      {tilesFailed && <div class="dimtxt" style="font-size:var(--fs-caption)">Map tiles need the internet; the route is drawn anyway.</div>}
+      {tilesFailed && <div class="dimtxt" style="font-size:var(--fs-caption)">Without signal the map shows only areas downloaded in Settings, Offline maps; the route is drawn anyway.</div>}
     </div>
   );
 }

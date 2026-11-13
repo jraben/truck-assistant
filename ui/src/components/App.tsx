@@ -14,6 +14,7 @@ import { WeatherOverlay, WeatherStrip } from '../drive/WeatherStrip.tsx';
 import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
 import { GaragePrompt, HOME_ICON, withHomeView } from '../home/Home.tsx';
 import { ModeOverlays, PARKED_ICON, TabletHello, withParkedView } from '../parked/Parked.tsx';
+import { MAP_ICON, withMapView } from '../map/MapView.tsx';
 import { WoprButton } from '../wopr/WoprUi.tsx';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { LogsPanel } from '../ops/OpsSettings.tsx';
@@ -21,6 +22,7 @@ import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
+import { PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
 import { RelayDots } from './RelayDots.tsx';
 import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
@@ -37,6 +39,7 @@ const ICONS: Record<string, string> = {
   media: MEDIA_ICON,
   home: HOME_ICON,
   parked: PARKED_ICON,
+  map: MAP_ICON,
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const PALETTE = 'M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-.4-.2-.7-.4-1-.3-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8zM7.5 12a1 1 0 1 0 0-.01M10 8a1 1 0 1 0 0-.01M14 8a1 1 0 1 0 0-.01';
@@ -71,7 +74,7 @@ export function App() {
   const driver = activeDriver(settings, s);
   useTabletGps(); // the dash tablet's own GPS, when there's no puck (lib/tabletGps.ts)
   const base = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
-  const layout = useMemo(() => withParkedView(withHomeView(withMediaView(base))), [base]);
+  const layout = useMemo(() => withMapView(withParkedView(withHomeView(withMediaView(base)))), [base]);
   const [view, setView] = useState(() => viewFromHash(layout));
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);
@@ -156,7 +159,7 @@ export function App() {
   const rows = Math.max(1, ...cur.widgets.map((w) => w.row + w.h - 1));
 
   return (
-    <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
+    <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive?.lockout.passenger ? 'passenger' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
       <header class="strip" ref={stripRef}>
         <span class="brand"><img class="brand-mark" src="/icon.svg" alt="" /><span class="brand-name">{PROJECT.shortName}</span></span>
         {editing
@@ -165,6 +168,7 @@ export function App() {
         <HealthButton s={s} connected={link.connected} open={healthOpen} onClick={() => { setHealthOpen(!healthOpen); setNetOpen(false); }} />
         {s?.place && <span class="pill place hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? s.area ?? 'Unnamed stop'}</span>}
         {!s?.place && s?.area && <span class="pill place hide-sm">{s.area}</span>}
+        {s?.drive?.lockout.passenger && <PassengerPill />}
         <span class="sp" />
         <WeatherStrip s={s} />
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>

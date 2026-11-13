@@ -522,7 +522,7 @@ type DriveState = {
   speedLimit: { mph: number | null; raw: string | null; road: string | null; wayId: number; at: string } | null;
   speedLimitWhy: string | null;
   weather: WeatherBrief | null; weatherWhy: string | null;
-  lockout: { locked: boolean; bigTargets: boolean };   // locked: over drive.lockoutMph (unlocks after 5 s at or under); bigTargets: >= 25 mph
+  lockout: { locked: boolean; bigTargets: boolean; passenger: boolean };   // locked: over drive.lockoutMph (unlocks after 5 s at or under); bigTargets: >= 25 mph; passenger: passenger mode is on
   heat: { cpuC: number | null; source: 'thermal' | 'vcgencmd' | 'sim' | null; level: 'ok' | 'throttle' | 'warn' | 'shutdown'; parkedInSun: boolean; message: string | null };
   brightness: { pct: number | null; auto: boolean; lux: number | null; night: boolean; backend: 'ddcutil' | 'sysfs' | 'sim' | 'none'; error: string | null };
   tilt: { warnDeg: number; dangerDeg: number; level: 'ok' | 'warn' | 'danger' | null };
@@ -628,6 +628,18 @@ browser views (Track B) should wrap their video and browser panes in it. At
 `lockout.bigTargets` the app root gets `.at-speed` (larger hit targets; the
 Theme and Settings rail buttons step aside); at heat level `throttle` and above
 it gets `.calm` (no transitions or animations).
+
+**Passenger mode** (`POST /api/drive/passenger {on: boolean}`, switched in
+Settings, Truck) lifts the content lockouts while moving: `<DrivingLock>`, the
+traffic camera pictures, and the parked apps (Watch, Games, Karaoke, Plex
+video). `lockout.locked` keeps meaning "moving", so camp/pet mode still end,
+the light strip still goes off and the Lights tab stays parked only. The app
+root gets `.passenger`: the Settings rail button stays at speed, and a
+"Passenger" pill in the top strip turns it off. Tapping anything a lockout
+paused (except the Lights tab) asks "Are you the passenger?" and turns it on.
+Not saved: it lasts until the brain next starts, or until it is turned off. Code that
+gates on-screen content uses `useLockout().locked` (or `locked &&
+!passenger`); code that means "the truck is moving" uses `lockout.locked`.
 
 ### Brightness and heat on the Pi
 
@@ -1518,6 +1530,40 @@ stops as one GeoJSON data pack (`scene-bundle` source, exact `byteLength` and
 `sha256`), an overview shot and a shot at each stop (or a fly-along for a driven
 trip). IMPORT it in God's Eye's Scenes panel. Checked against God's Eye's own
 `parseSceneShare`.
+
+## Offline maps
+
+The cockpit's maps work with no signal inside areas downloaded in Settings,
+Truck, **Offline maps**. Brain code in `brain/src/maps/`, UI in
+`ui/src/map/MapView.tsx` (the **Map** view, added after Drive to every
+layout), `ui/src/lib/basemap.ts` and `ui/src/settings/MapsSection.tsx`.
+
+- **Source:** Protomaps' daily OpenStreetMap vector build
+  (`https://build.protomaps.com/<yyyymmdd>.pmtiles`, newest from
+  `build-metadata.protomaps.dev/builds.json`), read with HTTP range requests
+  like `pmtiles extract`: directories are walked for the wanted tile IDs, then
+  tile bytes are fetched in merged ranges (gaps ≤ 64 KB, ≤ 4 MB a request). Not
+  OpenStreetMap's tile server, whose policy forbids bulk downloads.
+- **Storage:** `DATA_DIR/maps.db` (its own SQLite file, so `cockpit.db` and its
+  backups stay small): `areas` and `tiles(z, x, y, data)`, tiles kept
+  gzip-compressed as served. Deleting an area drops only tiles no other area
+  covers, then `incremental_vacuum` gives the space back. One download at a
+  time; one unfinished at shutdown resumes at the next start, skipping tiles
+  already stored. Refused when it wouldn't leave 500 MB free, or over 400,000
+  tiles. Zoom 6-15 (Protomaps stops at 15; maps over-zoom past an area's level).
+- **Routes:** `GET /api/maps` → `{enabled, areas[], usedBytes, freeBytes,
+  maxZoom, maxTiles}`; `PUT /api/maps {enabled}`; `POST /api/maps/estimate
+  {bbox | aroundTruckMi}` → `{bbox, tiles: {zoom: count}}`; `POST
+  /api/maps/areas {name, bbox: [w, s, e, n] | aroundTruckMi, maxZoom}`; `POST
+  /api/maps/areas/:id/download {fresh}` (retry/resume, or `fresh` re-fetches
+  everything from the newest build); `DELETE /api/maps/areas/:id`; `GET
+  /api/maps/tiles/:z/:x/:y.mvt` (404 when not downloaded).
+- `Area = {id, name, bbox, maxZoom, status: queued|downloading|ready|error,
+  tilesTotal, tilesDone, bytes, error, build, createdAt, updatedAt}`.
+- **Drawing:** the online OpenStreetMap raster stays the base; each ready area
+  adds a `protomaps-leaflet` layer limited to its bounds and `maxDataZoom`, so
+  outside the areas the online map shows through, and with no signal only the
+  areas draw. The trip energy map uses it too.
 
 ## Navigation hand-off (Waze or Organic Maps)
 

@@ -8,6 +8,7 @@ import Hls from 'hls.js';
 import type { Layout } from '../../../brain/src/types.ts';
 import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import type { WP } from '../components/drive.tsx';
+import { askPassenger } from '../drive/Passenger.tsx';
 import './parked.css';
 
 export const PARKED_ICON = 'M3 5h18v11H3zM8 20h8M12 16v4M10 8.5v4l3.5-2z';
@@ -50,6 +51,7 @@ type Tab = (typeof TABS)[number];
 const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private */ } };
 const useMoving = () => { const s = useStore(stateStore); return s?.drive?.lockout.locked ?? (s?.speedMph ?? 0) >= 2; };
+const usePassenger = () => !!useStore(stateStore)?.drive?.lockout.passenger;
 
 function useModes(): [Modes | null, (m: Modes) => void, (patch: unknown) => Promise<void>] {
   const [m, setM] = useState<Modes | null>(null);
@@ -71,13 +73,18 @@ async function launch(id: string, q?: string) {
 export function ParkedW(_: WP) {
   const [tab, setTab] = useState<Tab>(() => (TABS.includes(lsGet('slate.parked.tab') as Tab) ? lsGet('slate.parked.tab') as Tab : 'Watch'));
   const moving = useMoving();
+  const passenger = usePassenger();
   const pick = (t: Tab) => { setTab(t); lsSet('slate.parked.tab', t); };
-  const parkedOnly = tab === 'Watch' || tab === 'Games' || tab === 'Karaoke' || tab === 'Lights';
+  // Passenger mode opens Watch, Games and Karaoke while moving; the light strip stays parked only.
+  const parkedOnly = tab === 'Lights' || (!passenger && (tab === 'Watch' || tab === 'Games' || tab === 'Karaoke'));
   return (
     <div class="card parked">
       <div class="mtabs" role="tablist">{TABS.map((t) => <button type="button" role="tab" aria-selected={tab === t} onClick={() => pick(t)}>{t}</button>)}</div>
       <div class="pbody">
-        {moving && parkedOnly ? <div class="parked-lock">🅿️ Parked only<span class="dimtxt">Video, games and lights come back when you stop.</span></div> : (
+        {moving && parkedOnly ? (tab === 'Lights'
+          ? <div class="parked-lock">🅿️ Parked only<span class="dimtxt">The light strip comes back when you stop.</span></div>
+          : <div class="parked-lock tap-passenger" role="button" tabIndex={0} onClick={askPassenger} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') askPassenger(e); }}>🅿️ Parked only<span class="dimtxt">Video and games come back when you stop. Passenger? Tap to unlock.</span></div>
+        ) : (
           <>
             {tab === 'Watch' && <WatchTab />}
             {tab === 'Games' && <GamesTab />}
@@ -135,8 +142,8 @@ function VideoPlayer({ item, onClose }: { item: VideoItem; onClose: () => void }
     const tick = window.setInterval(() => report(v.paused ? 'paused' : 'playing'), 10_000);
     return () => { alive = false; clearInterval(tick); report('stopped'); hls?.destroy(); };
   }, [item.key]);
-  const moving = useMoving();
-  useEffect(() => { if (moving) onClose(); }, [moving]);
+  const stop = useMoving() && !usePassenger();
+  useEffect(() => { if (stop) onClose(); }, [stop]);
   return (
     <div class="vplayer">
       <video ref={ref} controls autoPlay playsInline />

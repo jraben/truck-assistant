@@ -20,6 +20,7 @@
     "@fastify/websocket": "^11.2.0",
     "fastify": "^5.6.0",
     "mqtt": "^5.14.0",
+    "pmtiles": "^4.5.0",
     "satellite.js": "^7.1.0"
   },
   "devDependencies": {

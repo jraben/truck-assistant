@@ -6,7 +6,7 @@ import { classify, effectiveMode, ewma, LEARN_WINDOW_MI, rangeFor, RangeModel, r
 import { lastEndedCharge, sinceCharge } from '../src/drive/sinceCharge.ts';
 import { briefOf, compass, needsRefresh, nwsIcon, parseNwsAlerts, parseNwsHighLow, parseNwsHourly, parseNwsObservation, parseNwsPoint, parseNwsWind, parseOpenMeteo, textIcon, wmo } from '../src/drive/weather.ts';
 import { limitOn, matchWay, parseMaxspeed, parseOverpass } from '../src/drive/maxspeed.ts';
-import { bigTargets, lockStep, UNLOCK_MS } from '../src/drive/lockout.ts';
+import { bigTargets, contentLocked, lockStep, UNLOCK_MS } from '../src/drive/lockout.ts';
 import { heatLevel, parkedInSun, parseThermalZone, parseVcgencmd } from '../src/drive/heat.ts';
 import { luxToPct, smoothLux, targetPct } from '../src/drive/brightness.ts';
 import { defaultDrive, defaultTruck, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from '../src/drive/settings.ts';
@@ -249,6 +249,11 @@ describe('driving lockouts', () => {
   });
   it('big targets at speed', () => {
     expect(bigTargets(30)).toBe(true); expect(bigTargets(10)).toBe(false); expect(bigTargets(null)).toBe(false);
+  });
+  it('passenger mode lifts the content lock, never the moving flag', () => {
+    expect(contentLocked(true, false)).toBe(true);
+    expect(contentLocked(true, true)).toBe(false);
+    expect(contentLocked(false, false)).toBe(false);
   });
 });
 
