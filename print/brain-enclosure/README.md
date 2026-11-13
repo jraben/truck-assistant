@@ -11,6 +11,27 @@ Source: `brain-enclosure.scad`. STLs and previews: `stl/` (`lid.png` is the lid 
 |---|---|---|
 | `box` | 130 × 139 × 50 (93 × 126 body, plus ears and lugs) | Floor down. |
 | `lid` | 103 × 139 × 5.5 | Top face down, lip up. Mount for a 40 mm fan over the Pi. The Truck Assistant glyph and name are engraved 0.6 mm into the top face (`logo = false` in the `.scad` leaves it plain). |
+| `logo_red` | 0.6 mm thick | The truck's profile line: fills its part of the lid's engraving. |
+| `logo_white` | 0.6 mm thick | The wheel rings, the roof line and TRUCK ASSISTANT. |
+
+### The logo in colour
+
+The two logo parts fill the engraving exactly, flush with the top face (checked:
+no gap and no overlap). They share the lid's origin, so they line up by
+themselves:
+
+- **Multi-colour printer (AMS, MMU, toolchanger):** load `lid.stl`, then add
+  `logo_red.stl` and `logo_white.stl` *as parts of the same object* (Bambu and
+  Orca: right-click the lid, Add part, Load; Prusa: Add part). Answer "no" if it
+  asks to treat them as separate objects. Filaments, from the brand colours:
+  lid in **Tar Pit** black (#1c1d1f), `logo_red` in **Toolbox Red** (#b5272d),
+  `logo_white` in **Clean Slate** off-white (#e4e5e0). Use ASA in all three for
+  a hot cab. The logo is the first 3 layers, so colour swaps happen only there.
+- **One colour only:** print the lid alone. The logo reads as an engraving. For
+  colour, fill the recess with acrylic paint or a paint pen and wipe the face
+  clean before it dries.
+
+`stl/lid.png` shows the lid from above as fitted, in those colours.
 
 The openings:
 - **+X end:** a window for the USB-A ports and Ethernet.
