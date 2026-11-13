@@ -34,7 +34,7 @@ export type TripPlan = {
   startSoc: number;
   routeMiles: number;
   routeMinutes: number;
-  routeSource: 'osrm' | 'straight';
+  routeSource: 'graphhopper' | 'osrm' | 'straight';
   elevation: boolean;
   candidates: number;
   warnings: string[];

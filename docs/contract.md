@@ -1588,3 +1588,24 @@ Per screen (`localStorage`): `slate.nav.apps` (which show; default all),
 offline app shown, from `State.network.link`), `slate.nav.osmand` (package).
 Set in Settings, Truck, **Navigation**, which also explains setting up offline maps
 inside each app.
+
+## Route planning (local GraphHopper)
+
+Road routes for the road-trip planner and the airport pickup
+(`brain/src/roadtrip/route.ts` `fetchRoute`) come from, in order:
+
+1. **A local GraphHopper** (`graphhopperUrl`; set up with `deploy/graphhopper/`):
+   `POST /route {points, profile: car, points_encoded: false, elevation}` with
+   `elevation` only when `/info` says the graph has it (then climbs need no
+   internet; `addElevation` skips Open-Meteo). While a trailer is hitched
+   (`modes.activeTrailer`), the request adds `custom_model: {speed: [{if: true,
+   limit_to: <towMph in km/h>}]}` and `ch.disable: true` (the graph uses LM).
+2. **OSRM**: `ROUTER_URL`, else the public demo when `publicOsrm` is on.
+3. **A straight line** plus 25%, labelled `routeSource: 'straight'`.
+
+`routeSource` is `graphhopper | osrm | straight`. Settings, Truck, **Route
+planning**: `GET /api/routing` → `{graphhopperUrl, publicOsrm, towMph,
+graphhopper: {ok, info: {bbox, profiles, elevation, dataDate, version}} |
+{ok: false, error} | null, towing: {trailer, mph} | null, osrm}`; `PUT
+/api/routing {graphhopperUrl?, publicOsrm?, towMph? (35-80)}`. Default
+`graphhopperUrl` is `GRAPHHOPPER_URL`. Kept in the kv table (`routing`).

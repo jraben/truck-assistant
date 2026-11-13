@@ -26,6 +26,7 @@ import { HaError, NOT_CONFIGURED } from './ha/client.ts';
 import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
+import { RoutingError } from './roadtrip/routing.ts';
 import { registerMapsRoutes } from './maps/routes.ts';
 import { registerVehiclePhoto } from './drive/photo.ts';
 import { registerDriverPhotos } from './drive/driverPhoto.ts';
@@ -313,6 +314,11 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   registerDriveRoutes(app, brain.drive);
   registerMapsRoutes(app, config.dataDir, brain.db, () => { const g = brain.getState().gps; return g?.fix ? { lat: g.lat, lon: g.lon } : null; });
   registerRoadTripRoutes(app, brain.roadTrip, brain.samples);
+  // Route planning: the local GraphHopper, the public OSRM fallback, the towing cap (roadtrip/routing.ts).
+  app.get('/api/routing', async () => brain.routing.status());
+  app.put('/api/routing', async (req, reply) => {
+    try { brain.routing.patch(req.body); return await brain.routing.status(); } catch (e) { if (e instanceof RoutingError) return reply.code(400).send({ error: e.message }); throw e; }
+  });
   app.get('/api/traffic', async () => brain.traffic.view());
   const sky = new SkyService();
   // God's Eye View scene bundles: IMPORT in God's Eye's Scenes panel.
