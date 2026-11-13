@@ -23,6 +23,7 @@ import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
 import { VersionBar } from './VersionBar.tsx';
+import { PickupBanner, PickupPill } from './PickupBanner.tsx';
 import { askPassengerThen, PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
 import { RelayDots } from './RelayDots.tsx';
@@ -172,6 +173,7 @@ export function App() {
         {!s?.place && s?.area && <span class="pill place hide-sm">{s.area}</span>}
         {/* Moving: a way in for the passenger (Settings steps aside at speed); on: the way out. */}
         {s?.drive?.lockout.passenger ? <PassengerPill /> : s?.drive?.lockout.locked ? <PassengerAsk /> : null}
+        <PickupPill s={s} />
         <span class="sp" />
         <WeatherStrip s={s} />
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
@@ -252,15 +254,6 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
 }
 
 export type { State };
-
-/** Airport pickup: shown the whole time one is on (it used to appear only at "leave now",
- *  taxiing or at the gate, so a pickup set mid-drive showed nothing until then). */
-function PickupBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
-  const p = s?.pickup;
-  if (!p) return null;
-  const urgent = p.leaveNow || p.phase === 'taxiing' || p.phase === 'at-gate';
-  return <button type="button" class={`banner ${p.leaveNow ? '' : urgent ? 'ok' : 'calm'} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>{p.leaveNow ? 'Leave now' : 'Pickup'}</b><span>{p.line}</span></button>;
-}
 
 /** Below this a tire is low: the phone alert's default (alertMeta.tirePressure). */
 const LOW_TIRE_PSI = 30;
