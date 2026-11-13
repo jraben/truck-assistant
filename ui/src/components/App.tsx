@@ -22,7 +22,7 @@ import { DueCard } from '../ops/Maintenance.tsx';
 import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
-import { PassengerPill } from '../drive/Passenger.tsx';
+import { PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
 import { RelayDots } from './RelayDots.tsx';
 import { loadCache, mergeOrder, pickOrder, saveCache, type CachedOrder } from '../lib/railOrder.ts';
@@ -168,7 +168,8 @@ export function App() {
         <HealthButton s={s} connected={link.connected} open={healthOpen} onClick={() => { setHealthOpen(!healthOpen); setNetOpen(false); }} />
         {s?.place && <span class="pill place hide-sm" title={`Stopped since ${new Date(s.place.since).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}>{s.place.name ?? s.area ?? 'Unnamed stop'}</span>}
         {!s?.place && s?.area && <span class="pill place hide-sm">{s.area}</span>}
-        {s?.drive?.lockout.passenger && <PassengerPill />}
+        {/* Moving: a way in for the passenger (Settings steps aside at speed); on: the way out. */}
+        {s?.drive?.lockout.passenger ? <PassengerPill /> : s?.drive?.lockout.locked ? <PassengerAsk /> : null}
         <span class="sp" />
         <WeatherStrip s={s} />
         <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
