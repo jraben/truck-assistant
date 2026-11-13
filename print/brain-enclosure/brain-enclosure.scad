@@ -5,7 +5,8 @@
 // Mounting ears for the lower dash rail; glands/cutouts for 12 V, CAN,
 // HDMI and USB.
 //
-// Parts: "assembly", "box", "lid"   (each emitted in print orientation)
+// Parts: "assembly", "box", "lid", "logo_red", "logo_white"   (each emitted in print orientation;
+//        the two logo parts fill the lid's engraving, for a two- or three-colour print)
 // Frame: X along the Pi's long side (USB/Ethernet end at +X), Y across
 //        (Pi's HDMI edge at -Y, SSD bay at +Y), Z up.
 //
@@ -84,6 +85,16 @@ fan_size    = 40;      // mm
 fan_holes   = 32;      // mm hole pitch
 fan_screw_d = 3.4;     // mm (M3 or the fan's self-tappers)
 fan_at      = [35, 28];// mm on the Pi, from its corner
+
+/* ---------- logo on the lid ---------- */
+logo        = true;    // engrave the Truck Assistant glyph and name in the lid's top face
+logo_depth  = 0.6;     // mm (3 layers at 0.2); the top face prints on the bed, so no supports
+logo_w      = 22;      // mm, the glyph beside the fan
+logo_text   = "TRUCK ASSISTANT";
+logo_font   = "Liberation Sans:style=Bold";
+logo_text_h = 5;       // mm cap height, in the band between the vents and the fan
+// Colour print: lid in a dark filament, logo_red and logo_white in the recess (same origin as the lid).
+// Brand colours (docs/brand): Toolbox Red #b5272d, Clean Slate #e4e5e0, Tar Pit #1c1d1f.
 
 /* ---------- mounting ears (DASH RAIL UNMEASURED) ---------- */
 ears        = true;
@@ -199,8 +210,45 @@ module lid() {
         // lid vents over the SSD half
         if (ssd_bay) for (x = [ix(12) : vent_pitch : ix(in_l - 12)]) translate([x, out_w - iy(ssd_y0 + ssd_w - 6), -1]) cube([vent_w, ssd_w - 12, lid_t + 2]);
         if (!fan) for (x = [ix(pi_x0 + 8) : vent_pitch : ix(pi_x0 + 70)]) translate([x, out_w - iy(pi_y0 + 50), -1]) cube([vent_w, 44, lid_t + 2]);
+        // the logo, engraved into the top face
+        if (logo && fan) translate([0, 0, -1]) linear_extrude(logo_depth + 1) lid_logo_2d();
     }
 }
+
+/* ---------- the brand glyph (docs/brand/truck-assistant/logo-06-glyph.svg) ----------
+   The truck's profile as one stroked line, and two wheel rings, on the SVG's
+   512 grid. Drawn here because OpenSCAD's SVG import keeps fills, not strokes.
+   Curves are cut to straight segments, which is plenty at 20-odd mm. */
+glyph_path = [[60,324],[60,246],[232,246],[240,150],[244,142],[252,140],[316,140],[323,141],[328,146],[376,230],[440,240],[448,243],[452,254],[452,324]];
+// part: "red" (the profile line), "white" (wheel rings and the roof line, which sits on the red), or "all".
+module glyph_2d(w, part = "all") {
+    s = w / 392;   // the drawing spans x 40..472 including strokes; 392 = 452-60 between line ends
+    roof = [[244, 160], [318, 160]];
+    module line() for (i = [0 : len(glyph_path) - 2]) hull() { translate(glyph_path[i]) circle(r = 20, $fn = 24); translate(glyph_path[i + 1]) circle(r = 20, $fn = 24); }
+    module roof_line() hull() { translate(roof[0]) circle(r = 7, $fn = 16); translate(roof[1]) circle(r = 7, $fn = 16); }
+    module wheels() for (cx = [150, 370]) translate([cx, 372]) difference() { circle(r = 44, $fn = 48); circle(r = 24, $fn = 48); }
+    scale([s, -s]) translate([-256, -256]) {
+        if (part == "red") difference() { line(); roof_line(); }
+        else if (part == "white") { wheels(); roof_line(); }
+        else { line(); wheels(); roof_line(); }   // the recess: everything both pieces fill
+    }
+}
+
+/* Where the logo goes, in the lid's frame (modelled upside down: top face at z = 0,
+   so the artwork is mirrored in Y to read right once fitted). */
+module lid_logo_2d(part = "all") {
+    fy = out_w - iy(pi_y0 + fan_at[1]);
+    fx = ix(pi_x0 + fan_at[0]);
+    vent_end = out_w - iy(ssd_y0 + ssd_w - 6) + (ssd_w - 12);   // the vents' edge nearest the fan
+    band_y = (vent_end + (fy - fan_size / 2)) / 2;
+    side_x = (fx + fan_size / 2 + out_l - wall) / 2;            // centred in the space beside the fan
+    translate([side_x, fy]) mirror([0, 1, 0]) glyph_2d(logo_w, part);
+    if (part != "red") translate([out_l / 2, band_y]) mirror([0, 1, 0])
+        text(logo_text, size = logo_text_h, font = logo_font, halign = "center", valign = "center", spacing = 1.05);
+}
+
+// The inlay pieces: exactly the engraving, flush with the lid's top face.
+module logo_piece(part) linear_extrude(logo_depth) lid_logo_2d(part);
 
 module pi_dummy() {
     color("green") translate([ix(pi_x0), iy(pi_y0), pz]) cube([pi_l, pi_w, pi_t]);
@@ -212,7 +260,12 @@ module pi_dummy() {
 if (part == "assembly") {
     color("steelblue") box();
     pi_dummy();
-    color("lightsteelblue", 0.5) translate([0, out_w, out_h + lid_t]) rotate([180, 0, 0]) lid();
+    translate([0, out_w, out_h + lid_t]) rotate([180, 0, 0]) {
+        color("#1c1d1f") lid();
+        if (logo) { color("#b5272d") logo_piece("red"); color("#e4e5e0") logo_piece("white"); }
+    }
 }
 else if (part == "box") box();
 else if (part == "lid") lid();   // top face on the bed, lip up
+else if (part == "logo_red") logo_piece("red");       // fills the lid's engraving: load with lid.stl as one object
+else if (part == "logo_white") logo_piece("white");
