@@ -6,7 +6,7 @@ import { classify, effectiveMode, ewma, LEARN_WINDOW_MI, rangeFor, RangeModel, r
 import { lastEndedCharge, sinceCharge } from '../src/drive/sinceCharge.ts';
 import { briefOf, compass, needsRefresh, nwsIcon, parseNwsAlerts, parseNwsHighLow, parseNwsHourly, parseNwsObservation, parseNwsPoint, parseNwsWind, parseOpenMeteo, textIcon, wmo } from '../src/drive/weather.ts';
 import { limitOn, matchWay, parseMaxspeed, parseOverpass } from '../src/drive/maxspeed.ts';
-import { bigTargets, contentLocked, lockStep, UNLOCK_MS } from '../src/drive/lockout.ts';
+import { BIG_OFF_MS, bigStep, bigTargets, contentLocked, lockStep, UNLOCK_MS } from '../src/drive/lockout.ts';
 import { heatLevel, parkedInSun, parseThermalZone, parseVcgencmd } from '../src/drive/heat.ts';
 import { luxToPct, smoothLux, targetPct } from '../src/drive/brightness.ts';
 import { defaultDrive, defaultTruck, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from '../src/drive/settings.ts';
@@ -246,6 +246,16 @@ describe('driving lockouts', () => {
   });
   it('keeps the lock when speed is unknown', () => {
     expect(lockStep({ locked: true, slowSince: null }, null, 0, 5).locked).toBe(true);
+  });
+  it('the at-speed rail does not flicker around 25 mph or at a red light', () => {
+    let b = bigStep({ on: false, slowSince: null }, 24, 0); expect(b.on).toBe(false);
+    b = bigStep(b, 26, 1000); expect(b.on).toBe(true);
+    b = bigStep(b, 23, 2000); expect(b.on).toBe(true); // hovering just under 25
+    b = bigStep(b, 0, 3000); expect(b.on).toBe(true); // a red light
+    b = bigStep(b, 0, 3000 + BIG_OFF_MS - 1); expect(b.on).toBe(true);
+    b = bigStep(b, 20, 3000 + BIG_OFF_MS); expect(b).toEqual({ on: true, slowSince: null }); // pulled away: the clock restarts
+    b = bigStep(b, 0, 100_000); b = bigStep(b, null, 100_000 + BIG_OFF_MS); expect(b.on).toBe(true); // no fix: no change
+    b = bigStep(b, 0, 100_000 + BIG_OFF_MS); expect(b).toEqual({ on: false, slowSince: null }); // parked a while: back
   });
   it('big targets at speed', () => {
     expect(bigTargets(30)).toBe(true); expect(bigTargets(10)).toBe(false); expect(bigTargets(null)).toBe(false);

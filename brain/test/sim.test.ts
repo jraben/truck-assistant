@@ -51,6 +51,35 @@ describe('simulated truck, driven by hand', () => {
     expect(topics['binary_sensor/ignition/state']).toBe('OFF');
   });
 
+  it('out of charge: coasts to a stop, DC fast charges by itself, and the loop carries on after', () => {
+    for (let i = 0; i < 600 && sim.status().speedMph <= 5; i++) vi.advanceTimersByTime(1000);
+    expect(sim.status()).toMatchObject({ mode: 'auto' });
+    expect(sim.status().speedMph).toBeGreaterThan(5);
+    sim.setEmpty(true);
+    vi.advanceTimersByTime(20_000);
+    const s = sim.status();
+    expect(s.speedMph).toBe(0);
+    expect(s.charging).toMatchObject({ kind: 'fast', targetPct: 80, auto: true });
+    expect(topics['binary_sensor/ignition/state']).toBe('OFF');
+    // The brain charges it, says it's no longer empty, and unplugs at the target.
+    sim.setEmpty(false);
+    sim.unplug();
+    expect(sim.status()).toMatchObject({ mode: 'auto', charging: null });
+    let moved = false;
+    for (let i = 0; i < 600 && !moved; i++) { vi.advanceTimersByTime(1000); moved = sim.status().speedMph > 0; }
+    expect(moved).toBe(true);
+  });
+
+  it('driven by hand at 0% it still stops and charges, and stays put after', () => {
+    sim.control({ gear: 'drive', targetMph: 40 });
+    vi.advanceTimersByTime(30_000);
+    sim.setEmpty(true);
+    vi.advanceTimersByTime(20_000);
+    expect(sim.status()).toMatchObject({ speedMph: 0, mode: 'manual', gear: 'park', charging: { auto: true } });
+    sim.setEmpty(false); sim.unplug();
+    expect(sim.status()).toMatchObject({ mode: 'manual', gear: 'park', charging: null });
+  });
+
   it('stops at the end of a leg when told not to loop', () => {
     sim.control({ gear: 'drive', targetMph: 85, loop: false });
     vi.advanceTimersByTime(30 * 60_000);

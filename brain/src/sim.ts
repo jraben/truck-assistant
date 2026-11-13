@@ -66,7 +66,9 @@ export type SimControl = {
   switches: boolean[];        // the Five Switch, 1–5
 };
 /** Plugged in: what kind of charger, its power, where to stop, and how much faster than real time. */
-export type SimCharge = { kind: ChargeKind; kw: number; targetPct: number; timeScale: number };
+export type SimCharge = { kind: ChargeKind; kw: number; targetPct: number; timeScale: number; auto?: boolean };
+/** Ran out: the simulated truck charges itself at a DC fast charger to this level. */
+export const SIM_EMPTY_TARGET = 80;
 export type ChargeKind = 'home' | 'fast';
 /** Home is a 7.2 kW wall charger at 60x (an hour a minute); DC fast is 150 kW at 10x. */
 export const SIM_CHARGERS: Record<ChargeKind, { kw: number; timeScale: number }> = {
@@ -127,6 +129,8 @@ export class SimTruck {
   private towLeft = 0;          // simulated seconds of being towed still to go
   private arrived = false;
   private plug: SimCharge | null = null; // the brain raises the charge level while this is set
+  private empty = false;        // the brain says the battery is at 0%
+  private resumeAuto = false;   // charging because it ran out: back to the loop when full enough
 
   private emit: (sub: string, payload: string) => void;
   private onFix: (f: GpsFix) => void;
@@ -222,7 +226,19 @@ export class SimTruck {
     return this.status();
   }
 
-  unplug(): SimStatus { this.plug = null; return this.status(); }
+  unplug(): SimStatus {
+    const resume = this.resumeAuto;
+    this.plug = null; this.resumeAuto = false;
+    if (resume) this.control({ mode: 'auto' });
+    return this.status();
+  }
+
+  /**
+   * The brain's charge level hit 0% (or came back above it). A real truck can't
+   * drive on an empty battery, so the simulated one coasts to a stop and plugs
+   * into a DC fast charger by itself; a loop that was running carries on after.
+   */
+  setEmpty(on: boolean) { this.empty = on; }
 
   private setIgnition(on: boolean) { if (on !== this.ign) { this.ign = on; this.emit('binary_sensor/ignition/state', on ? 'ON' : 'OFF'); } }
   private setReverse(on: boolean) { if (on !== this.rev) { this.rev = on; this.emit('binary_sensor/reverse/state', on ? 'ON' : 'OFF'); } }
@@ -285,7 +301,8 @@ export class SimTruck {
   private tick() {
     const dt = this.speedup;
     this.t += dt; this.phaseT += dt;
-    if (this.ctl.mode === 'manual') this.manualTick(dt); else this.autoTick(dt);
+    if (this.empty && !this.plug && this.towLeft <= 0) this.emptyTick(dt);
+    else if (this.ctl.mode === 'manual') this.manualTick(dt); else this.autoTick(dt);
 
     const driving = this.ign;
     this.onFix({ lat: this.pos.lat, lon: this.pos.lon, speedMph: Math.round(this.speed * 10) / 10, headingDeg: Math.round(this.heading), fix: true, at: new Date() });
@@ -309,6 +326,18 @@ export class SimTruck {
     }
   }
   private lastLowTire: Wheel | null = null;
+
+  /** Out of charge: no power, so coast to a stop, then plug in. */
+  private emptyTick(dt: number) {
+    this.approach(0, dt);
+    if (this.speed > 0 && this.advance(dt)) this.nextLeg();
+    if (this.speed > 0.5) return;
+    this.speed = 0;
+    this.resumeAuto = this.ctl.mode === 'auto';
+    this.plugIn('fast', SIM_EMPTY_TARGET);
+    this.plug!.auto = true;
+    console.log(`[sim] out of charge: DC fast charging to ${SIM_EMPTY_TARGET}%`);
+  }
 
   private manualTick(dt: number) {
     this.applyManualPins();

@@ -11,7 +11,7 @@ import { isDaytime } from '../sun.ts';
 import type { ChargeSession, Trip } from '../types.ts';
 import { pickBrightnessBackend, smoothLux, targetPct, WRITE_MIN_MS, WRITE_MIN_STEP, type Backend } from './brightness.ts';
 import { cpuReader, heatLevel, heatMessage, parkedInSun, requestShutdown, SHUTDOWN_HOLD_MS, type CpuReader } from './heat.ts';
-import { bigTargets, lockStep, type LockState } from './lockout.ts';
+import { bigStep, lockStep, type BigState, type LockState } from './lockout.ts';
 import { SpeedLimits } from './maxspeed.ts';
 import { rangeFor, RangeModel, WINDOW_MS, type RangeSnapshot } from './range.ts';
 import { lastEndedCharge, sinceCharge } from './sinceCharge.ts';
@@ -49,6 +49,7 @@ export class DriveService {
   private timer: NodeJS.Timeout | null = null;
   private n = 0;
   private lock: LockState = { locked: false, slowSince: null };
+  private big: BigState = { on: false, slowSince: null };
   /** Passenger mode (drive/lockout.ts): until the next startup. */
   private passenger = false;
   private since: SinceCharge | null = null;
@@ -156,6 +157,9 @@ export class DriveService {
     this.n++;
     this.range.addSample(now, i.speedMph);
     this.lock = lockStep(this.lock, i.speedMph, now, st.drive.lockoutMph);
+    const wasBig = this.big.on;
+    this.big = bigStep(this.big, i.speedMph, now);
+    if (wasBig !== this.big.on) this.d.changed();
     const pos: LatLon | null = i.gps?.fix ? { lat: i.gps.lat, lon: i.gps.lon } : null;
 
     if (this.n % 10 === 0) { this.refreshSince(); this.placeNow = pos ? resolveName(pos, this.d.tiers())?.name ?? null : null; }
@@ -247,7 +251,7 @@ export class DriveService {
       speedLimitWhy: this.limit ? null : !st.drive.speedLimits ? 'Speed limits are off in settings' : !pos ? 'No GPS fix' : !i.online ? 'Offline: limits come from OpenStreetMap' : this.limits.error ?? 'No limit mapped for this road yet',
       weather: r ? { ...briefOf(r, now), place: this.placeNow ?? r.place } : null,
       weatherWhy: r ? null : !pos ? 'Waiting for a GPS fix' : !i.online ? 'Offline: no weather yet' : this.weather.error ?? 'Fetching weather…',
-      lockout: { locked: this.lock.locked, bigTargets: bigTargets(i.speedMph), passenger: this.passenger },
+      lockout: { locked: this.lock.locked, bigTargets: this.big.on, passenger: this.passenger },
       heat: { cpuC: this.cpu.c, source: this.cpu.source, level, parkedInSun: sun, message: heatMessage(level, this.cpu.c, sun, i.cabinTempF) },
       brightness: { pct: this.bright.pct, auto: st.drive.brightness.auto, lux: now - this.luxAt < 60_000 ? this.lux : null, night: !isDaytime(new Date(now), pos), backend: this.bright.backend?.kind ?? 'none', error: this.bright.error },
       tilt: { warnDeg: st.drive.tilt.warnDeg, dangerDeg: st.drive.tilt.dangerDeg, level: worst === null ? null : worst >= st.drive.tilt.dangerDeg ? 'danger' : worst >= st.drive.tilt.warnDeg ? 'warn' : 'ok' },

@@ -178,6 +178,7 @@ function ChargeTab({ st, post }: TabProps) {
       </div>
       {p ? (
         <div class="simrow col">
+          {p.auto && <span class="tag warn">Ran out of charge: stopped and plugged in by itself; the drive loop carries on at {p.targetPct}%.</span>}
           <span>Plugged in: {p.kind === 'home' ? 'home wall charger' : 'DC fast charger'}, {p.kw} kW, to {p.targetPct}%.</span>
           <button type="button" class="btn primary" onClick={() => void post('/api/sim/unplug')}>Unplug</button>
         </div>

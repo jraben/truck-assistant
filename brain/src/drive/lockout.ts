@@ -18,6 +18,23 @@ export function lockStep(prev: LockState, speedMph: number | null, now: number, 
 
 export const bigTargets = (speedMph: number | null) => speedMph !== null && speedMph >= BIG_TARGET_MPH;
 
+// At speed the rail's parked-only buttons (theme, logs, test, settings) step
+// aside. Speed hovers around 25 in town and drops to 0 at every light, so with
+// one threshold they came and went every few seconds. On at BIG_TARGET_MPH;
+// off only after BIG_OFF_MS at or under BIG_OFF_MPH.
+export const BIG_OFF_MPH = 15;
+export const BIG_OFF_MS = 15_000;
+export type BigState = { on: boolean; slowSince: number | null };
+
+export function bigStep(prev: BigState, speedMph: number | null, now: number): BigState {
+  if (speedMph === null) return prev; // no fix: keep what we had
+  if (speedMph >= BIG_TARGET_MPH) return { on: true, slowSince: null };
+  if (!prev.on) return prev;
+  if (speedMph > BIG_OFF_MPH) return { on: true, slowSince: null };
+  const since = prev.slowSince ?? now;
+  return now - since >= BIG_OFF_MS ? { on: false, slowSince: null } : { on: true, slowSince: since };
+}
+
 // Passenger mode: someone other than the driver is using the tablet, so the
 // content lockouts (video, the browser, long lists, typing, parked-only apps)
 // stay open while moving. It never touches what keeps the truck safe: `locked`
