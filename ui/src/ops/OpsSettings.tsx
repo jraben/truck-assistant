@@ -154,7 +154,50 @@ export function SecuritySection() {
       </div>
       <label class="check"><input type="checkbox" checked={a.trustLocal} onChange={(e) => void go(() => put('/api/security/config', { trustLocal: (e.target as HTMLInputElement).checked }), 'Saved.')} /> The dash screen (this Pi) needs no password</label>
       <p class="help">Forgot it? On the Pi: set "passwordHash" to null in /var/lib/slate-cockpit/ops.json and restart slate-brain, then set a new one.</p>
+      <AccessKeysPanel />
     </Section>
+  );
+}
+
+type AccessKey = { id: number; name: string; createdAt: string; lastUsedAt: string | null };
+/** Read-only access keys: let a helper (like Claude, checking a deploy) read state from outside without the password. */
+function AccessKeysPanel() {
+  const [keys, setKeys] = useState<AccessKey[] | null>(null);
+  const [name, setName] = useState('');
+  const [fresh, setFresh] = useState<{ name: string; key: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const load = () => api<{ keys: AccessKey[] }>('/api/security/keys').then((r) => setKeys(r.keys)).catch((e) => setErr(errText(e)));
+  useEffect(() => { void load(); }, []);
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'never');
+  const create = async () => { setErr(null); try { const r = await post<{ key: string; name: string }>('/api/security/keys', { name }); setFresh({ name: r.name, key: r.key }); setCopied(false); setName(''); void load(); } catch (e) { setErr(errText(e)); } };
+  const revoke = async (k: AccessKey) => { if (!confirm(`Revoke "${k.name}"? Anything using it stops working.`)) return; try { await api(`/api/security/keys/${k.id}`, { method: 'DELETE' }); void load(); } catch (e) { setErr(errText(e)); } };
+  return (
+    <div class="form" style="gap:var(--s1);margin-top:var(--s2)">
+      <h3 class="sub">Access keys (read-only)</h3>
+      <p class="help">A key lets something outside the truck's network read the cockpit's state (drive, charges, trips, updates, maps, the simulator) with no password: for example Claude checking that an update went live. It can't change anything, and it never sees settings, backups, logs or cameras. Revoke it here any time.</p>
+      {fresh && (
+        <div class="banner ok" style="display:grid;gap:var(--s1)">
+          <b>{fresh.name}: copy it now, it won't be shown again.</b>
+          <code style="word-break:break-all">{fresh.key}</code>
+          <div class="row"><button class="btn sm" type="button" onClick={() => { void navigator.clipboard?.writeText(fresh.key).then(() => setCopied(true)); }}>{copied ? 'Copied' : 'Copy'}</button><button class="btn sm" type="button" onClick={() => setFresh(null)}>Done</button></div>
+        </div>
+      )}
+      {keys && keys.length > 0 && (
+        <div class="list">{keys.map((k) => (
+          <div class="item row wrap" style="gap:var(--s15);align-items:center">
+            <b style="min-width:140px">{k.name}</b>
+            <span class="dimtxt grow">made {when(k.createdAt)} · last used {when(k.lastUsedAt)}</span>
+            <button class="btn sm danger" type="button" onClick={() => void revoke(k)}>Revoke</button>
+          </div>
+        ))}</div>
+      )}
+      <div class="row wrap" style="gap:var(--s1);align-items:flex-end">
+        <label class="f" style="min-width:220px"><span>Name</span><input type="text" maxLength={60} value={name} placeholder="Claude" onInput={(e) => setName(val(e))} /></label>
+        <button class="btn" type="button" onClick={() => void create()}>Create read-only key</button>
+      </div>
+      {err && <div class="err">{err}</div>}
+    </div>
   );
 }
 

@@ -129,3 +129,64 @@ export function needsAuth(method: string, url: string): 'page' | 'api' | null {
   }
   return null;
 }
+
+// ---- read-only access keys --------------------------------------------------------
+// For a helper outside the truck's network (e.g. Claude checking a deploy) to read
+// state without the password: an `Authorization: Bearer ta_ro_…` header. A key
+// only ever opens GET requests to KEY_READABLE paths, never settings (they hold
+// secrets), backups, logs, cameras or the websocket (it carries commands).
+// Only a hash is stored; the key is shown once, at creation.
+
+export const KEY_PREFIX = 'ta_ro_';
+export const KEY_READABLE = ['/api/state', '/api/drive', '/api/charges', '/api/trips', '/api/update', '/api/maps', '/api/routing', '/api/sim', '/api/traffic', '/api/weather', '/api/roadtrip', '/api/pickup', '/api/network', '/api/health', '/api/about'];
+const KEY_NEVER = ['/api/charges/receipts'];
+
+/** Can an access key read this request? Pure. */
+export function keyMayRead(method: string, url: string): boolean {
+  if (method !== 'GET' && method !== 'HEAD') return false;
+  const p = url.split('?')[0];
+  if (KEY_NEVER.some((x) => p === x || p.startsWith(x + '/'))) return false;
+  return KEY_READABLE.some((x) => p === x || p.startsWith(x + '/'));
+}
+
+/** The token of an `Authorization: Bearer …` header, if it looks like an access key. Pure. */
+export function bearerKey(h: unknown): string | null {
+  if (typeof h !== 'string') return null;
+  const m = /^Bearer\s+(\S+)$/i.exec(h.trim());
+  return m && m[1].startsWith(KEY_PREFIX) && m[1].length <= 100 ? m[1] : null;
+}
+
+export type AccessKey = { id: number; name: string; createdAt: string; lastUsedAt: string | null };
+
+export class AccessKeys {
+  private db: Db;
+  constructor(db: Db) {
+    this.db = db;
+    db.exec('CREATE TABLE IF NOT EXISTS access_keys (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, last_used_at TEXT)');
+  }
+
+  /** A new key: returned once, stored only as a hash. */
+  create(name: string, now = Date.now()): { key: string } & AccessKey {
+    const n = name.trim().slice(0, 60) || 'Access key';
+    const key = KEY_PREFIX + randomBytes(32).toString('base64url');
+    const at = new Date(now).toISOString();
+    const r = this.db.prepare('INSERT INTO access_keys (name, hash, created_at) VALUES (?, ?, ?)').run(n, sha(key), at);
+    return { key, id: Number(r.lastInsertRowid), name: n, createdAt: at, lastUsedAt: null };
+  }
+
+  list(): AccessKey[] {
+    return (this.db.prepare('SELECT id, name, created_at, last_used_at FROM access_keys ORDER BY id').all() as { id: number; name: string; created_at: string; last_used_at: string | null }[])
+      .map((r) => ({ id: r.id, name: r.name, createdAt: r.created_at, lastUsedAt: r.last_used_at }));
+  }
+
+  revoke(id: number): boolean { return Number(this.db.prepare('DELETE FROM access_keys WHERE id = ?').run(id).changes) > 0; }
+
+  /** Valid key? Marks it used (at most once a minute, to spare the database). */
+  valid(key: string | null, now = Date.now()): boolean {
+    if (!key) return false;
+    const r = this.db.prepare('SELECT id, last_used_at FROM access_keys WHERE hash = ?').get(sha(key)) as { id: number; last_used_at: string | null } | undefined;
+    if (!r) return false;
+    if (!r.last_used_at || now - Date.parse(r.last_used_at) > 60_000) this.db.prepare('UPDATE access_keys SET last_used_at = ? WHERE id = ?').run(new Date(now).toISOString(), r.id);
+    return true;
+  }
+}

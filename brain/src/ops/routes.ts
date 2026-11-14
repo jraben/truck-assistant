@@ -4,7 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Brain } from '../brain.ts';
 import { config } from '../config.ts';
 import { PROJECT } from '../project.ts';
-import { AuthError, checkNewPassword, hashPassword, isLocal, needsAuth, parseCookies, SESSION_COOKIE, SESSION_DAYS, verifyPassword } from './auth.ts';
+import { AuthError, bearerKey, checkNewPassword, hashPassword, isLocal, keyMayRead, needsAuth, parseCookies, SESSION_COOKIE, SESSION_DAYS, verifyPassword } from './auth.ts';
 import { RECEIPT_MAX, RECEIPT_TYPES } from './maintenance.ts';
 import { localDate, toCsv, toHtml, type MileageFilter } from './mileage.ts';
 import { loginPage, safeNext } from './loginPage.ts';
@@ -50,6 +50,8 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
   app.addHook('onRequest', async (req, reply) => {
     const kind = needsAuth(req.method, req.url);
     if (!kind || authed(req)) return;
+    // A read-only access key (Settings, Security) opens GET requests to the diagnostic paths only.
+    if (kind === 'api' && keyMayRead(req.method, req.url) && ops.accessKeys.valid(bearerKey(req.headers.authorization))) return;
     if (kind === 'page') return reply.redirect(`/login?next=${encodeURIComponent(req.url)}`);
     return reply.code(401).send({ error: 'Log in first: open /login on this device' });
   });
@@ -109,6 +111,10 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
       return { trustLocal: b.trustLocal };
     });
     r.post('/api/security/logout-everywhere', async () => { ops.sessions.revokeAll(); return { ok: true }; });
+    // Read-only access keys: created and revoked only with the login (they're POST/DELETE, which a key can't do).
+    r.get('/api/security/keys', async () => ({ keys: ops.accessKeys.list() }));
+    r.post('/api/security/keys', async (req) => ops.accessKeys.create(String((req.body as { name?: unknown } | null)?.name ?? '')));
+    r.delete<{ Params: { id: string } }>('/api/security/keys/:id', async (req, reply) => (ops.accessKeys.revoke(Number(req.params.id)) ? { ok: true } : reply.code(404).send({ error: 'no such key' })));
 
     r.get('/api/about', async () => ({ ...PROJECT, version: config.version, installed: ops.updater.status().installed }));
 
