@@ -3,8 +3,12 @@
 # have their own password (set in the first-boot wizard); the cockpit view at /
 # is open on the LAN, like the dash itself.
 #
-#   cd ~/slate-cockpit/deploy/nas
+#   cd ~/slate-cockpit      (this file and auto-update.sh, side by side)
 #   sudo -n /usr/local/bin/docker-compose pull && sudo -n /usr/local/bin/docker-compose up -d
+#
+# After that it updates itself: the `updater` service pulls the image GitHub builds
+# from main every 10 minutes and restarts the cockpit when it changed (going back
+# by itself if the new one isn't healthy). Its log: sudo docker logs slate-cockpit-updater
 #
 # Never --remove-orphans: other stacks share this host.
 name: slate-cockpit
@@ -35,6 +39,8 @@ services:
       # Never power anything off from a server.
       HEAT_SHUTDOWN: "0"
       POWEROFF_CMD: ""
+      # Settings, Updates: say this copy is updated by the updater service below.
+      UPDATES_BY: docker
     volumes:
       # A named volume, not a bind mount: Synology ACLs on home folders have
       # blocked container users before, and the image owns /data as `node`.
@@ -44,6 +50,20 @@ services:
       interval: 30s
       timeout: 5s
       start_period: 30s
+
+  # Keeps the cockpit on the newest build from main (auto-update.sh, beside this file).
+  updater:
+    image: docker:27-cli
+    container_name: slate-cockpit-updater
+    restart: unless-stopped
+    network_mode: bridge
+    entrypoint: ["/bin/sh", "/stack/auto-update.sh"]
+    environment:
+      IMAGE: ghcr.io/jraben/truck-assistant:${SLATE_IMAGE_TAG:-latest}
+      EVERY: ${SLATE_UPDATE_EVERY:-600}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/stack:ro
 
 volumes:
   slate-data:

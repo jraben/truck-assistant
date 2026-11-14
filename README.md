@@ -255,7 +255,17 @@ ignition, speed, which leg of the route, plugging in to charge (home 7.2 kW at
 60×, DC fast 150 kW at 10×, or set the level outright), cabin heat, a weak 12V battery, a low
 tire, the Five Switch, a bump and a tow-away (the theft alert), every desk
 camera live, and the CarPlay simulator on or off. The panel's routes
-(`/api/sim*`, `brain/src/simRoutes.ts`) answer 404 on a real truck. To update after a push, once the "Build image" action is green:
+(`/api/sim*`, `brain/src/simRoutes.ts`) answer 404 on a real truck.
+
+**It updates itself.** The compose file's `updater` service (`deploy/nas/auto-update.sh`)
+pulls the image every 10 minutes. GitHub pushes `latest` only after a green build. When
+the image has changed, it restarts the cockpit on it, and goes back to the previous
+image if the new one isn't healthy within 3 minutes. The version line at the bottom of
+the cockpit shows the build it runs (`TA_v0.1.0+<commit>`). Its log:
+`sudo docker logs slate-cockpit-updater`.
+
+One-time setup (and the way to update by hand): copy `deploy/nas/docker-compose.yml`
+**and** `deploy/nas/auto-update.sh` to `~/slate-cockpit/`, then
 
 ```sh
 cd ~/slate-cockpit && sudo -n /usr/local/bin/docker-compose pull && sudo -n /usr/local/bin/docker-compose up -d

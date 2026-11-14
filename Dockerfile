@@ -30,6 +30,10 @@ ENV NODE_ENV=production \
     HEAT_SHUTDOWN=0 \
     POWEROFF_CMD=
 RUN mkdir -p /data && chown node:node /data
+# Which commit this image is (the version line and Settings, Updates show it).
+ARG GIT_SHA=""
+ARG BUILD_DATE=""
+RUN if [ -n "$GIT_SHA" ]; then printf '{"tag":"main@%s","sha":"%s","channel":"main","installedAt":"%s"}\n' "$(echo "$GIT_SHA" | cut -c1-7)" "$GIT_SHA" "$BUILD_DATE" > /app/release.json; fi
 VOLUME ["/data"]
 EXPOSE 8080
 USER node
