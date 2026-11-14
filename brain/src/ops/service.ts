@@ -8,7 +8,7 @@ import type { Brain } from '../brain.ts';
 import { BRAIN_ROOT, config } from '../config.ts';
 import { kvGet, kvSet } from '../db.ts';
 import { PROJECT_NAME } from '../project.ts';
-import { RateLimiter, Sessions } from './auth.ts';
+import { RateLimiter, AccessKeys, Sessions } from './auth.ts';
 import { backupDue, EMPTY_STATUS, makeBackup, makeTarget, NAME_RE, stageRestore, targetLabel, toPrune, validateTarget, type BackupStatus } from './backup.ts';
 import { OpsInputError, OpsStore, type OpsConfig } from './config.ts';
 import { opsDiscovery, opsTopic, type OpsSummary } from './haOps.ts';
@@ -24,6 +24,8 @@ export class OpsService {
   readonly maintenance: MaintenanceService;
   readonly updater: Updater;
   readonly sessions: Sessions;
+  /** Read-only access keys (Settings, Security). */
+  readonly accessKeys: AccessKeys;
   readonly limiter = new RateLimiter();
   readonly dataDir: string;
   private brain: Brain;
@@ -41,6 +43,7 @@ export class OpsService {
     this.mileage = new MileageService(db, this.store, brain.trips, () => brain.settings.get());
     this.maintenance = new MaintenanceService(db, this.store, dataDir);
     this.sessions = new Sessions(db);
+    this.accessKeys = new AccessKeys(db);
     this.backup = { ...EMPTY_STATUS, ...(kvGet<BackupStatus>(db, 'backupStatus') ?? {}), running: false };
     const appRoot = path.resolve(BRAIN_ROOT, '..');
     this.updater = new Updater({

@@ -142,3 +142,16 @@ Assume the thief has the Pi, its SD card/SSD and time.
 
 Open a private GitHub security advisory on the repository rather than a public
 issue.
+
+## Read-only access keys
+
+Settings, Security, **Access keys (read-only)** makes a key (`ta_ro_…`, shown
+once; only its SHA-256 is stored, in `access_keys` beside the sessions) for
+something outside the truck's network to read state without the password: for
+example Claude checking that an update went live. Sent as
+`Authorization: Bearer ta_ro_…`, it opens **only GET/HEAD** requests to the
+diagnostic paths in `KEY_READABLE` (`brain/src/ops/auth.ts`: state, drive,
+charges, trips, update, maps, routing, sim, traffic, weather, roadtrip, pickup,
+network, health, about), and never settings (they hold secrets), backups, logs,
+cameras, receipts or the websocket (it carries commands). Creating and revoking
+keys needs the login. Each key shows when it was last used.
