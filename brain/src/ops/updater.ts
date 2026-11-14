@@ -133,7 +133,11 @@ export class SystemdRunner implements Runner {
   constructor(dataDir: string, releasesDir = '/opt/slate-cockpit-releases', installed = existsSync('/etc/systemd/system/slate-updater.path')) {
     this.dir = path.join(dataDir, 'update'); this.releasesDir = releasesDir; this.installed = installed;
   }
-  unavailable() { return this.installed ? null : 'Installing runs on the Pi with the updater service (sudo ./deploy/pi/updater/setup.sh). This brain can check for updates only.'; }
+  unavailable() {
+    if (this.installed) return null;
+    if (process.env.UPDATES_BY === 'docker') return 'This copy runs in Docker and updates itself: its updater container (deploy/nas) installs each new build from main within about 10 minutes.';
+    return 'Installing runs on the Pi with the updater service (sudo ./deploy/pi/updater/setup.sh). This brain can check for updates only.';
+  }
   async request(job: Job) {
     mkdirSync(this.dir, { recursive: true });
     const f = path.join(this.dir, 'request.json');
