@@ -37,6 +37,22 @@ export const FAST_RESERVE = 10;
 export const FAST_TO = 80;
 const DC_EFFICIENCY = 0.92;
 
+// Time spent fuelling, for both sides of the comparison.
+/** Average DC power over a stop: Slate quotes 20-80% in about 30 minutes, ~63 kW on a 52.7 kWh pack. */
+export const FAST_AVG_KW = 63;
+/** Per fast-charge stop on top of charging: pull in, find the stall, plug in, unplug. */
+export const FAST_STOP_MIN = 5;
+/** Per night charged at home: plug in and unplug. The charging itself is overnight, not the driver's time. */
+export const HOME_PLUG_MIN = 1;
+/** Home (Level 2) charging into the pack: Slate quotes about 7 hours for a full charge, ~7.5 kW. */
+export const HOME_AC_KW = 7.5;
+/** Per gas fill-up: pull in, pay, pump (about 3 min at ~10 gal/min), go. */
+export const GAS_FILL_MIN = 8;
+/** A gas car is filled when the tank is down to this share. */
+export const GAS_FILL_AT = 0.25;
+/** Tank size when it isn't known: about 380 miles on a tank at the combined mpg, 10-40 gal. */
+export const tankEstimate = (mpgCombined: number) => Math.round(Math.min(40, Math.max(10, 380 / mpgCombined)) * 10) / 10;
+
 export type SimTrip = { startedAt: string; endedAt: string; miles: number; mode: 'city' | 'highway' };
 export type SimDay = {
   day: string;                              // local YYYY-MM-DD
@@ -47,6 +63,10 @@ export type SimDay = {
   /** Would the battery have run out without a charge on the road? (Then fastStops > 0.) */
   ranOut: boolean;
   fastStops: number; fastKwh: number; fastCost: number | null;
+  /** Minutes at fast chargers (charging plus FAST_STOP_MIN a stop), and plugging in at home. */
+  fastMinutes: number; homeMinutes: number;
+  /** Hours plugged in at home overnight: shown apart, it isn't the driver's time. */
+  homeChargeHours: number;
   chargeKwh: number; chargeCost: number | null;
   gallons: number; gasCost: number | null;
   points: number; maxGapH: number | null; coverage: 'good' | 'thin' | 'none' | 'stored';
@@ -55,7 +75,7 @@ export type WeekSim = {
   from: string; to: string; tracker: string;
   params: SimParams & { roadFactor: number };
   days: SimDay[];
-  totals: { miles: number; kwh: number; chargeKwh: number; chargeCost: number | null; fastStops: number; fastKwh: number; fastCost: number | null; gallons: number; gasCost: number | null; saved: number | null; lowestSoc: number; ranOutDays: number; thinDays: number };
+  totals: { miles: number; kwh: number; chargeKwh: number; chargeCost: number | null; fastStops: number; fastKwh: number; fastCost: number | null; fastMinutes: number; homeMinutes: number; chargeMinutes: number; homeChargeHours: number; gallons: number; gasCost: number | null; saved: number | null; lowestSoc: number; ranOutDays: number; thinDays: number };
   notes: string[];
 };
 
@@ -76,7 +96,7 @@ export function simulateDrives(drives: DriveIn[], days: [Date, Date][], p: SimPa
   for (const [a, b] of days) {
     const lo = a.getTime(), hi = b.getTime();
     const trips: SimTrip[] = [];
-    let city = 0, hwy = 0, kwh = 0, fastStops = 0, fastKwh = 0;
+    let city = 0, hwy = 0, kwh = 0, fastStops = 0, fastKwh = 0, fastMinutes = 0;
     const socStart = soc;
     let socLow = soc;
     for (const t of drives) {
@@ -93,6 +113,7 @@ export function simulateDrives(drives: DriveIn[], days: [Date, Date][], p: SimPa
         need -= drove; soc -= drove;
         socLow = Math.min(socLow, soc);
         fastKwh += ((FAST_TO - soc) / 100) * p.packKwh / DC_EFFICIENCY;
+        fastMinutes += (((FAST_TO - soc) / 100) * p.packKwh / FAST_AVG_KW) * 60 + FAST_STOP_MIN;
         fastStops++;
         soc = FAST_TO;
       }
@@ -115,6 +136,8 @@ export function simulateDrives(drives: DriveIn[], days: [Date, Date][], p: SimPa
       day: dayKey(lo), trips, miles: r1(miles), cityMiles: r1(city), highwayMiles: r1(hwy), kwh: r1(kwh),
       socStart: r1(socStart), socLow: r1(socLow), socEnd: r1(socEnd), ranOut: fastStops > 0,
       fastStops, fastKwh: r1(fastKwh), fastCost,
+      fastMinutes: Math.round(fastMinutes), homeMinutes: chargeKwh > 0 ? HOME_PLUG_MIN : 0,
+      homeChargeHours: r1((chargeKwh * CHARGE_EFFICIENCY) / HOME_AC_KW),
       chargeKwh: r1(chargeKwh), chargeCost: chargeCost === null ? null : r2(chargeCost),
       gallons: r2(gallons), gasCost: p.gasPrice === null ? null : r2(gallons * p.gasPrice),
       points: c.points, maxGapH: c.maxGapH, coverage: c.coverage,
@@ -140,6 +163,7 @@ export function simulateDrives(drives: DriveIn[], days: [Date, Date][], p: SimPa
     totals: {
       miles: r1(sum((d) => d.miles)), kwh: r1(sum((d) => d.kwh)), chargeKwh: r1(sum((d) => d.chargeKwh)), chargeCost,
       fastStops: stops, fastKwh: r1(sum((d) => d.fastKwh)), fastCost,
+      fastMinutes: sum((d) => d.fastMinutes), homeMinutes: sum((d) => d.homeMinutes), chargeMinutes: sum((d) => d.fastMinutes + d.homeMinutes), homeChargeHours: r1(sum((d) => d.homeChargeHours)),
       gallons: r2(sum((d) => d.gallons)), gasCost, saved: chargeCost !== null && fastCost !== null && gasCost !== null ? r2(gasCost - chargeCost - fastCost) : null,
       lowestSoc: r1(Math.min(p.startSoc, ...out.map((d) => d.socLow))), ranOutDays: out.filter((d) => d.ranOut).length, thinDays: thin,
     },
@@ -229,7 +253,7 @@ export function busiestWeek(trips: DriveIn[], from: Date, to: Date, len = 7): { 
 // ---- Gas cars side by side ----------------------------------------------------
 
 /** A gas car to compare the simulated week against, at its own fuel grade's price. */
-export type GasCar = { vehicle: { label: string; mpgCity: number; mpgHighway: number; mpgCombined: number; fuel: string }; gasPrice: number | null; priceEstimated?: boolean };
+export type GasCar = { vehicle: { label: string; mpgCity: number; mpgHighway: number; mpgCombined: number; fuel: string; tankGal?: number | null }; gasPrice: number | null; priceEstimated?: boolean };
 type Leg = { miles: number; gasCost: number | null; slateCost: number | null; saved: number | null; savedPer100: number | null };
 export type CarCompare = {
   label: string; fuel: string; gasPrice: number | null; priceEstimated: boolean;
@@ -240,6 +264,10 @@ export type CarCompare = {
   /** How many times over the Slate's electricity (home and fast) could cost before this car is cheaper. */
   elecMultiple: number | null;
   highway: Leg; town: Leg;
+  /** Fill-ups this week (filling at GAS_FILL_AT of a tank; fractional = an average week) and minutes at the pump. */
+  tankGal: number; tankEstimated: boolean; fills: number; fillMinutes: number;
+  /** Minutes the Slate spends charging (fast stops + plugging in at home) against this car's pump time; + = Slate takes longer. */
+  chargeMinutes: number; extraMinutes: number;
 };
 
 /**
@@ -262,6 +290,9 @@ export function compareCars(sim: WeekSim, cars: GasCar[]): CarCompare[] {
   };
   return cars.map(({ vehicle: v, gasPrice, priceEstimated }) => {
     const gCity = city / v.mpgCity, gHwy = hwy / v.mpgHighway, gallons = gCity + gHwy;
+    const tankGal = v.tankGal && v.tankGal > 0 ? v.tankGal : tankEstimate(v.mpgCombined);
+    const fills = gallons / (tankGal * (1 - GAS_FILL_AT));
+    const fillMinutes = Math.round(fills * GAS_FILL_MIN);
     const gasCost = gasPrice === null ? null : r2(gallons * gasPrice);
     const saved = gasCost !== null && slate !== null ? r2(gasCost - slate) : null;
     return {
@@ -275,6 +306,8 @@ export function compareCars(sim: WeekSim, cars: GasCar[]): CarCompare[] {
       elecMultiple: slate && gasCost !== null ? r2(gasCost / slate) : null,
       highway: leg(hwy, gHwy, gasPrice, slate === null ? null : slate * share),
       town: leg(city, gCity, gasPrice, slate === null ? null : slate * (1 - share)),
+      tankGal, tankEstimated: !(v.tankGal && v.tankGal > 0), fills: r1(fills), fillMinutes,
+      chargeMinutes: t.chargeMinutes, extraMinutes: t.chargeMinutes - fillMinutes,
     };
   });
 }

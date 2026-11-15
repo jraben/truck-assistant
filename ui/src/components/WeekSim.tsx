@@ -13,6 +13,8 @@ type Sim = BaseSim & { compare?: CarCompare[] };
 export const ELEC_RISES = [{ pct: 2.2, label: 'APS 10-yr' }, { pct: 3.3, label: 'US 10-yr' }, { pct: 4.9, label: 'AZ 2020-24' }];
 /** Years until electricity rising ratePct a year costs `multiple` times today (same as brain weekSim.ts). */
 export const yearsToMultiple = (multiple: number, ratePct: number) => (multiple <= 1 ? 0 : ratePct <= 0 ? Infinity : Math.log(multiple) / Math.log(1 + ratePct / 100));
+/** Minutes as "1 h 25 min". */
+export const hm = (m: number) => { const r = Math.round(m); return r < 60 ? `${r} min` : `${Math.floor(r / 60)} h${r % 60 ? ` ${r % 60} min` : ''}`; };
 const cents = (n: number | null) => (n === null ? '—' : `${(n * 100).toFixed(1)}¢`);
 const yrs = (y: number) => (!Number.isFinite(y) ? 'never' : y < 1 ? 'now' : y > 99 ? '99+ yrs' : `${Math.round(y)} yrs`);
 
@@ -110,6 +112,8 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
               {stat('Lowest charge', `${Math.max(0, t.lowestSoc)}%`, t.lowestSoc < 15 ? 'err' : '')}
               {stat('Charging at home', money(t.chargeCost))}
               {t.fastStops > 0 && stat(`Fast charging (${t.fastStops} stop${t.fastStops === 1 ? '' : 's'})`, money(t.fastCost))}
+              {stat('Your time charging', hm(t.chargeMinutes))}
+              {stat('Plugged in at home (overnight)', `${t.homeChargeHours} h`)}
               {stat(`Gas instead (${sim.params.compare.label})`, money(t.gasCost))}
               {stat('Saved', money(t.saved), 'okmsg')}
             </div>
@@ -123,8 +127,8 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
                     <td style={cell}>{x.miles}</td>
                     <td style={cell}>{x.cityMiles} / {x.highwayMiles}</td>
                     <td style={cell}>{x.kwh}</td>
-                    <td style={cell}>{x.socStart}% → {Math.max(0, x.socLow)}%{x.fastStops ? ` · ${x.fastStops} fast charge${x.fastStops === 1 ? '' : 's'}${x.fastCost !== null ? ` ${money(x.fastCost)}` : ''}` : ''}</td>
-                    <td style={cell}>{x.chargeKwh ? `${x.chargeKwh} kWh · ${money(x.chargeCost)}` : '—'}</td>
+                    <td style={cell}>{x.socStart}% → {Math.max(0, x.socLow)}%{x.fastStops ? ` · ${x.fastStops} fast charge${x.fastStops === 1 ? '' : 's'}${x.fastCost !== null ? ` ${money(x.fastCost)}` : ''} · ${hm(x.fastMinutes)}` : ''}</td>
+                    <td style={cell}>{x.chargeKwh ? `${x.chargeKwh} kWh · ${money(x.chargeCost)} · ${x.homeChargeHours} h overnight` : '—'}</td>
                     <td style={cell}>{x.gallons ? `${x.gallons} gal · ${money(x.gasCost)}` : '—'}</td>
                     <td style={cell} class={x.coverage === 'good' || x.coverage === 'stored' ? 'dimtxt' : 'err'}>{x.coverage === 'stored' ? 'stored' : x.coverage === 'none' ? 'none' : `${x.points} fixes${x.coverage === 'thin' ? ', thin' : ''}`}</td>
                   </tr>
@@ -157,15 +161,16 @@ function CarTable({ cars, onVehicles }: { cars: CarCompare[]; onVehicles: () => 
       <h3 style="margin:0">Against gas cars</h3>
       <div style="overflow-x:auto">
         <table class="num" style="width:100%;border-collapse:collapse;font-size:var(--fs-body-sm)">
-          <thead><tr style="text-align:left">{['', 'Gas $/gal', 'Week', 'Per mile', 'Saved', 'Saved / 100 mi hwy', 'Saved / 100 mi town', 'Gas wins below', 'Power could rise'].map(th)}</tr></thead>
+          <thead><tr style="text-align:left">{['', 'Gas $/gal', 'Week', 'Per mile', 'Fuelling time', 'Saved', 'Saved / 100 mi hwy', 'Saved / 100 mi town', 'Gas wins below', 'Power could rise'].map(th)}</tr></thead>
           <tbody>
-            {slate && <tr style="border-top:1px solid var(--line)"><td style={cell}><b>Slate</b></td><td style={cell}>—</td><td style={cell}>{money(slate.slateCost)}</td><td style={cell}>{cents(slate.slatePerMile)}</td><td style={cell} colspan={5} class="dimtxt">home + fast charging</td></tr>}
+            {slate && <tr style="border-top:1px solid var(--line)"><td style={cell}><b>Slate</b></td><td style={cell}>—</td><td style={cell}>{money(slate.slateCost)}</td><td style={cell}>{cents(slate.slatePerMile)}</td><td style={cell}>{hm(slate.chargeMinutes)}</td><td style={cell} colspan={5} class="dimtxt">home + fast charging · plus overnight at home, not your time</td></tr>}
             {cars.map((c) => (
               <tr style="border-top:1px solid var(--line)">
                 <td style={cell}>{c.label} <span class="dimtxt">({c.fuel})</span></td>
                 <td style={cell}>{c.gasPrice === null ? '—' : `$${c.gasPrice.toFixed(2)}${c.priceEstimated ? ' est.' : ''}`}</td>
                 <td style={cell}>{money(c.gasCost)} <span class="dimtxt">· {c.gallons} gal</span></td>
                 <td style={cell}>{cents(c.gasPerMile)}</td>
+                <td style={cell}>{hm(c.fillMinutes)} <span class="dimtxt">· {c.fills} fill-up{c.fills === 1 ? '' : 's'} of {c.tankGal}{c.tankEstimated ? ' est.' : ''} gal · Slate {c.extraMinutes >= 0 ? `+${hm(c.extraMinutes)}` : `−${hm(-c.extraMinutes)}`}</span></td>
                 <td style={cell} class="okmsg">{money(c.saved)}{c.savedPct !== null ? ` (${c.savedPct}%)` : ''}</td>
                 <td style={cell}>{c.highway.miles ? money(c.highway.savedPer100) : '—'}</td>
                 <td style={cell}>{c.town.miles ? money(c.town.savedPer100) : '—'}</td>
@@ -176,7 +181,7 @@ function CarTable({ cars, onVehicles }: { cars: CarCompare[]; onVehicles: () => 
           </tbody>
         </table>
       </div>
-      <p class="help" style="margin:0">"Gas wins below": the gas price at which that car would have cost the same as the Slate this week. "Power could rise": how many times over electricity (home and fast charging) could cost before that car is cheaper, and how many years that takes at {ELEC_RISES.map((r) => `${r.pct}%/yr (${r.label})`).join(', ')}, gas held still. Highway and town split the Slate's cost by energy.</p>
+      <p class="help" style="margin:0">"Gas wins below": the gas price at which that car would have cost the same as the Slate this week. "Power could rise": how many times over electricity (home and fast charging) could cost before that car is cheaper, and how many years that takes at {ELEC_RISES.map((r) => `${r.pct}%/yr (${r.label})`).join(', ')}, gas held still. Highway and town split the Slate's cost by energy. Fuelling time: fast charging at about 63 kW (Slate: 20-80% in ~30 min) plus 5 min a stop, 1 min a night to plug in at home (the hours charging overnight are shown apart: they aren't your time); gas at 8 min a fill-up, filling at a quarter tank (tank estimated from mpg unless set).</p>
       <div class="row wrap" style="gap:var(--s1);align-items:center">
         <span class="lbl">Also compare with:</span>
         {(list ?? []).map((v, i) => <span class="chip">{v.label} <button type="button" class="btn sm" aria-label={`Remove ${v.label}`} onClick={() => void save((list ?? []).filter((_, j) => j !== i))}>×</button></span>)}
