@@ -114,7 +114,7 @@ export function DriversSection({ settings }: { settings: Settings }) {
         </div>
         {d.guest && <p class="help">The Guest profile keeps no history beyond the trip itself and can't be deleted.</p>}
 
-        <h3 class="sub" id="network">Phone (getting online)</h3>
+        <h3 class="sub" id="driver-network">Phone (getting online)</h3>
         <p class="help">The cockpit gets online through the driver's phone: home Wi-Fi first, then this driver's hotspot, then anyone else's in range, then Bluetooth tethering. The password is stored on the truck only.</p>
         <div class="fields">
           <label class="f"><span>Hotspot name (SSID)</span><input type="text" value={draft.hotspotSsid} placeholder="Jeff's iPhone" onInput={(e) => set('hotspotSsid', (e.target as HTMLInputElement).value)} /></label>

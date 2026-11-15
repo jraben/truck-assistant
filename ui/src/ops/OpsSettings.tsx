@@ -10,8 +10,8 @@ import { MileageSettings, MileageView } from './Mileage.tsx';
 import { SetupWizard } from './Wizard.tsx';
 import './ops.css';
 
-function Section({ id, title, help, children }: { id?: string; title: string; help?: string; children: ComponentChildren }) {
-  return <section class="card" id={id}><h2>{title}</h2>{help && <p class="help">{help}</p>}{children}</section>;
+function Section({ id, title, help, keywords, children }: { id?: string; title: string; help?: string; keywords?: string; children: ComponentChildren }) {
+  return <section class="card" id={id} data-keywords={keywords}><h2>{title}</h2>{help && <p class="help">{help}</p>}{children}</section>;
 }
 const val = (e: Event) => (e.target as HTMLInputElement).value;
 const ago = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : 'never');
@@ -139,7 +139,7 @@ export function SecuritySection() {
   if (!a) return null;
   const go = async (f: () => Promise<unknown>, ok: string) => { setMsg(null); try { await f(); setMsg({ ok: true, text: ok }); setCur(''); setPw(''); setPw2(''); void load(); } catch (e) { setMsg({ ok: false, text: errText(e) }); } };
   return (
-    <Section id="security" title="Security" help="The password guards Settings and the Truck page from other devices (a phone on slate-truck Wi-Fi, Tailscale). The dash screen itself stays open. Threat model and the HA/Tailscale guidance: docs/security.md.">
+    <Section id="security" keywords="password login lock sign in access" title="Security" help="The password guards Settings and the Truck page from other devices (a phone on slate-truck Wi-Fi, Tailscale). The dash screen itself stays open. Threat model and the HA/Tailscale guidance: docs/security.md.">
       {!a.passwordSet && <div class="banner bad">No password set: anyone on the truck's Wi-Fi or your tailnet can change settings.</div>}
       <div class="fields form">
         {a.passwordSet && <label class="f"><span>Current password</span><input type="password" autocomplete="current-password" value={cur} onInput={(e) => setCur(val(e))} /></label>}
@@ -224,14 +224,14 @@ export function OpsSections() {
       <MileageView />
       <details><summary class="btn sm" style="display:inline-flex">Mileage settings: odometer, IRS rate, rules</summary><MileageSettings /></details>
     </Section>
-    <Section id="maintenance" title="Maintenance"><MaintenanceView /></Section>
+    <Section id="maintenance" title="Maintenance" help="Service log, tire pressure history and reminders by miles or months, whichever comes first."><MaintenanceView /></Section>
     <Section id="setup" title="Setup" help="The first-boot steps: password, truck Wi-Fi, truck, home, drivers, Home Assistant, hotspots, comparison vehicle.">
       {wiz ? <SetupWizard portal onClose={() => setWiz(false)} /> : <div><button class="btn" type="button" onClick={() => setWiz(true)}>Open setup</button></div>}
     </Section>
     <UpdatesSection />
     <BackupsSection />
     <SecuritySection />
-    <Section id="about" title="About"><AboutPanel /></Section>
+    <Section id="about" title="About" help="Version, license and credits."><AboutPanel /></Section>
   </>;
 }
 
