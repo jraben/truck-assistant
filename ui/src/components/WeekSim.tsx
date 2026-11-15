@@ -54,7 +54,7 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
     setBusy(true); setErr(null); setFound(null);
     try {
       const r = await api<{ trips: number; best: { start: string; miles: number } | null }>(`/api/trips/busiest-week?months=6${d ? `&driver=${encodeURIComponent(d.id)}` : ''}`);
-      if (!r.best) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (Settings, Import) or wait for the nightly import.`); setBusy(false); return; }
+      if (!r.best) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (link below) or wait for the nightly import.`); setBusy(false); return; }
       setFrom(r.best.start); setSource('stored'); setFound(`Busiest 7 days in 6 months: from ${dow(r.best.start)}, ${r.best.miles} mi (of ${r.trips} stored trips).`);
       await run('stored', r.best.start);
     } catch (e) { setErr((e as Error).message); setBusy(false); }
@@ -65,7 +65,7 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
     setBusy(true); setErr(null); setFound(null);
     try {
       const r = await api<{ trips: number; top: { days: { day: string; miles: number }[]; miles: number } | null }>(`/api/trips/top-days?months=6&n=7&by=${topBy}${d ? `&driver=${encodeURIComponent(d.id)}` : ''}`);
-      if (!r.top) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (Settings, Import) or wait for the nightly import.`); setBusy(false); return; }
+      if (!r.top) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (link below) or wait for the nightly import.`); setBusy(false); return; }
       const what = topBy === 'highway' ? 'most highway' : topBy === 'city' ? 'most around-town driving' : 'most driving';
       setSource('stored'); setFound(`The ${r.top.days.length} days with the ${what} in 6 months, back to back: ${r.top.miles} mi (${r.top.days.map((x) => dow(x.day)).join(', ')}).`);
       await run('stored', r.top.days[0].day, r.top.days.map((x) => x.day));
@@ -101,6 +101,10 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
             </select>
           </label>
           <button type="button" class="btn" disabled={busy} onClick={() => void topSeven()} title="The 7 separate days with the most of that driving in 6 months, as one made-up week">Top 7 days</button>
+        </div>
+        <div class="row wrap" style="gap:var(--s1);align-items:center">
+          <span class="dimtxt" style="font-size:var(--fs-caption)">Months of real drives come from a Google Maps Timeline export.</span>
+          <a class="btn sm" href="/settings#import" target="_blank" rel="noopener">Import Google Timeline</a>
         </div>
         {found && <div class="okmsg">{found}</div>}
         {err && <div class="err">{err}</div>}

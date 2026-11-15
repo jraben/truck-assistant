@@ -383,7 +383,7 @@ export function SettingsApp() {
         <p class="help">Session energy is read from HA's mqtt_statestream (base_topic: homeassistant) when the bridge is up; used for home session kWh instead of the charge-level estimate. The power sensor (W or kW, by its unit) is read every 30 s: over 500 W during an on-peak period with alerts on is "charging on-peak". The token is stored on the truck only and never shown again in full.</p>
       </Section>
 
-      <Section id="import" title="Phone history" help="Real trips and stops before the truck arrives: replay a driver's phone locations from Home Assistant.">
+      <Section id="import" title="Import trips (phone & Google Timeline)" help="Real drives before the truck arrives, for Trips and WEEK: a Google Maps Timeline export (months at once), or a driver's phone locations from Home Assistant (the last ~10 days).">
         <ImportSection settings={settings} haReady={haReady} />
       </Section>
 
