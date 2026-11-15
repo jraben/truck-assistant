@@ -64,4 +64,18 @@ describe('stored phone trips', () => {
     expect(r.notes.join(' ')).toMatch(/1 drive from Google Timeline/);
     expect(r.notes.join(' ')).toMatch(/1 trip imported from Home Assistant/);
   });
+  it('picks the top separate days and simulates them back to back', async () => {
+    const { simulateStored, topDays } = await import('../src/weekSim.ts');
+    const at = (d: number, h = 9) => new Date(2026, 9, d, h).getTime();
+    const trips = [[1, 5], [3, 80], [3, 20], [9, 60], [15, 2], [20, 90]].map(([d, mi], i) => ({ startedAt: at(d, 8 + i), endedAt: at(d, 8 + i) + 1_800_000, miles: mi }));
+    const top = topDays(trips, new Date(2026, 9, 1), new Date(2026, 10, 1), 3)!;
+    expect(top.days.map((x) => x.day)).toEqual(['2026-10-03', '2026-10-09', '2026-10-20']);
+    expect(top.miles).toBe(250);
+    expect(top.days[0].trips).toBe(2);
+    const days = top.days.map((x) => { const [y, m, d] = x.day.split('-').map(Number); return [new Date(y, m - 1, d), new Date(y, m - 1, d + 1)] as [Date, Date]; });
+    const r = simulateStored(trips.map((t) => ({ ...t, straight: false })), days, P, 'Jeff');
+    expect(r.days.map((d) => d.miles)).toEqual([100, 60, 90]);
+    expect(r.notes.join(' ')).toMatch(/^4 drives from Google Timeline/);
+    expect(topDays([], new Date(2026, 9, 1), new Date(2026, 10, 1))).toBeNull();
+  });
 });

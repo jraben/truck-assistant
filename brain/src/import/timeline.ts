@@ -11,15 +11,31 @@
 //    duration: { startTimestamp, endTimestamp }, distance, activityType } }] }
 // Only drives are kept (car, passenger vehicle, taxi, motorcycle), not walks,
 // buses, trains or flights.
+//
+// Miles: Google's own `distanceMeters` on a drive is badly short for anything
+// long (a 2-hour I-10 run exported as 5.5 mi; no drive over ~30 mi in five
+// months). The exports also carry the phone's GPS path (`timelinePath`, about a
+// fix a minute while moving) and the places stayed at (`visit`), so a drive is
+// measured along those fixes, from the place left to the place reached, and
+// Google's figure is kept only when it is the larger.
 import type { Db } from '../db.ts';
 import type { TripStore } from '../trips.ts';
 
-export type TimelineDrive = { startedAt: number; endedAt: number; miles: number; start: { lat: number; lon: number }; end: { lat: number; lon: number } };
+type LL = { lat: number; lon: number };
+export type TimelineDrive = { startedAt: number; endedAt: number; miles: number; start: LL; end: LL; path: (LL & { t: number })[] };
+/** A fix from the GPS path or a place stayed at. */
+type Fix = LL & { t: number };
 
 const DRIVE_TYPES = new Set(['IN_PASSENGER_VEHICLE', 'IN_VEHICLE', 'DRIVING', 'IN_CAR', 'IN_TAXI', 'MOTORCYCLING', 'IN_ROAD_VEHICLE']);
 /** Without Google's distance, a straight line start to end, longer for roads. */
 const ROAD_FACTOR = 1.25;
 const M_PER_MI = 1609.344;
+/** Fixes further apart than this are joined by a straight line × ROAD_FACTOR; closer ones are the road. */
+const DENSE_GAP_MS = 3 * 60_000;
+/** A hop faster than this over more than DENSE_GAP_MS is a bad fix, not driving. */
+const JUMP_MPH = 150;
+/** No drive is credited more than this average speed. */
+const MAX_AVG_MPH = 80;
 
 export class TimelineError extends Error {}
 
@@ -54,19 +70,61 @@ function drive(type: unknown, start: unknown, end: unknown, t0: unknown, t1: unk
   if (!a || !b || !Number.isFinite(s) || !Number.isFinite(e) || e <= s) return null;
   const m = Number(meters);
   const miles = Number.isFinite(m) && m > 0 ? m / M_PER_MI : haversineMi(a, b) * ROAD_FACTOR;
-  if (miles < 0.1 || miles > 1500) return null;
-  return { startedAt: s, endedAt: e, miles: Math.round(miles * 100) / 100, start: a, end: b };
+  return { startedAt: s, endedAt: e, miles, start: a, end: b, path: [] };
+}
+
+/** Miles along time-ordered fixes: dense stretches as driven, gaps × ROAD_FACTOR, bad jumps skipped. */
+export function pathMiles(fixes: Fix[]): number {
+  let mi = 0;
+  for (let i = 1; i < fixes.length; i++) {
+    const dt = fixes[i].t - fixes[i - 1].t, h = haversineMi(fixes[i - 1], fixes[i]);
+    if (dt > DENSE_GAP_MS && h / (dt / 3_600_000) > JUMP_MPH) continue;
+    mi += dt > DENSE_GAP_MS ? h * ROAD_FACTOR : h;
+  }
+  return mi;
+}
+
+/** Each drive measured along the fixes from just before it starts to just after it ends. */
+function measure(drives: TimelineDrive[], fixes: Fix[]): void {
+  fixes.sort((x, y) => x.t - y.t);
+  const ts = fixes.map((f) => f.t);
+  const lower = (t: number) => { let lo = 0, hi = ts.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (ts[mid] < t) lo = mid + 1; else hi = mid; } return lo; };
+  for (const d of drives) {
+    const route = fixes.slice(lower(d.startedAt - 60_000), lower(d.endedAt + 60_001));
+    if (route.length >= 2) {
+      const cap = ((d.endedAt - d.startedAt) / 3_600_000) * MAX_AVG_MPH;
+      d.miles = Math.max(d.miles, Math.min(pathMiles(route), cap));
+      d.path = route;
+    }
+  }
 }
 
 /** Every drive in an export, oldest first, duplicates dropped. Throws if it isn't a Timeline export at all. */
 export function parseTimeline(json: unknown): TimelineDrive[] {
   const out: TimelineDrive[] = [];
+  const fixes: Fix[] = [];
   let recognised = false;
   const segs = isObj(json) && Array.isArray(json.semanticSegments) ? json.semanticSegments : Array.isArray(json) ? json : null;
   if (segs) {
     recognised = true;
     for (const x of segs) {
-      if (!isObj(x) || !isObj(x.activity)) continue;
+      if (!isObj(x)) continue;
+      const t0 = Date.parse(String(x.startTime)), t1 = Date.parse(String(x.endTime));
+      // GPS path: iOS gives minutes after startTime, Android a time per point.
+      if (Array.isArray(x.timelinePath)) {
+        for (const p of x.timelinePath) {
+          if (!isObj(p)) continue;
+          const at = parseLatLng(p.point);
+          const t = p.time !== undefined ? Date.parse(String(p.time)) : t0 + Number(p.durationMinutesOffsetFromStartTime) * 60_000;
+          if (at && Number.isFinite(t)) fixes.push({ ...at, t });
+        }
+      }
+      // A place stayed at: where the phone was from its start to its end.
+      if (isObj(x.visit) && isObj(x.visit.topCandidate)) {
+        const at = parseLatLng(x.visit.topCandidate.placeLocation);
+        if (at && Number.isFinite(t0) && Number.isFinite(t1)) fixes.push({ ...at, t: t0 }, { ...at, t: t1 });
+      }
+      if (!isObj(x.activity)) continue;
       const act = x.activity, top = isObj(act.topCandidate) ? act.topCandidate : {};
       const d = drive(top.type, act.start, act.end, x.startTime, x.endTime, act.distanceMeters);
       if (d) out.push(d);
@@ -82,8 +140,12 @@ export function parseTimeline(json: unknown): TimelineDrive[] {
     }
   }
   if (!recognised) throw new TimelineError('Not a Google Maps Timeline export: expected Timeline.json (semanticSegments), the iPhone export, or Takeout Semantic Location History (timelineObjects).');
+  if (fixes.length) measure(out, fixes);
   out.sort((x, y) => x.startedAt - y.startedAt);
-  return out.filter((d, i) => i === 0 || d.startedAt !== out[i - 1].startedAt);
+  return out
+    .filter((d, i) => i === 0 || d.startedAt !== out[i - 1].startedAt)
+    .filter((d) => d.miles >= 0.1 && d.miles <= 1500)
+    .map((d) => ({ ...d, miles: Math.round(d.miles * 100) / 100 }));
 }
 
 /** Write the drives as the driver's phone trips, replacing that driver's phone trips over the same span. */
@@ -95,8 +157,9 @@ export function storeTimeline(trips: TripStore, db: Db, driverId: string, drives
     trips.deletePhone(driverId, from.toISOString(), to.toISOString());
     for (const d of drives) {
       const mph = d.miles / Math.max((d.endedAt - d.startedAt) / 3_600_000, 1 / 60);
-      trips.insertPhone({ driverId, startedAt: d.startedAt, endedAt: d.endedAt, miles: d.miles, startStopId: null, endStopId: null,
-        points: [{ t: d.startedAt, ...d.start, speedMph: mph }, { t: d.endedAt, ...d.end, speedMph: mph }] });
+      // The GPS path when there is one (the map draws it), else just the two ends.
+      const pts = d.path.length >= 2 ? d.path.map((p) => ({ t: p.t, lat: p.lat, lon: p.lon, speedMph: null })) : [{ t: d.startedAt, ...d.start, speedMph: mph }, { t: d.endedAt, ...d.end, speedMph: mph }];
+      trips.insertPhone({ driverId, startedAt: d.startedAt, endedAt: d.endedAt, miles: d.miles, startStopId: null, endStopId: null, points: pts });
     }
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
