@@ -51,3 +51,17 @@ describe('simulate my week', () => {
     expect(priced.totals.saved).toBeCloseTo(priced.totals.gasCost! - priced.totals.chargeCost! - priced.totals.fastCost!, 2);
   });
 });
+
+describe('stored phone trips', () => {
+  it('scales Home Assistant imports to roads, keeps Timeline distances, and says which', async () => {
+    const { simulateStored, ROAD_FACTOR } = await import('../src/weekSim.ts');
+    const t0 = new Date(2026, 10, 9, 9).getTime();
+    const r = simulateStored([
+      { startedAt: t0, endedAt: t0 + 30 * 60_000, miles: 10, straight: true },
+      { startedAt: t0 + 3_600_000, endedAt: t0 + 5_400_000, miles: 10, straight: false },
+    ], [[new Date(2026, 10, 9), new Date(2026, 10, 10)]], P, 'Jeff');
+    expect(r.days[0].miles).toBeCloseTo(10 * ROAD_FACTOR + 10, 1);
+    expect(r.notes.join(' ')).toMatch(/1 drive from Google Timeline/);
+    expect(r.notes.join(' ')).toMatch(/1 trip imported from Home Assistant/);
+  });
+});

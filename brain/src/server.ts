@@ -27,7 +27,8 @@ import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { RoutingError } from './roadtrip/routing.ts';
-import { busiestWeek, simulateStored, simulateWeek } from './weekSim.ts';
+import { busiestWeek, roadMiles, simulateStored, simulateWeek, type StoredDrive } from './weekSim.ts';
+import type { Trip } from './types.ts';
 import { parseTimeline, storeTimeline, TimelineError } from './import/timeline.ts';
 import { dayRanges } from './import/phone.ts';
 import { trackerPoints, type TrackerPoint } from './ha/client.ts';
@@ -157,6 +158,8 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
       gasPrice: g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null), dcPerKwh,
     };
   };
+  // A stored phone trip: Home Assistant imports link their stops (straight-line miles); Timeline drives don't.
+  const storedDrive = (t: Trip): StoredDrive => ({ startedAt: Date.parse(t.startedAt), endedAt: Date.parse(t.endedAt ?? t.startedAt), miles: t.miles, straight: t.from !== null || t.to !== null });
   const localDay = (v: string | undefined): Date | null | 'bad' => {
     if (!v) return null;
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
@@ -177,7 +180,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     if (q.source === 'stored') {
       if (!driver) return reply.code(400).send({ error: 'driver is required' });
       const stored = brain.trips.between(start.toISOString(), end.toISOString(), { driver: driver.id, source: 'phone' });
-      return simulateStored(stored.map((t) => ({ startedAt: Date.parse(t.startedAt), endedAt: Date.parse(t.endedAt ?? t.startedAt), miles: t.miles })), days, p, `${driver.name}: stored phone trips`);
+      return simulateStored(stored.map(storedDrive), days, p, `${driver.name}: stored phone trips`);
     }
     const tracker = q.tracker ?? driver?.tracker ?? null;
     if (!tracker || !/^(device_tracker|person)\.[a-z0-9_]+$/.test(tracker)) return reply.code(400).send({ error: 'tracker must be device_tracker.x or person.x (or set the driver\'s phone tracker in Settings)' });
@@ -197,7 +200,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const from = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
     const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const stored = brain.trips.between(from.toISOString(), to.toISOString(), { driver: driver.id, source: 'phone' });
-    const best = busiestWeek(stored.map((t) => ({ startedAt: Date.parse(t.startedAt), endedAt: Date.parse(t.endedAt ?? t.startedAt), miles: t.miles })), from, to);
+    const best = busiestWeek(stored.map(storedDrive).map((d) => ({ ...d, miles: roadMiles(d) })), from, to);
     return { driver: driver.id, months, trips: stored.length, best };
   });
   // Google Maps Timeline export (JSON) -> the driver's phone trips (import/timeline.ts). Needs the login.
