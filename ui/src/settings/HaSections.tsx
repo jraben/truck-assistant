@@ -103,6 +103,47 @@ export function ImportSection({ settings, haReady }: { settings: Settings; haRea
         </div>
       )}
       <p class="help">Reads the tracker's location history from Home Assistant's recorder, one day at a time, and finds the same trips and stops the truck would. Phone locations are sparse, so routes are straight lines between points and marked "from phone, approximate"; they never count as truck miles.</p>
+      <AutoImport />
+      <TimelineImport driverId={driverId} driverName={d?.name ?? driverId} />
+    </div>
+  );
+}
+
+/** Nightly: Home Assistant keeps ~10 days of history, so TA copies each night's into its own trips. */
+function AutoImport() {
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => { void api<{ enabled: boolean }>('/api/import/phone/auto').then((r) => setOn(r.enabled)).catch(() => {}); }, []);
+  if (on === null) return null;
+  const set = async (v: boolean) => { try { setOn((await api<{ enabled: boolean }>('/api/import/phone/auto', { method: 'PUT', body: JSON.stringify({ enabled: v }) })).enabled); } catch { /* keep */ } };
+  return (
+    <label class="check"><input type="checkbox" checked={on} onChange={(e) => void set((e.target as HTMLInputElement).checked)} /> Every night, keep each driver's phone history (the last two days) in TA's own trips. Home Assistant deletes it after about 10 days.</label>
+  );
+}
+
+/** A Google Maps Timeline export: months of real drives, for Trips, WEEK and the busiest-week search. */
+function TimelineImport({ driverId, driverName }: { driverId: string; driverName: string }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setBusy(true); setMsg(null);
+    let trips = 0, miles = 0;
+    try {
+      for (const f of Array.from(files)) {
+        const r = await api<{ trips: number; miles: number }>(`/api/import/google-timeline?driver=${encodeURIComponent(driverId)}`, { method: 'POST', body: await f.text() });
+        trips += r.trips; miles += r.miles;
+      }
+      setMsg({ ok: true, text: `Imported ${trips} drives (${Math.round(miles)} mi) for ${driverName}. Trips, WEEK can now find your busiest week.` });
+    } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } finally { setBusy(false); }
+  };
+  return (
+    <div class="form" style="gap:var(--s1);margin-top:var(--s15)">
+      <h3 class="sub">Google Maps Timeline</h3>
+      <p class="help">Months of drives at once, with Google's own distances. On the phone: Google Maps, your picture, Your Timeline, the ⋮ menu, Export Timeline data, which saves Timeline.json. (An older Google Takeout "Semantic Location History" month file works too.) Pick the file here; importing again replaces {driverName}'s phone trips over the same dates.</p>
+      <label class="btn" style="width:max-content">{busy ? 'Importing…' : `Import Timeline for ${driverName}`}
+        <input type="file" accept=".json,application/json" multiple disabled={busy} style="display:none" onChange={(e) => void upload((e.target as HTMLInputElement).files)} />
+      </label>
+      {msg && <div class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</div>}
     </div>
   );
 }

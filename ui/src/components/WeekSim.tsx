@@ -24,12 +24,24 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
   const [sim, setSim] = useState<Sim | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const run = async () => {
+  const [source, setSource] = useState<'ha' | 'stored'>('ha');
+  const [found, setFound] = useState<string | null>(null);
+  const run = async (src = source, start = from) => {
     setBusy(true); setErr(null);
-    const q = new URLSearchParams({ from, days: '7' });
-    if (tracker) q.set('tracker', tracker);
+    const q = new URLSearchParams({ from: start, days: '7', source: src });
+    if (tracker && src === 'ha') q.set('tracker', tracker);
     if (d) q.set('driver', d.id);
     try { setSim(await api<Sim>(`/api/trips/simulate-week?${q}`)); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+  /** The 7 days with the most driving in the last 6 months of stored trips, then simulate them. */
+  const busiest = async () => {
+    setBusy(true); setErr(null); setFound(null);
+    try {
+      const r = await api<{ trips: number; best: { start: string; miles: number } | null }>(`/api/trips/busiest-week?months=6${d ? `&driver=${encodeURIComponent(d.id)}` : ''}`);
+      if (!r.best) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (Settings, Import) or wait for the nightly import.`); setBusy(false); return; }
+      setFrom(r.best.start); setSource('stored'); setFound(`Busiest 7 days in 6 months: from ${dow(r.best.start)}, ${r.best.miles} mi (of ${r.trips} stored trips).`);
+      await run('stored', r.best.start);
+    } catch (e) { setErr((e as Error).message); setBusy(false); }
   };
   useEffect(() => { if (tracker) void run(); }, []);
   const t = sim?.totals;
@@ -39,10 +51,18 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
       <div style="display:grid;gap:var(--s15)">
         <p class="help" style="margin:0">Your phone's location history for a week, driven as if in the Slate, charging at home to {sim?.params.chargeTo ?? 80}% every night.</p>
         <div class="row wrap" style="gap:var(--s15);align-items:flex-end">
-          <label class="f" style="min-width:300px"><span>Phone tracker (Home Assistant)</span><input type="text" value={tracker} placeholder="device_tracker.life360_your_name" onInput={(e) => setTracker((e.target as HTMLInputElement).value.trim())} /></label>
+          <label class="f"><span>From</span>
+            <select value={source} onChange={(e) => setSource((e.target as HTMLSelectElement).value as 'ha' | 'stored')}>
+              <option value="ha">Home Assistant (last ~10 days)</option>
+              <option value="stored">Trips TA keeps (Timeline, nightly)</option>
+            </select>
+          </label>
+          {source === 'ha' && <label class="f" style="min-width:280px"><span>Phone tracker</span><input type="text" value={tracker} placeholder="device_tracker.life360_your_name" onInput={(e) => setTracker((e.target as HTMLInputElement).value.trim())} /></label>}
           <label class="f"><span>Week starting</span><input type="date" value={from} onInput={(e) => setFrom((e.target as HTMLInputElement).value)} /></label>
-          <button type="button" class="btn primary" disabled={busy || !tracker} onClick={() => void run()}>{busy ? 'Working…' : 'Simulate'}</button>
+          <button type="button" class="btn primary" disabled={busy || (source === 'ha' && !tracker)} onClick={() => void run()}>{busy ? 'Working…' : 'Simulate'}</button>
+          <button type="button" class="btn" disabled={busy} onClick={() => void busiest()} title="Find the 7 days with the most driving in the last 6 months of stored trips">Busiest week</button>
         </div>
+        {found && <div class="okmsg">{found}</div>}
         {err && <div class="err">{err}</div>}
         {sim && t && (
           <>
@@ -51,6 +71,7 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
               {stat('Energy', `${t.kwh} kWh`)}
               {stat('Lowest charge', `${Math.max(0, t.lowestSoc)}%`, t.lowestSoc < 15 ? 'err' : '')}
               {stat('Charging at home', money(t.chargeCost))}
+              {t.fastStops > 0 && stat(`Fast charging (${t.fastStops} stop${t.fastStops === 1 ? '' : 's'})`, money(t.fastCost))}
               {stat(`Gas instead (${sim.params.compare.label})`, money(t.gasCost))}
               {stat('Saved', money(t.saved), 'okmsg')}
             </div>
@@ -64,10 +85,10 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
                     <td style={cell}>{x.miles}</td>
                     <td style={cell}>{x.cityMiles} / {x.highwayMiles}</td>
                     <td style={cell}>{x.kwh}</td>
-                    <td style={cell} class={x.ranOut ? 'err' : ''}>{x.socStart}% → {Math.max(0, x.socLow)}%{x.ranOut ? ' (ran out)' : ''}</td>
+                    <td style={cell}>{x.socStart}% → {Math.max(0, x.socLow)}%{x.fastStops ? ` · ${x.fastStops} fast charge${x.fastStops === 1 ? '' : 's'}${x.fastCost !== null ? ` ${money(x.fastCost)}` : ''}` : ''}</td>
                     <td style={cell}>{x.chargeKwh ? `${x.chargeKwh} kWh · ${money(x.chargeCost)}` : '—'}</td>
                     <td style={cell}>{x.gallons ? `${x.gallons} gal · ${money(x.gasCost)}` : '—'}</td>
-                    <td style={cell} class={x.coverage === 'good' ? 'dimtxt' : 'err'}>{x.coverage === 'none' ? 'none' : `${x.points} fixes${x.coverage === 'thin' ? ', thin' : ''}`}</td>
+                    <td style={cell} class={x.coverage === 'good' || x.coverage === 'stored' ? 'dimtxt' : 'err'}>{x.coverage === 'stored' ? 'stored' : x.coverage === 'none' ? 'none' : `${x.points} fixes${x.coverage === 'thin' ? ', thin' : ''}`}</td>
                   </tr>
                 ))}</tbody>
               </table>
