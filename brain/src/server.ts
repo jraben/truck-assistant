@@ -210,7 +210,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     return { driver: driver.id, months, trips: stored.length, best };
   });
   // The n separate days with the most driving (default 7 in 6 months): a made-up hardest week.
-  app.get<{ Querystring: { driver?: string; months?: string; n?: string } }>('/api/trips/top-days', async (req, reply) => {
+  app.get<{ Querystring: { driver?: string; months?: string; n?: string; by?: string } }>('/api/trips/top-days', async (req, reply) => {
     const st = brain.settings.get();
     const driver = st.drivers.find((d) => d.id === (req.query.driver ?? st.drivers[0]?.id));
     if (!driver) return reply.code(400).send({ error: 'no such driver' });
@@ -220,7 +220,9 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const from = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
     const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const stored = brain.trips.between(from.toISOString(), to.toISOString(), { driver: driver.id, source: 'phone' });
-    return { driver: driver.id, months, trips: stored.length, top: topDays(stored.map(storedDrive).map((d) => ({ ...d, miles: roadMiles(d) })), from, to, n) };
+    const by = req.query.by === 'highway' || req.query.by === 'city' ? req.query.by : 'miles';
+    const hwyMph = brain.settings.get().drive.highwayMph;
+    return { driver: driver.id, months, trips: stored.length, top: topDays(stored.map(storedDrive).map((d) => ({ ...d, miles: roadMiles(d) })), from, to, n, by, hwyMph) };
   });
   // Google Maps Timeline export (JSON) -> the driver's phone trips (import/timeline.ts). Needs the login.
   app.post<{ Querystring: { driver?: string } }>('/api/import/google-timeline', { bodyLimit: 300 * 1024 * 1024 }, async (req, reply) => {

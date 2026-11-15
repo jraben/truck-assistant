@@ -180,22 +180,34 @@ export function simulateStored(trips: StoredDrive[], days: [Date, Date][], p: Si
 /** Stored trips' road miles, for the busiest-week search: Home Assistant imports scaled like the simulation. */
 export const roadMiles = (t: StoredDrive) => (t.straight ? t.miles * ROAD_FACTOR : t.miles);
 
+/** What a "top days" week ranks by: all miles, highway miles, or around-town miles. */
+export type TopBy = 'miles' | 'highway' | 'city';
+/** A drive is highway when its average speed reaches this (the same split the simulation makes). */
+export const isHighway = (t: DriveIn, highwayMph: number) => t.miles / Math.max((t.endedAt - t.startedAt) / 3_600_000, 1 / 60) >= highwayMph;
+
 /**
- * The n separate local days with the most miles between from and to, in date
- * order: a made-up week of the hardest days, to stress the battery. Pure.
+ * The n separate local days with the most miles (or most highway, or most
+ * around-town miles) between from and to, in date order: a made-up week of
+ * those days, to stress the battery or show the everyday case. Pure.
  */
-export function topDays(trips: DriveIn[], from: Date, to: Date, n = 7): { days: { day: string; miles: number; trips: number }[]; miles: number } | null {
-  const by = new Map<string, { miles: number; trips: number }>();
+export function topDays(trips: DriveIn[], from: Date, to: Date, n = 7, by: TopBy = 'miles', highwayMph = 45): { by: TopBy; days: { day: string; miles: number; cityMiles: number; highwayMiles: number; trips: number }[]; miles: number } | null {
+  const days = new Map<string, { city: number; hwy: number; trips: number }>();
   const lo = from.getTime(), hi = to.getTime();
   for (const t of trips) {
     if (t.startedAt < lo || t.startedAt >= hi) continue;
-    const k = dayKey(t.startedAt), x = by.get(k) ?? { miles: 0, trips: 0 };
-    x.miles += t.miles; x.trips++; by.set(k, x);
+    const k = dayKey(t.startedAt), x = days.get(k) ?? { city: 0, hwy: 0, trips: 0 };
+    if (isHighway(t, highwayMph)) x.hwy += t.miles; else x.city += t.miles;
+    x.trips++; days.set(k, x);
   }
-  const top = [...by.entries()].filter(([, x]) => x.miles > 0).sort((a, b) => b[1].miles - a[1].miles).slice(0, n);
+  const score = (x: { city: number; hwy: number }) => (by === 'highway' ? x.hwy : by === 'city' ? x.city : x.city + x.hwy);
+  const top = [...days.entries()].filter(([, x]) => score(x) > 0).sort((a, b) => score(b[1]) - score(a[1])).slice(0, n);
   if (!top.length) return null;
   top.sort((a, b) => (a[0] < b[0] ? -1 : 1));
-  return { days: top.map(([day, x]) => ({ day, miles: r1(x.miles), trips: x.trips })), miles: r1(top.reduce((s, [, x]) => s + x.miles, 0)) };
+  return {
+    by,
+    days: top.map(([day, x]) => ({ day, miles: r1(x.city + x.hwy), cityMiles: r1(x.city), highwayMiles: r1(x.hwy), trips: x.trips })),
+    miles: r1(top.reduce((s, [, x]) => s + x.city + x.hwy, 0)),
+  };
 }
 
 /** The 7 consecutive local days with the most miles, between from and to. Pure. */

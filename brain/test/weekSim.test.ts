@@ -78,4 +78,17 @@ describe('stored phone trips', () => {
     expect(r.notes.join(' ')).toMatch(/^4 drives from Google Timeline/);
     expect(topDays([], new Date(2026, 9, 1), new Date(2026, 10, 1))).toBeNull();
   });
+  it('ranks top days by highway or around-town miles', async () => {
+    const { topDays } = await import('../src/weekSim.ts');
+    const at = (d: number, mi: number, mins: number) => ({ startedAt: new Date(2026, 9, d, 9).getTime(), endedAt: new Date(2026, 9, d, 9).getTime() + mins * 60_000, miles: mi });
+    // Oct 1: 120 highway (60 mph). Oct 2: 40 in town (20 mph). Oct 3: 30 highway + 30 town.
+    const trips = [at(1, 120, 120), at(2, 40, 120), { ...at(3, 30, 30) }, { ...at(3, 30, 90), startedAt: new Date(2026, 9, 3, 14).getTime(), endedAt: new Date(2026, 9, 3, 15, 30).getTime() }];
+    const F = new Date(2026, 9, 1), T = new Date(2026, 10, 1);
+    expect(topDays(trips, F, T, 1, 'highway')!.days[0].day).toBe('2026-10-01');
+    expect(topDays(trips, F, T, 1, 'city')!.days[0].day).toBe('2026-10-02');
+    const c = topDays(trips, F, T, 2, 'city')!;
+    expect(c.days.map((x) => x.day)).toEqual(['2026-10-02', '2026-10-03']);
+    expect(c.days[1]).toMatchObject({ cityMiles: 30, highwayMiles: 30, miles: 60 });
+    expect(topDays(trips, F, T, 1)!.days[0].day).toBe('2026-10-01');
+  });
 });
