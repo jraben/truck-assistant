@@ -27,7 +27,8 @@ import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { RoutingError } from './roadtrip/routing.ts';
-import { simulateWeek } from './weekSim.ts';
+import { busiestWeek, simulateStored, simulateWeek } from './weekSim.ts';
+import { parseTimeline, storeTimeline, TimelineError } from './import/timeline.ts';
 import { dayRanges } from './import/phone.ts';
 import { trackerPoints, type TrackerPoint } from './ha/client.ts';
 import { registerMapsRoutes } from './maps/routes.ts';
@@ -136,41 +137,78 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const limit = Math.max(1, Math.min(500, Number(req.query.limit ?? 50) || 50));
     return brain.trips.list(limit, { driver: optStr(req.query.driver), source: srcOf(req.query.source) });
   });
-  // "Simulate my week": a driver's phone history (e.g. Life360 via Home Assistant) as if driven in
-  // the Slate (weekSim.ts). Read only. ?tracker=device_tracker.x or ?driver=id; ?from=YYYY-MM-DD (local) &days=7.
-  app.get<{ Querystring: { tracker?: string; driver?: string; from?: string; days?: string; startSoc?: string; chargeTo?: string } }>('/api/trips/simulate-week', async (req, reply) => {
+  // "Simulate my week": a driver's phone history as if driven in the Slate (weekSim.ts). Read only.
+  //   ?source=ha (default): the tracker's fixes from Home Assistant (?tracker= or the driver's), last ~10 days there.
+  //   ?source=stored: the driver's phone trips TA keeps (Google Timeline import, nightly Home Assistant import).
+  //   ?from=YYYY-MM-DD (local; default last Sunday) &days=7 &startSoc= &chargeTo=
+  const simParams = (driverId: string | null, q: { startSoc?: string; chargeTo?: string; dcPerKwh?: string }) => {
+    const st = brain.settings.get();
+    const v = brain.compareVehicle(driverId);
+    const g = brain.gas.status(v.fuel);
+    const pct = (x: string | undefined, d: number) => { const n = Number(x); return Number.isFinite(n) && n > 0 && n <= 100 ? n : d; };
+    // Public fast charging: ?dcPerKwh=, else the average of what this truck has paid at public chargers.
+    const paid = brain.charges.store.list(null, null, null).filter((c) => c.place === 'public' && c.cost !== null && c.kwh !== null && c.kwh > 0 && !c.simulated);
+    const dcAvg = paid.length ? paid.reduce((s, c) => s + c.cost!, 0) / paid.reduce((s, c) => s + c.kwh!, 0) : null;
+    const dcq = Number(q.dcPerKwh);
+    const dcPerKwh = Number.isFinite(dcq) && dcq > 0 && dcq < 5 ? dcq : dcAvg === null ? null : Math.round(dcAvg * 1000) / 1000;
+    return {
+      packKwh: st.packKwh, eff: { city: brain.drive.range.eff('city'), highway: brain.drive.range.eff('highway') }, highwayMph: st.drive.highwayMph,
+      startSoc: pct(q.startSoc, 80), chargeTo: pct(q.chargeTo, 80), homeRate: st.homeRate, compare: v,
+      gasPrice: g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null), dcPerKwh,
+    };
+  };
+  const localDay = (v: string | undefined): Date | null | 'bad' => {
+    if (!v) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : 'bad';
+  };
+  app.get<{ Querystring: { source?: string; tracker?: string; driver?: string; from?: string; days?: string; startSoc?: string; chargeTo?: string; dcPerKwh?: string } }>('/api/trips/simulate-week', async (req, reply) => {
     const q = req.query;
     const st = brain.settings.get();
-    const driver = st.drivers.find((d) => d.id === (q.driver ?? st.drivers[0]?.id));
-    const tracker = q.tracker ?? driver?.tracker ?? null;
-    if (!tracker || !/^(device_tracker|person)\.[a-z0-9_]+$/.test(tracker)) return reply.code(400).send({ error: 'tracker must be device_tracker.x or person.x (or set the driver\'s phone tracker in Settings)' });
+    const driver = st.drivers.find((d) => d.id === (q.driver ?? st.drivers[0]?.id)) ?? null;
     const nDays = Math.min(31, Math.max(1, Number(q.days ?? 7) || 7));
-    let start: Date;
-    if (q.from) {
-      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(q.from);
-      if (!m) return reply.code(400).send({ error: 'from must be YYYY-MM-DD' });
-      start = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    } else {
-      // Last full week: the Sunday before this one.
-      const now = new Date(); start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() - 7);
-    }
+    const f = localDay(q.from);
+    if (f === 'bad') return reply.code(400).send({ error: 'from must be YYYY-MM-DD' });
+    const now = new Date();
+    const start = f ?? new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() - 7);
     const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + nDays);
     const days = dayRanges(start, end);
+    const p = simParams(driver?.id ?? null, q);
+    if (q.source === 'stored') {
+      if (!driver) return reply.code(400).send({ error: 'driver is required' });
+      const stored = brain.trips.between(start.toISOString(), end.toISOString(), { driver: driver.id, source: 'phone' });
+      return simulateStored(stored.map((t) => ({ startedAt: Date.parse(t.startedAt), endedAt: Date.parse(t.endedAt ?? t.startedAt), miles: t.miles })), days, p, `${driver.name}: stored phone trips`);
+    }
+    const tracker = q.tracker ?? driver?.tracker ?? null;
+    if (!tracker || !/^(device_tracker|person)\.[a-z0-9_]+$/.test(tracker)) return reply.code(400).send({ error: 'tracker must be device_tracker.x or person.x (or set the driver\'s phone tracker in Settings)' });
     const points: TrackerPoint[] = [];
     try {
       for (const [a, b] of days) points.push(...trackerPoints(await brain.ha.history(tracker, a, b)).points);
     } catch (e) { return reply.code(502).send({ error: `Home Assistant: ${(e as Error).message}` }); }
-    const v = brain.compareVehicle(driver?.id ?? null);
-    const g = brain.gas.status(v.fuel);
-    const gasPrice = g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null);
-    const pct = (s: string | undefined, d: number) => { const n = Number(s); return Number.isFinite(n) && n > 0 && n <= 100 ? n : d; };
-    return simulateWeek(points, days, {
-      packKwh: st.packKwh,
-      eff: { city: brain.drive.range.eff('city'), highway: brain.drive.range.eff('highway') },
-      highwayMph: st.drive.highwayMph,
-      startSoc: pct(q.startSoc, 80), chargeTo: pct(q.chargeTo, 80),
-      homeRate: st.homeRate, compare: v, gasPrice,
-    }, tracker);
+    return simulateWeek(points, days, p, tracker);
+  });
+  // The 7 days with the most driving in the driver's stored phone trips (default: the last 6 months).
+  app.get<{ Querystring: { driver?: string; months?: string } }>('/api/trips/busiest-week', async (req, reply) => {
+    const st = brain.settings.get();
+    const driver = st.drivers.find((d) => d.id === (req.query.driver ?? st.drivers[0]?.id));
+    if (!driver) return reply.code(400).send({ error: 'no such driver' });
+    const months = Math.min(24, Math.max(1, Number(req.query.months ?? 6) || 6));
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
+    const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const stored = brain.trips.between(from.toISOString(), to.toISOString(), { driver: driver.id, source: 'phone' });
+    const best = busiestWeek(stored.map((t) => ({ startedAt: Date.parse(t.startedAt), endedAt: Date.parse(t.endedAt ?? t.startedAt), miles: t.miles })), from, to);
+    return { driver: driver.id, months, trips: stored.length, best };
+  });
+  // Google Maps Timeline export (JSON) -> the driver's phone trips (import/timeline.ts). Needs the login.
+  app.post<{ Querystring: { driver?: string } }>('/api/import/google-timeline', { bodyLimit: 300 * 1024 * 1024 }, async (req, reply) => {
+    const st = brain.settings.get();
+    const driver = st.drivers.find((d) => d.id === (req.query.driver ?? st.drivers[0]?.id));
+    if (!driver || driver.guest) return reply.code(400).send({ error: 'pick a driver (not Guest)' });
+    try {
+      const drives = parseTimeline(req.body);
+      return { driver: driver.id, ...storeTimeline(brain.trips, brain.db, driver.id, drives) };
+    } catch (e) { if (e instanceof TimelineError) return reply.code(400).send({ error: e.message }); throw e; }
   });
   app.get<{ Params: { id: string } }>('/api/trips/:id', async (req, reply) => {
     const t = brain.trips.get(Number(req.params.id));
@@ -269,6 +307,13 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
 
   // ---- phone history import ----------------------------------------------------
   app.get('/api/import/phone', async () => brain.importer.status());
+  app.get('/api/import/phone/auto', async () => ({ enabled: brain.phoneAutoImport }));
+  app.put('/api/import/phone/auto', async (req, reply) => {
+    const on = (req.body as { enabled?: unknown } | null)?.enabled;
+    if (typeof on !== 'boolean') return reply.code(400).send({ error: 'enabled must be true or false' });
+    brain.setPhoneAutoImport(on);
+    return { enabled: on };
+  });
   app.post('/api/import/phone', async (req, reply) => {
     try { return reply.code(202).send(brain.importer.start(req.body ?? {})); }
     catch (e) { if (e instanceof ImportError) return reply.code(e.status).send({ error: e.message }); throw e; }

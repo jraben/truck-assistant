@@ -653,9 +653,38 @@ export class Brain extends EventEmitter {
     }
   }
 
+  /** Nightly phone import on? (Settings, Import; default on.) */
+  get phoneAutoImport(): boolean { return kvGet<boolean>(this.db, 'phoneImport.auto') ?? true; }
+  setPhoneAutoImport(on: boolean) { kvSet(this.db, 'phoneImport.auto', on); }
+
+  /**
+   * After 3 AM, once a day: copy the last two days of every driver's phone tracker
+   * (e.g. Life360) from Home Assistant into TA's own trips, which Home Assistant
+   * would delete after ~10 days. Two days, so a missed night leaves no gap.
+   */
+  private nightlyPhoneImport(now: Date) {
+    if (now.getHours() < 3 || !this.phoneAutoImport || !this.ha.configured()) return;
+    const key = now.toLocaleDateString('en-CA');
+    if (kvGet<string>(this.db, 'phoneImport.lastNight') === key) return;
+    kvSet(this.db, 'phoneImport.lastNight', key);
+    const day = (n: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - n).toLocaleDateString('en-CA');
+    const drivers = this.settings.get().drivers.filter((d) => !d.guest && d.tracker);
+    void (async () => {
+      for (const d of drivers) {
+        try {
+          await this.importer.idle();
+          this.importer.start({ driverId: d.id, from: day(2), to: day(1) });
+          await this.importer.idle();
+          console.log(`[import] nightly: ${d.name} (${d.tracker}) ${day(2)}..${day(1)}`);
+        } catch (e) { console.warn(`[import] nightly ${d.name}: ${(e as Error).message}`); }
+      }
+    })();
+  }
+
   private tick() {
     const now = Date.now();
     if (this.sim) { try { this.simChargeTick(); } catch (e) { console.error('[sim] charge', e); } }
+    this.nightlyPhoneImport(new Date(now));
     if (now - this.lastContactSync >= CONTACT_SYNC_MS) {
       this.lastContactSync = now;
       void this.contacts.syncAll().catch((e) => console.error('[contacts]', e));

@@ -36,12 +36,18 @@ describe('simulate my week', () => {
     expect(r.totals.saved).toBeCloseTo(r.totals.gasCost! - r.totals.chargeCost!, 2);
     expect(r.notes.join(' ')).toMatch(/1 of 2 days/);
   });
-  it('says when the battery would have run out, and when costs are unknown', () => {
+  it('fast charges on the road when the level would go below 10%, and says when costs are unknown', () => {
     const base = new Date(2026, 10, 9, 8).getTime();
     const r = simulateWeek(drive(base, 160), [day(9)], { ...P, homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0, demandPerKw: null }, gasPrice: null }, 't');
-    expect(r.days[0].ranOut).toBe(true);
-    expect(r.totals.ranOutDays).toBe(1);
-    expect(r.totals.chargeCost).toBeNull();
-    expect(r.totals.gasCost).toBeNull();
+    const d = r.days[0];
+    expect(d.ranOut).toBe(true);
+    expect(d.fastStops).toBeGreaterThanOrEqual(1);
+    expect(d.socLow).toBeGreaterThanOrEqual(9.9);
+    expect(d.fastCost).toBeNull();
+    expect(r.totals.saved).toBeNull();
+    expect(r.notes.join(' ')).toMatch(/fast-charge stop/);
+    const priced = simulateWeek(drive(base, 160), [day(9)], { ...P, dcPerKwh: 0.5 }, 't');
+    expect(priced.days[0].fastCost).toBeCloseTo(priced.days[0].fastKwh * 0.5, 1);
+    expect(priced.totals.saved).toBeCloseTo(priced.totals.gasCost! - priced.totals.chargeCost! - priced.totals.fastCost!, 2);
   });
 });
