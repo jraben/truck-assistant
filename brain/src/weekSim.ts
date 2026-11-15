@@ -65,6 +65,8 @@ const dayKey = (t: number) => { const d = new Date(t); return `${d.getFullYear()
 
 /** A drive to simulate: times, and miles already on roads. */
 export type DriveIn = { startedAt: number; endedAt: number; miles: number };
+/** A stored phone trip: `straight` = imported from Home Assistant fixes (straight lines), else a Google Timeline drive (road miles). */
+export type StoredDrive = DriveIn & { straight: boolean };
 type Coverage = (lo: number, hi: number) => { points: number; maxGapH: number | null; coverage: SimDay['coverage'] };
 
 /** The simulation itself, over drives: local days [from, to), the charge level carried day to day. Pure. */
@@ -163,10 +165,20 @@ export function simulateWeek(points: TrackerPoint[], days: [Date, Date][], p: Si
 }
 
 /** From TA's stored phone trips (a Google Timeline import, or Home Assistant imports): their miles as stored. */
-export function simulateStored(trips: DriveIn[], days: [Date, Date][], p: SimParams, label: string): WeekSim {
-  return simulateDrives(trips, days, p, label, () => ({ points: 0, maxGapH: null, coverage: 'stored' }),
-    ['From the trips TA has stored: Google Timeline distances as Google measured them.']);
+export function simulateStored(trips: StoredDrive[], days: [Date, Date][], p: SimParams, label: string): WeekSim {
+  const lo = days.length ? days[0][0].getTime() : 0, hi = days.length ? days[days.length - 1][1].getTime() : 0;
+  const inRange = trips.filter((t) => t.startedAt >= lo && t.startedAt < hi);
+  const straight = inRange.filter((t) => t.straight).length, timeline = inRange.length - straight;
+  const notes: string[] = [];
+  if (timeline) notes.push(`${timeline} drive${timeline === 1 ? '' : 's'} from Google Timeline, at Google's distances.`);
+  if (straight) notes.push(`${straight} trip${straight === 1 ? '' : 's'} imported from Home Assistant: straight lines between location fixes × ${ROAD_FACTOR} for roads, an estimate.`);
+  if (!inRange.length) notes.push('No stored phone trips in these days.');
+  const drives = trips.map((t) => ({ startedAt: t.startedAt, endedAt: t.endedAt, miles: t.straight ? t.miles * ROAD_FACTOR : t.miles }));
+  return simulateDrives(drives, days, p, label, () => ({ points: 0, maxGapH: null, coverage: 'stored' }), notes);
 }
+
+/** Stored trips' road miles, for the busiest-week search: Home Assistant imports scaled like the simulation. */
+export const roadMiles = (t: StoredDrive) => (t.straight ? t.miles * ROAD_FACTOR : t.miles);
 
 /** The 7 consecutive local days with the most miles, between from and to. Pure. */
 export function busiestWeek(trips: DriveIn[], from: Date, to: Date, len = 7): { start: string; miles: number; daily: { day: string; miles: number }[] } | null {
