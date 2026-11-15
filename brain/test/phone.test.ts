@@ -109,6 +109,31 @@ describe('phone import job', () => {
     expect(stops.stops.list({ source: 'phone' })).toHaveLength(4);
   });
 
+  it('leaves Google Timeline drives alone: a long Home Assistant import never wipes days it has no history for', async () => {
+    const { settings, imp, trips } = setup();
+    settings.update({ homeAssistant: { url: 'http://ha.test:8123', token: 'llat-test-token' } });
+    // Timeline drives: one two weeks before the HA day (HA has nothing then), one overlapping a trip HA has.
+    const early = DAY_START - 14 * 86_400_000 + 10 * 3600_000;
+    const ha0 = imp.start({ driverId: 'jeff', from: new Date(DAY_START).toISOString(), to: new Date(DAY_END).toISOString() }, new Date(DAY_END + 3600_000));
+    await imp.idle();
+    expect(ha0.state).toBe('running');
+    const haTrips = trips.list(50, { source: 'phone' });
+    const first = haTrips[haTrips.length - 1];
+    trips.deletePhone('jeff', new Date(DAY_START - 30 * 86_400_000).toISOString(), new Date(DAY_END + 86_400_000).toISOString());
+    const pts = (t: number) => [{ t, lat: 33.6, lon: -112, speedMph: null }, { t: t + 1_800_000, lat: 33.7, lon: -112.1, speedMph: null }];
+    trips.insertPhone({ driverId: 'jeff', startedAt: early, endedAt: early + 1_800_000, miles: 40, points: pts(early), startStopId: null, endStopId: null, kind: 'timeline' });
+    const s = Date.parse(first.startedAt);
+    trips.insertPhone({ driverId: 'jeff', startedAt: s, endedAt: Date.parse(first.endedAt!), miles: 12.3, points: pts(s), startStopId: null, endStopId: null, kind: 'timeline' });
+    // An import over the last 30 days: HA has one day of it.
+    imp.start({ driverId: 'jeff', from: new Date(DAY_START - 29 * 86_400_000).toISOString(), to: new Date(DAY_END).toISOString() }, new Date(DAY_END + 3600_000));
+    await imp.idle();
+    const after = trips.list(50, { source: 'phone' });
+    expect(after.some((t) => Date.parse(t.startedAt) === early && t.miles === 40)).toBe(true);       // the old Timeline drive survived
+    expect(after.filter((t) => Date.parse(t.startedAt) < Date.parse(first.endedAt!) && Date.parse(t.endedAt!) > s)).toHaveLength(1); // no duplicate of the overlapping drive
+    expect(after.find((t) => Date.parse(t.startedAt) === s)!.miles).toBe(12.3);                      // Timeline's measurement kept
+    expect(after.length).toBe(haTrips.length + 1);                                                    // HA's other trips added
+  });
+
   it('a bad token is reported on the job, not thrown', async () => {
     const { settings, imp } = setup();
     settings.update({ homeAssistant: { url: 'http://ha.test:8123', token: 'wrong' } });

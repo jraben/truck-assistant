@@ -49,8 +49,11 @@ export function storePhoneHistory(trips: TripStore, stops: StopService, db: Db, 
   const created: Stop[] = [];
   db.exec('BEGIN');
   try {
-    trips.deletePhone(driverId, fromIso, toIso);
+    // Google Timeline drives stay: Home Assistant keeps only ~10 days, so an import over a longer
+    // range would otherwise wipe weeks of Timeline drives and put nothing back.
+    trips.deletePhone(driverId, fromIso, toIso, { keepTimeline: true });
     stops.stops.deletePhone(driverId, fromIso, toIso);
+    const timeline = trips.timelineSpans(driverId, fromIso, toIso);
     const ids = seg.stops.map((s) => {
       const row = stops.stops.create({
         driverId, source: 'phone', arrivedAt: new Date(s.arrivedAt).toISOString(),
@@ -61,6 +64,7 @@ export function storePhoneHistory(trips: TripStore, stops: StopService, db: Db, 
       return row.id;
     });
     for (const t of seg.trips) {
+      if (timeline.some(([a, b]) => t.startedAt < b && t.endedAt > a)) continue; // Timeline already has this drive, measured better
       trips.insertPhone({ driverId, startedAt: t.startedAt, endedAt: t.endedAt, miles: t.miles, points: t.points, startStopId: t.fromStop === null ? null : ids[t.fromStop], endStopId: t.toStop === null ? null : ids[t.toStop] });
     }
     db.exec('COMMIT');

@@ -159,7 +159,7 @@ export function storeTimeline(trips: TripStore, db: Db, driverId: string, drives
       const mph = d.miles / Math.max((d.endedAt - d.startedAt) / 3_600_000, 1 / 60);
       // The GPS path when there is one (the map draws it), else just the two ends.
       const pts = d.path.length >= 2 ? d.path.map((p) => ({ t: p.t, lat: p.lat, lon: p.lon, speedMph: null })) : [{ t: d.startedAt, ...d.start, speedMph: mph }, { t: d.endedAt, ...d.end, speedMph: mph }];
-      trips.insertPhone({ driverId, startedAt: d.startedAt, endedAt: d.endedAt, miles: d.miles, startStopId: null, endStopId: null, points: pts });
+      trips.insertPhone({ driverId, startedAt: d.startedAt, endedAt: d.endedAt, miles: d.miles, startStopId: null, endStopId: null, points: pts, kind: 'timeline' });
     }
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
