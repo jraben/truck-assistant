@@ -26,9 +26,10 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState<'ha' | 'stored'>('ha');
   const [found, setFound] = useState<string | null>(null);
-  const run = async (src = source, start = from) => {
+  const run = async (src = source, start = from, dates?: string[]) => {
     setBusy(true); setErr(null);
     const q = new URLSearchParams({ from: start, days: '7', source: src });
+    if (dates) q.set('dates', dates.join(','));
     if (tracker && src === 'ha') q.set('tracker', tracker);
     if (d) q.set('driver', d.id);
     try { setSim(await api<Sim>(`/api/trips/simulate-week?${q}`)); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -41,6 +42,16 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
       if (!r.best) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (Settings, Import) or wait for the nightly import.`); setBusy(false); return; }
       setFrom(r.best.start); setSource('stored'); setFound(`Busiest 7 days in 6 months: from ${dow(r.best.start)}, ${r.best.miles} mi (of ${r.trips} stored trips).`);
       await run('stored', r.best.start);
+    } catch (e) { setErr((e as Error).message); setBusy(false); }
+  };
+  /** The 7 separate days with the most driving in 6 months, simulated back to back: a made-up hardest week. */
+  const topSeven = async () => {
+    setBusy(true); setErr(null); setFound(null);
+    try {
+      const r = await api<{ trips: number; top: { days: { day: string; miles: number }[]; miles: number } | null }>(`/api/trips/top-days?months=6&n=7${d ? `&driver=${encodeURIComponent(d.id)}` : ''}`);
+      if (!r.top) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (Settings, Import) or wait for the nightly import.`); setBusy(false); return; }
+      setSource('stored'); setFound(`Top ${r.top.days.length} days in 6 months, driven back to back: ${r.top.miles} mi (${r.top.days.map((x) => dow(x.day)).join(', ')}).`);
+      await run('stored', r.top.days[0].day, r.top.days.map((x) => x.day));
     } catch (e) { setErr((e as Error).message); setBusy(false); }
   };
   useEffect(() => { if (tracker) void run(); }, []);
@@ -61,6 +72,7 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
           <label class="f"><span>Week starting</span><input type="date" value={from} onInput={(e) => setFrom((e.target as HTMLInputElement).value)} /></label>
           <button type="button" class="btn primary" disabled={busy || (source === 'ha' && !tracker)} onClick={() => void run()}>{busy ? 'Working…' : 'Simulate'}</button>
           <button type="button" class="btn" disabled={busy} onClick={() => void busiest()} title="Find the 7 days with the most driving in the last 6 months of stored trips">Busiest week</button>
+          <button type="button" class="btn" disabled={busy} onClick={() => void topSeven()} title="The 7 separate days with the most driving in 6 months, as one made-up week">Top 7 days</button>
         </div>
         {found && <div class="okmsg">{found}</div>}
         {err && <div class="err">{err}</div>}

@@ -166,8 +166,8 @@ export function simulateWeek(points: TrackerPoint[], days: [Date, Date][], p: Si
 
 /** From TA's stored phone trips (a Google Timeline import, or Home Assistant imports): their miles as stored. */
 export function simulateStored(trips: StoredDrive[], days: [Date, Date][], p: SimParams, label: string): WeekSim {
-  const lo = days.length ? days[0][0].getTime() : 0, hi = days.length ? days[days.length - 1][1].getTime() : 0;
-  const inRange = trips.filter((t) => t.startedAt >= lo && t.startedAt < hi);
+  // The days need not be consecutive (a "top days" week), so count only trips inside one of them.
+  const inRange = trips.filter((t) => days.some(([a, b]) => t.startedAt >= a.getTime() && t.startedAt < b.getTime()));
   const straight = inRange.filter((t) => t.straight).length, timeline = inRange.length - straight;
   const notes: string[] = [];
   if (timeline) notes.push(`${timeline} drive${timeline === 1 ? '' : 's'} from Google Timeline, at Google's distances.`);
@@ -179,6 +179,24 @@ export function simulateStored(trips: StoredDrive[], days: [Date, Date][], p: Si
 
 /** Stored trips' road miles, for the busiest-week search: Home Assistant imports scaled like the simulation. */
 export const roadMiles = (t: StoredDrive) => (t.straight ? t.miles * ROAD_FACTOR : t.miles);
+
+/**
+ * The n separate local days with the most miles between from and to, in date
+ * order: a made-up week of the hardest days, to stress the battery. Pure.
+ */
+export function topDays(trips: DriveIn[], from: Date, to: Date, n = 7): { days: { day: string; miles: number; trips: number }[]; miles: number } | null {
+  const by = new Map<string, { miles: number; trips: number }>();
+  const lo = from.getTime(), hi = to.getTime();
+  for (const t of trips) {
+    if (t.startedAt < lo || t.startedAt >= hi) continue;
+    const k = dayKey(t.startedAt), x = by.get(k) ?? { miles: 0, trips: 0 };
+    x.miles += t.miles; x.trips++; by.set(k, x);
+  }
+  const top = [...by.entries()].filter(([, x]) => x.miles > 0).sort((a, b) => b[1].miles - a[1].miles).slice(0, n);
+  if (!top.length) return null;
+  top.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  return { days: top.map(([day, x]) => ({ day, miles: r1(x.miles), trips: x.trips })), miles: r1(top.reduce((s, [, x]) => s + x.miles, 0)) };
+}
 
 /** The 7 consecutive local days with the most miles, between from and to. Pure. */
 export function busiestWeek(trips: DriveIn[], from: Date, to: Date, len = 7): { start: string; miles: number; daily: { day: string; miles: number }[] } | null {

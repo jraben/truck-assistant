@@ -27,7 +27,7 @@ import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { RoutingError } from './roadtrip/routing.ts';
-import { busiestWeek, roadMiles, simulateStored, simulateWeek, type StoredDrive } from './weekSim.ts';
+import { busiestWeek, roadMiles, simulateStored, simulateWeek, topDays, type StoredDrive } from './weekSim.ts';
 import type { Trip } from './types.ts';
 import { parseTimeline, storeTimeline, TimelineError } from './import/timeline.ts';
 import { dayRanges } from './import/phone.ts';
@@ -165,7 +165,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : 'bad';
   };
-  app.get<{ Querystring: { source?: string; tracker?: string; driver?: string; from?: string; days?: string; startSoc?: string; chargeTo?: string; dcPerKwh?: string } }>('/api/trips/simulate-week', async (req, reply) => {
+  app.get<{ Querystring: { source?: string; tracker?: string; driver?: string; from?: string; days?: string; dates?: string; startSoc?: string; chargeTo?: string; dcPerKwh?: string } }>('/api/trips/simulate-week', async (req, reply) => {
     const q = req.query;
     const st = brain.settings.get();
     const driver = st.drivers.find((d) => d.id === (q.driver ?? st.drivers[0]?.id)) ?? null;
@@ -175,11 +175,17 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const now = new Date();
     const start = f ?? new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() - 7);
     const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + nDays);
-    const days = dayRanges(start, end);
+    let days = dayRanges(start, end);
     const p = simParams(driver?.id ?? null, q);
+    // ?dates=YYYY-MM-DD,... : any days (say the top 7 of six months), simulated back to back as one week.
+    if (q.dates) {
+      const picked = q.dates.split(',').map((s) => localDay(s.trim()));
+      if (picked.length > 31 || picked.some((d) => d === null || d === 'bad')) return reply.code(400).send({ error: 'dates must be up to 31 YYYY-MM-DD, comma separated' });
+      days = (picked as Date[]).sort((a, b) => a.getTime() - b.getTime()).map((d) => [d, new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)] as [Date, Date]);
+    }
     if (q.source === 'stored') {
       if (!driver) return reply.code(400).send({ error: 'driver is required' });
-      const stored = brain.trips.between(start.toISOString(), end.toISOString(), { driver: driver.id, source: 'phone' });
+      const stored = brain.trips.between(days[0][0].toISOString(), days[days.length - 1][1].toISOString(), { driver: driver.id, source: 'phone' });
       return simulateStored(stored.map(storedDrive), days, p, `${driver.name}: stored phone trips`);
     }
     const tracker = q.tracker ?? driver?.tracker ?? null;
@@ -202,6 +208,19 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const stored = brain.trips.between(from.toISOString(), to.toISOString(), { driver: driver.id, source: 'phone' });
     const best = busiestWeek(stored.map(storedDrive).map((d) => ({ ...d, miles: roadMiles(d) })), from, to);
     return { driver: driver.id, months, trips: stored.length, best };
+  });
+  // The n separate days with the most driving (default 7 in 6 months): a made-up hardest week.
+  app.get<{ Querystring: { driver?: string; months?: string; n?: string } }>('/api/trips/top-days', async (req, reply) => {
+    const st = brain.settings.get();
+    const driver = st.drivers.find((d) => d.id === (req.query.driver ?? st.drivers[0]?.id));
+    if (!driver) return reply.code(400).send({ error: 'no such driver' });
+    const months = Math.min(24, Math.max(1, Number(req.query.months ?? 6) || 6));
+    const n = Math.min(31, Math.max(1, Number(req.query.n ?? 7) || 7));
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth() - months, now.getDate());
+    const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const stored = brain.trips.between(from.toISOString(), to.toISOString(), { driver: driver.id, source: 'phone' });
+    return { driver: driver.id, months, trips: stored.length, top: topDays(stored.map(storedDrive).map((d) => ({ ...d, miles: roadMiles(d) })), from, to, n) };
   });
   // Google Maps Timeline export (JSON) -> the driver's phone trips (import/timeline.ts). Needs the login.
   app.post<{ Querystring: { driver?: string } }>('/api/import/google-timeline', { bodyLimit: 300 * 1024 * 1024 }, async (req, reply) => {

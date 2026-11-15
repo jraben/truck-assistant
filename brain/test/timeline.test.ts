@@ -28,6 +28,29 @@ describe('Google Timeline exports', () => {
     expect(t).toHaveLength(1);
     expect(t[0].miles).toBeGreaterThan(5); // no distance: straight line x1.25
   });
+  it('measures a drive along the GPS path when Google\'s distance is short', () => {
+    // An hour south on a straight road, a fix a minute, ~1 mi apart (60 mph): Google says 5 mi.
+    const t0 = Date.parse('2026-10-29T14:00:00Z');
+    const path = Array.from({ length: 61 }, (_, i) => ({ point: `geo:${(33.5 - i * 0.01449).toFixed(5)},-112.0`, durationMinutesOffsetFromStartTime: String(i) }));
+    const t = parseTimeline([
+      { startTime: '2026-10-29T13:30:00Z', endTime: '2026-10-29T14:00:00Z', visit: { topCandidate: { placeLocation: 'geo:33.5,-112.0' } } },
+      { startTime: '2026-10-29T14:00:00Z', endTime: '2026-10-29T15:00:00Z', activity: { start: 'geo:33.2,-112.0', end: 'geo:33.0,-112.0', distanceMeters: '8047', topCandidate: { type: 'in passenger vehicle' } } },
+      { startTime: '2026-10-29T14:00:00Z', endTime: '2026-10-29T16:00:00Z', timelinePath: path },
+      // A bad fix far away mid-drive, then back: skipped, not driven.
+      { startTime: '2026-10-29T15:00:00Z', endTime: '2026-10-29T15:30:00Z', visit: { topCandidate: { placeLocation: 'geo:32.62,-112.0' } } },
+    ]);
+    expect(t).toHaveLength(1);
+    expect(t[0].miles).toBeGreaterThan(58);
+    expect(t[0].miles).toBeLessThan(62);
+    expect(t[0].path.length).toBeGreaterThan(50);
+    expect(t0).toBe(t[0].startedAt);
+    // Never more than 80 mph average, whatever the fixes say.
+    const wild = parseTimeline([
+      { startTime: '2026-10-29T14:00:00Z', endTime: '2026-10-29T14:10:00Z', activity: { start: 'geo:33.5,-112.0', end: 'geo:33.4,-112.0', distanceMeters: '1000', topCandidate: { type: 'in passenger vehicle' } } },
+      { startTime: '2026-10-29T14:00:00Z', endTime: '2026-10-29T16:00:00Z', timelinePath: Array.from({ length: 11 }, (_, i) => ({ point: `geo:${33.5 + (i % 2) * 0.3},-112.0`, durationMinutesOffsetFromStartTime: String(i) })) },
+    ]);
+    expect(wild[0].miles).toBeLessThanOrEqual(80 * 10 / 60 + 0.01);
+  });
   it('refuses a file that is not a Timeline export', () => {
     expect(() => parseTimeline({ hello: 1 })).toThrow(TimelineError);
   });
