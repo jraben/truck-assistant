@@ -8,7 +8,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import type { WebSocket } from 'ws';
 import type { Brain } from './brain.ts';
 import { config } from './config.ts';
-import { maskDriver, maskSettings, SettingsError } from './settings.ts';
+import { maskDriver, maskSettings, SettingsError, validateVehicle } from './settings.ts';
 import { summarize, type Period } from './charges/summary.ts';
 import { ChargeInputError, parseSessionInput, toCsv } from './charges/store.ts';
 import { sessionOnPeak } from './charges/peak.ts';
@@ -27,8 +27,10 @@ import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { RoutingError } from './roadtrip/routing.ts';
-import { busiestWeek, roadMiles, simulateStored, simulateWeek, topDays, type StoredDrive } from './weekSim.ts';
+import { busiestWeek, compareCars, roadMiles, simulateStored, simulateWeek, topDays, type GasCar, type StoredDrive, type WeekSim } from './weekSim.ts';
 import type { Trip } from './types.ts';
+import type { CompareVehicle } from './types.ts';
+import { kvGet, kvSet } from './db.ts';
 import { parseTimeline, storeTimeline, TimelineError } from './import/timeline.ts';
 import { dayRanges } from './import/phone.ts';
 import { trackerPoints, type TrackerPoint } from './ha/client.ts';
@@ -158,6 +160,39 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
       gasPrice: g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null), dcPerKwh,
     };
   };
+  // The gas cars a simulated week is compared against: the driver's compare vehicle, then
+  // the extra ones kept for this screen. Each at its own grade's price: ?gas=regular:3.71,premium:4.51,
+  // else today's Home Assistant price for that grade, else the regular price plus a typical spread.
+  const SPREAD: Record<string, number> = { regular: 0, midgrade: 0.45, premium: 0.8, diesel: 0.6 };
+  const withCars = (sim: WeekSim, driverId: string | null, gasQ: string | undefined): WeekSim & { compare: ReturnType<typeof compareCars> } => {
+    const given = new Map<string, number>();
+    for (const part of (gasQ ?? '').split(',')) {
+      const [k, v] = part.split(':'); const n = Number(v);
+      if (k && Number.isFinite(n) && n > 0 && n < 20) given.set(k.trim(), n);
+    }
+    const regular = given.get('regular') ?? brain.gas.status('regular').today?.price ?? (brain.settings.get().gas.manualPrice || null);
+    const priced = (fuel: string): { gasPrice: number | null; priceEstimated: boolean } => {
+      const g = given.get(fuel);
+      if (g !== undefined) return { gasPrice: g, priceEstimated: false };
+      const today = brain.gas.status(fuel as 'regular').today?.price;
+      if (today !== undefined) return { gasPrice: today, priceEstimated: false };
+      if (regular === null) return { gasPrice: null, priceEstimated: false };
+      return { gasPrice: Math.round((regular + (SPREAD[fuel] ?? 0)) * 100) / 100, priceEstimated: fuel !== 'regular' };
+    };
+    const cars: GasCar[] = [brain.compareVehicle(driverId), ...weekVehicles()].map((v) => ({ vehicle: v, ...priced(v.fuel) }));
+    return { ...sim, compare: compareCars(sim, cars) };
+  };
+  const weekVehicles = () => kvGet<CompareVehicle[]>(brain.db, 'weekSim.vehicles') ?? [];
+  app.get('/api/trips/week-vehicles', async () => weekVehicles());
+  app.put('/api/trips/week-vehicles', async (req, reply) => {
+    const body = req.body;
+    if (!Array.isArray(body) || body.length > 6) return reply.code(400).send({ error: 'a list of up to 6 vehicles' });
+    try {
+      const list = body.map((v, i) => validateVehicle(v, `vehicle ${i + 1}`));
+      kvSet(brain.db, 'weekSim.vehicles', list);
+      return list;
+    } catch (e) { return reply.code(400).send({ error: (e as Error).message }); }
+  });
   // A stored phone trip: Home Assistant imports link their stops (straight-line miles); Timeline drives don't.
   const storedDrive = (t: Trip): StoredDrive => ({ startedAt: Date.parse(t.startedAt), endedAt: Date.parse(t.endedAt ?? t.startedAt), miles: t.miles, straight: t.from !== null || t.to !== null });
   const localDay = (v: string | undefined): Date | null | 'bad' => {
@@ -165,7 +200,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : 'bad';
   };
-  app.get<{ Querystring: { source?: string; tracker?: string; driver?: string; from?: string; days?: string; dates?: string; startSoc?: string; chargeTo?: string; dcPerKwh?: string } }>('/api/trips/simulate-week', async (req, reply) => {
+  app.get<{ Querystring: { source?: string; tracker?: string; driver?: string; from?: string; days?: string; dates?: string; startSoc?: string; chargeTo?: string; dcPerKwh?: string; gas?: string } }>('/api/trips/simulate-week', async (req, reply) => {
     const q = req.query;
     const st = brain.settings.get();
     const driver = st.drivers.find((d) => d.id === (q.driver ?? st.drivers[0]?.id)) ?? null;
@@ -186,7 +221,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     if (q.source === 'stored') {
       if (!driver) return reply.code(400).send({ error: 'driver is required' });
       const stored = brain.trips.between(days[0][0].toISOString(), days[days.length - 1][1].toISOString(), { driver: driver.id, source: 'phone' });
-      return simulateStored(stored.map(storedDrive), days, p, `${driver.name}: stored phone trips`);
+      return withCars(simulateStored(stored.map(storedDrive), days, p, `${driver.name}: stored phone trips`), driver.id, q.gas);
     }
     const tracker = q.tracker ?? driver?.tracker ?? null;
     if (!tracker || !/^(device_tracker|person)\.[a-z0-9_]+$/.test(tracker)) return reply.code(400).send({ error: 'tracker must be device_tracker.x or person.x (or set the driver\'s phone tracker in Settings)' });
@@ -194,7 +229,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     try {
       for (const [a, b] of days) points.push(...trackerPoints(await brain.ha.history(tracker, a, b)).points);
     } catch (e) { return reply.code(502).send({ error: `Home Assistant: ${(e as Error).message}` }); }
-    return simulateWeek(points, days, p, tracker);
+    return withCars(simulateWeek(points, days, p, tracker), driver?.id ?? null, q.gas);
   });
   // The 7 days with the most driving in the driver's stored phone trips (default: the last 6 months).
   app.get<{ Querystring: { driver?: string; months?: string } }>('/api/trips/busiest-week', async (req, reply) => {

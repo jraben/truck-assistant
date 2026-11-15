@@ -225,3 +225,60 @@ export function busiestWeek(trips: DriveIn[], from: Date, to: Date, len = 7): { 
   if (best <= 0) return null;
   return { start: daily[bestAt].day, miles: r1(best), daily: daily.slice(bestAt, bestAt + len).map((x) => ({ day: x.day, miles: r1(x.miles) })) };
 }
+
+// ---- Gas cars side by side ----------------------------------------------------
+
+/** A gas car to compare the simulated week against, at its own fuel grade's price. */
+export type GasCar = { vehicle: { label: string; mpgCity: number; mpgHighway: number; mpgCombined: number; fuel: string }; gasPrice: number | null; priceEstimated?: boolean };
+type Leg = { miles: number; gasCost: number | null; slateCost: number | null; saved: number | null; savedPer100: number | null };
+export type CarCompare = {
+  label: string; fuel: string; gasPrice: number | null; priceEstimated: boolean;
+  gallons: number; gasCost: number | null; slateCost: number | null; saved: number | null; savedPct: number | null;
+  gasPerMile: number | null; slatePerMile: number | null; savedPer100: number | null;
+  /** The gas price at which this car would cost the same as the Slate for this week. */
+  breakEvenGas: number | null;
+  /** How many times over the Slate's electricity (home and fast) could cost before this car is cheaper. */
+  elecMultiple: number | null;
+  highway: Leg; town: Leg;
+};
+
+/**
+ * The simulated week against each gas car: its gallons and cost on the same city
+ * and highway miles, the Slate's cost (home + fast charging), and the break-even
+ * points. The Slate's cost is split highway/town by energy. Pure.
+ */
+export function compareCars(sim: WeekSim, cars: GasCar[]): CarCompare[] {
+  const p = sim.params;
+  const city = sim.days.reduce((s, d) => s + d.cityMiles, 0), hwy = sim.days.reduce((s, d) => s + d.highwayMiles, 0);
+  const miles = city + hwy;
+  const t = sim.totals;
+  const slate = t.chargeCost !== null && t.fastCost !== null ? t.chargeCost + t.fastCost : null;
+  const kCity = city / p.eff.city, kHwy = hwy / p.eff.highway;
+  const share = kCity + kHwy > 0 ? kHwy / (kCity + kHwy) : 0;
+  const leg = (mi: number, gal: number, price: number | null, slateCost: number | null): Leg => {
+    const gas = price === null ? null : r2(gal * price);
+    const saved = gas !== null && slateCost !== null ? r2(gas - slateCost) : null;
+    return { miles: r1(mi), gasCost: gas, slateCost: slateCost === null ? null : r2(slateCost), saved, savedPer100: saved !== null && mi > 0 ? r2((saved / mi) * 100) : null };
+  };
+  return cars.map(({ vehicle: v, gasPrice, priceEstimated }) => {
+    const gCity = city / v.mpgCity, gHwy = hwy / v.mpgHighway, gallons = gCity + gHwy;
+    const gasCost = gasPrice === null ? null : r2(gallons * gasPrice);
+    const saved = gasCost !== null && slate !== null ? r2(gasCost - slate) : null;
+    return {
+      label: v.label, fuel: v.fuel, gasPrice, priceEstimated: !!priceEstimated,
+      gallons: r2(gallons), gasCost, slateCost: slate === null ? null : r2(slate), saved,
+      savedPct: saved !== null && gasCost ? Math.round((saved / gasCost) * 100) : null,
+      gasPerMile: gasCost !== null && miles > 0 ? Math.round((gasCost / miles) * 1000) / 1000 : null,
+      slatePerMile: slate !== null && miles > 0 ? Math.round((slate / miles) * 1000) / 1000 : null,
+      savedPer100: saved !== null && miles > 0 ? r2((saved / miles) * 100) : null,
+      breakEvenGas: slate !== null && gallons > 0 ? r2(slate / gallons) : null,
+      elecMultiple: slate && gasCost !== null ? r2(gasCost / slate) : null,
+      highway: leg(hwy, gHwy, gasPrice, slate === null ? null : slate * share),
+      town: leg(city, gCity, gasPrice, slate === null ? null : slate * (1 - share)),
+    };
+  });
+}
+
+/** Years until electricity, rising `ratePct` a year, costs `multiple` times today (gas held still). */
+export const yearsToMultiple = (multiple: number, ratePct: number) => (multiple <= 1 ? 0 : ratePct <= 0 ? Infinity : Math.log(multiple) / Math.log(1 + ratePct / 100));
+

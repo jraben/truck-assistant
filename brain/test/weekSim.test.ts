@@ -91,4 +91,26 @@ describe('stored phone trips', () => {
     expect(c.days[1]).toMatchObject({ cityMiles: 30, highwayMiles: 30, miles: 60 });
     expect(topDays(trips, F, T, 1)!.days[0].day).toBe('2026-10-01');
   });
+  it('compares the week with gas cars: savings highway vs town, break-even gas price, how far power could rise', async () => {
+    const { simulateStored, compareCars, yearsToMultiple } = await import('../src/weekSim.ts');
+    const t0 = new Date(2026, 10, 9, 9).getTime();
+    // 30 town miles in an hour, 60 highway miles in an hour.
+    const trips = [{ startedAt: t0, endedAt: t0 + 3_600_000, miles: 30, straight: false }, { startedAt: t0 + 7_200_000, endedAt: t0 + 10_800_000, miles: 60, straight: false }];
+    const sim = simulateStored(trips, [[new Date(2026, 10, 9), new Date(2026, 10, 10)]], { ...P, dcPerKwh: 0.5 }, 'Jeff');
+    const [c] = compareCars(sim, [{ vehicle: { label: 'Truck', mpgCity: 10, mpgHighway: 20, mpgCombined: 13, fuel: 'regular' }, gasPrice: 4 }]);
+    expect(c.gallons).toBeCloseTo(30 / 10 + 60 / 20, 2);
+    expect(c.gasCost).toBeCloseTo(24, 2);
+    const slate = sim.totals.chargeCost! + sim.totals.fastCost!;
+    expect(c.slateCost).toBeCloseTo(slate, 2);
+    expect(c.breakEvenGas! * c.gallons).toBeCloseTo(slate, 1);
+    expect(c.elecMultiple).toBeCloseTo(24 / slate, 1);
+    expect(c.highway.miles).toBe(60);
+    expect(c.town.miles).toBe(30);
+    expect(c.highway.slateCost! + c.town.slateCost!).toBeCloseTo(slate, 1);
+    expect(c.town.savedPer100!).toBeGreaterThan(c.highway.savedPer100!);
+    expect(yearsToMultiple(2, 3)).toBeCloseTo(23.4, 1);
+    expect(yearsToMultiple(0.8, 3)).toBe(0);
+    expect(compareCars(sim, [{ vehicle: { label: 'X', mpgCity: 10, mpgHighway: 20, mpgCombined: 13, fuel: 'premium' }, gasPrice: null }])[0].saved).toBeNull();
+  });
 });
+
