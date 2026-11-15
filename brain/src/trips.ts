@@ -217,25 +217,33 @@ export class TripStore {
   }
 
   /** Phone history: one finished trip with its points, in one go. */
-  insertPhone(t: { driverId: string; startedAt: number; endedAt: number; miles: number; points: { t: number; lat: number; lon: number; speedMph: number | null }[]; startStopId: number | null; endStopId: number | null }): number {
+  /** `kind` 'timeline' marks a Google Timeline drive, which a Home Assistant re-import leaves alone (stored as end_reason). */
+  insertPhone(t: { driverId: string; startedAt: number; endedAt: number; miles: number; points: { t: number; lat: number; lon: number; speedMph: number | null }[]; startStopId: number | null; endStopId: number | null; kind?: 'phone' | 'timeline' }): number {
     const a = t.points[0], b = t.points[t.points.length - 1];
     const res = this.db.prepare(`INSERT INTO trips (started_at, ended_at, miles, duration_s, start_lat, start_lon, end_lat, end_lon, end_reason, driver_id, source, start_stop_id, end_stop_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'phone', ?, 'phone', ?, ?)`)
-      .run(new Date(t.startedAt).toISOString(), new Date(t.endedAt).toISOString(), t.miles, Math.round((t.endedAt - t.startedAt) / 1000), a.lat, a.lon, b.lat, b.lon, t.driverId, t.startStopId, t.endStopId);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'phone', ?, ?)`)
+      .run(new Date(t.startedAt).toISOString(), new Date(t.endedAt).toISOString(), t.miles, Math.round((t.endedAt - t.startedAt) / 1000), a.lat, a.lon, b.lat, b.lon, t.kind ?? 'phone', t.driverId, t.startStopId, t.endStopId);
     const id = Number(res.lastInsertRowid);
     const ins = this.db.prepare('INSERT INTO trip_points (trip_id, t, lat, lon, speed_mph, heading_deg) VALUES (?, ?, ?, ?, ?, NULL)');
     for (const p of t.points) ins.run(id, new Date(p.t).toISOString(), p.lat, p.lon, p.speedMph === null ? null : Math.round(p.speedMph * 10) / 10);
     return id;
   }
 
-  /** Re-import: drop a driver's phone trips that started in [from, to). */
-  deletePhone(driverId: string, fromIso: string, toIso: string): number {
-    const ids = (this.db.prepare("SELECT id FROM trips WHERE source = 'phone' AND driver_id = ? AND started_at >= ? AND started_at < ?").all(driverId, fromIso, toIso) as { id: number }[]).map((r) => r.id);
+  /** Re-import: drop a driver's phone trips that started in [from, to); `keepTimeline` leaves Google Timeline drives. */
+  deletePhone(driverId: string, fromIso: string, toIso: string, opts: { keepTimeline?: boolean } = {}): number {
+    const keep = opts.keepTimeline ? " AND COALESCE(end_reason, '') <> 'timeline'" : '';
+    const ids = (this.db.prepare(`SELECT id FROM trips WHERE source = 'phone' AND driver_id = ? AND started_at >= ? AND started_at < ?${keep}`).all(driverId, fromIso, toIso) as { id: number }[]).map((r) => r.id);
     const delP = this.db.prepare('DELETE FROM trip_points WHERE trip_id = ?');
     const delS = this.db.prepare('DELETE FROM trip_samples WHERE trip_id = ?');
     const delT = this.db.prepare('DELETE FROM trips WHERE id = ?');
     for (const id of ids) { delP.run(id); delS.run(id); delT.run(id); }
     return ids.length;
+  }
+
+  /** A driver's Google Timeline drives overlapping [from, to), as [start, end] ms. */
+  timelineSpans(driverId: string, fromIso: string, toIso: string): [number, number][] {
+    return (this.db.prepare("SELECT started_at, ended_at FROM trips WHERE source = 'phone' AND end_reason = 'timeline' AND driver_id = ? AND ended_at > ? AND started_at < ?").all(driverId, fromIso, toIso) as { started_at: string; ended_at: string }[])
+      .map((r) => [Date.parse(r.started_at), Date.parse(r.ended_at)]);
   }
 
   points(id: number): TripPoint[] {

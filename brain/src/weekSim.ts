@@ -194,7 +194,7 @@ export function simulateStored(trips: StoredDrive[], days: [Date, Date][], p: Si
   const inRange = trips.filter((t) => days.some(([a, b]) => t.startedAt >= a.getTime() && t.startedAt < b.getTime()));
   const straight = inRange.filter((t) => t.straight).length, timeline = inRange.length - straight;
   const notes: string[] = [];
-  if (timeline) notes.push(`${timeline} drive${timeline === 1 ? '' : 's'} from Google Timeline, at Google's distances.`);
+  if (timeline) notes.push(`${timeline} drive${timeline === 1 ? '' : 's'} from Google Timeline, measured along the phone's GPS path.`);
   if (straight) notes.push(`${straight} trip${straight === 1 ? '' : 's'} imported from Home Assistant: straight lines between location fixes × ${ROAD_FACTOR} for roads, an estimate.`);
   if (!inRange.length) notes.push('No stored phone trips in these days.');
   const drives = trips.map((t) => ({ startedAt: t.startedAt, endedAt: t.endedAt, miles: t.straight ? t.miles * ROAD_FACTOR : t.miles }));
