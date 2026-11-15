@@ -1,0 +1,81 @@
+// Trips, WEEK: "simulate my week". A driver's phone history (Life360 or the
+// Home Assistant app) replayed as if driven in the Slate: miles, kWh, the
+// charge level with a home top-up every night, charging cost vs gas.
+// The brain does the work (GET /api/trips/simulate-week, brain/src/weekSim.ts).
+import { useEffect, useState } from 'preact/hooks';
+import type { WeekSim as Sim } from '../../../brain/src/weekSim.ts';
+import { api, settingsStore, useStore } from '../lib/brain.ts';
+import { Modal } from './common.tsx';
+
+/** The Sunday that started last week, YYYY-MM-DD (local). */
+export function lastSunday(now = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() - 7);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+const money = (n: number | null) => (n === null ? '—' : `$${n.toFixed(2)}`);
+const dow = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+const cell = 'padding:4px 8px';
+
+export function WeekSim({ driverId, onClose }: { driverId: string | null; onClose: () => void }) {
+  const settings = useStore(settingsStore);
+  const d = settings?.drivers.find((x) => x.id === driverId) ?? settings?.drivers[0];
+  const [tracker, setTracker] = useState(d?.tracker ?? '');
+  const [from, setFrom] = useState(lastSunday());
+  const [sim, setSim] = useState<Sim | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true); setErr(null);
+    const q = new URLSearchParams({ from, days: '7' });
+    if (tracker) q.set('tracker', tracker);
+    if (d) q.set('driver', d.id);
+    try { setSim(await api<Sim>(`/api/trips/simulate-week?${q}`)); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+  useEffect(() => { if (tracker) void run(); }, []);
+  const t = sim?.totals;
+  const stat = (label: string, value: string, cls = '') => <div><div class="lbl">{label}</div><b class={`num ${cls}`} style="font-size:var(--fs-title)">{value}</b></div>;
+  return (
+    <Modal title="Simulate a week in the Slate" onClose={onClose}>
+      <div style="display:grid;gap:var(--s15)">
+        <p class="help" style="margin:0">Your phone's location history for a week, driven as if in the Slate, charging at home to {sim?.params.chargeTo ?? 80}% every night.</p>
+        <div class="row wrap" style="gap:var(--s15);align-items:flex-end">
+          <label class="f" style="min-width:300px"><span>Phone tracker (Home Assistant)</span><input type="text" value={tracker} placeholder="device_tracker.life360_your_name" onInput={(e) => setTracker((e.target as HTMLInputElement).value.trim())} /></label>
+          <label class="f"><span>Week starting</span><input type="date" value={from} onInput={(e) => setFrom((e.target as HTMLInputElement).value)} /></label>
+          <button type="button" class="btn primary" disabled={busy || !tracker} onClick={() => void run()}>{busy ? 'Working…' : 'Simulate'}</button>
+        </div>
+        {err && <div class="err">{err}</div>}
+        {sim && t && (
+          <>
+            <div class="row wrap" style="gap:var(--s3)">
+              {stat('Miles', String(t.miles))}
+              {stat('Energy', `${t.kwh} kWh`)}
+              {stat('Lowest charge', `${Math.max(0, t.lowestSoc)}%`, t.lowestSoc < 15 ? 'err' : '')}
+              {stat('Charging at home', money(t.chargeCost))}
+              {stat(`Gas instead (${sim.params.compare.label})`, money(t.gasCost))}
+              {stat('Saved', money(t.saved), 'okmsg')}
+            </div>
+            <div style="overflow-x:auto">
+              <table class="num" style="width:100%;border-collapse:collapse;font-size:var(--fs-body-sm)">
+                <thead><tr style="text-align:left">{['Day', 'Trips', 'Miles', 'City / Hwy', 'kWh', 'Charge', 'Home charge', 'Gas', 'History'].map((h) => <th style={cell} class="lbl">{h}</th>)}</tr></thead>
+                <tbody>{sim.days.map((x) => (
+                  <tr style="border-top:1px solid var(--line)">
+                    <td style={cell}>{dow(x.day)}</td>
+                    <td style={cell}>{x.trips.length}</td>
+                    <td style={cell}>{x.miles}</td>
+                    <td style={cell}>{x.cityMiles} / {x.highwayMiles}</td>
+                    <td style={cell}>{x.kwh}</td>
+                    <td style={cell} class={x.ranOut ? 'err' : ''}>{x.socStart}% → {Math.max(0, x.socLow)}%{x.ranOut ? ' (ran out)' : ''}</td>
+                    <td style={cell}>{x.chargeKwh ? `${x.chargeKwh} kWh · ${money(x.chargeCost)}` : '—'}</td>
+                    <td style={cell}>{x.gallons ? `${x.gallons} gal · ${money(x.gasCost)}` : '—'}</td>
+                    <td style={cell} class={x.coverage === 'good' ? 'dimtxt' : 'err'}>{x.coverage === 'none' ? 'none' : `${x.points} fixes${x.coverage === 'thin' ? ', thin' : ''}`}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            {sim.notes.map((n) => <div class="dimtxt" style="font-size:var(--fs-caption)">{n}</div>)}
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
