@@ -5,6 +5,7 @@ import { Card, Modal, V } from './common.tsx';
 import type { WP } from './drive.tsx';
 import { DrivingLock, ModeSplit } from '../drive/Lock.tsx';
 import { logsStore } from '../lib/panels.ts';
+import { WeekSim } from './WeekSim.tsx';
 
 type Detail = Trip & { points: TripPoint[] };
 type Tab = 'day' | 'trips' | 'places';
@@ -17,6 +18,7 @@ const shiftDay = (day: string, n: number) => { const [y, m, d] = day.split('-').
 function PhoneTag() { return <span class="tag dim" title="Replayed from the phone's location history: straight lines between sparse points">from phone, approximate</span>; }
 
 export function Trips({ s }: WP) {
+  const [weekSim, setWeekSim] = useState(false);
   const settings = useStore(settingsStore);
   const [tab, setTab] = useState<Tab>('day');
   const [driver, setDriver] = useState<string>('');
@@ -78,6 +80,7 @@ export function Trips({ s }: WP) {
           {/* The mileage and maintenance logs (they had their own rail icon) */}
           <button type="button" class="tag dim" onClick={() => logsStore.set('mileage')}>MILEAGE</button>
           <button type="button" class="tag dim" onClick={() => logsStore.set('maintenance')}>MAINTENANCE</button>
+          <button type="button" class="tag dim" title="Simulate a week of your phone's history in the Slate" onClick={() => setWeekSim(true)}>WEEK</button>
         </div>}>
         <div class="row wrap" style="gap:var(--s1)" role="group" aria-label="Whose trips">
           <button type="button" class={`btn sm ${driver === '' ? 'primary' : ''}`} onClick={() => setDriver('')}>Everyone</button>
@@ -148,6 +151,7 @@ export function Trips({ s }: WP) {
       </Card>
       {energy && detail && <energy.C tripId={detail.id} title={tripTitle(detail)} onClose={() => setEnergy(null)} />}
       {naming && <NameStop stopId={naming.stopId} initial={naming.name} onClose={(saved) => { setNaming(null); if (saved) void load(); }} />}
+      {weekSim && <WeekSim driverId={driver || null} onClose={() => setWeekSim(false)} />}
     </div>
     </DrivingLock>
   );

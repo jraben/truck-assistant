@@ -27,6 +27,9 @@ import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { RoutingError } from './roadtrip/routing.ts';
+import { simulateWeek } from './weekSim.ts';
+import { dayRanges } from './import/phone.ts';
+import { trackerPoints, type TrackerPoint } from './ha/client.ts';
 import { registerMapsRoutes } from './maps/routes.ts';
 import { registerVehiclePhoto } from './drive/photo.ts';
 import { registerDriverPhotos } from './drive/driverPhoto.ts';
@@ -132,6 +135,42 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   app.get<{ Querystring: { limit?: string; driver?: string; source?: string } }>('/api/trips', async (req) => {
     const limit = Math.max(1, Math.min(500, Number(req.query.limit ?? 50) || 50));
     return brain.trips.list(limit, { driver: optStr(req.query.driver), source: srcOf(req.query.source) });
+  });
+  // "Simulate my week": a driver's phone history (e.g. Life360 via Home Assistant) as if driven in
+  // the Slate (weekSim.ts). Read only. ?tracker=device_tracker.x or ?driver=id; ?from=YYYY-MM-DD (local) &days=7.
+  app.get<{ Querystring: { tracker?: string; driver?: string; from?: string; days?: string; startSoc?: string; chargeTo?: string } }>('/api/trips/simulate-week', async (req, reply) => {
+    const q = req.query;
+    const st = brain.settings.get();
+    const driver = st.drivers.find((d) => d.id === (q.driver ?? st.drivers[0]?.id));
+    const tracker = q.tracker ?? driver?.tracker ?? null;
+    if (!tracker || !/^(device_tracker|person)\.[a-z0-9_]+$/.test(tracker)) return reply.code(400).send({ error: 'tracker must be device_tracker.x or person.x (or set the driver\'s phone tracker in Settings)' });
+    const nDays = Math.min(31, Math.max(1, Number(q.days ?? 7) || 7));
+    let start: Date;
+    if (q.from) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(q.from);
+      if (!m) return reply.code(400).send({ error: 'from must be YYYY-MM-DD' });
+      start = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    } else {
+      // Last full week: the Sunday before this one.
+      const now = new Date(); start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() - 7);
+    }
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + nDays);
+    const days = dayRanges(start, end);
+    const points: TrackerPoint[] = [];
+    try {
+      for (const [a, b] of days) points.push(...trackerPoints(await brain.ha.history(tracker, a, b)).points);
+    } catch (e) { return reply.code(502).send({ error: `Home Assistant: ${(e as Error).message}` }); }
+    const v = brain.compareVehicle(driver?.id ?? null);
+    const g = brain.gas.status(v.fuel);
+    const gasPrice = g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null);
+    const pct = (s: string | undefined, d: number) => { const n = Number(s); return Number.isFinite(n) && n > 0 && n <= 100 ? n : d; };
+    return simulateWeek(points, days, {
+      packKwh: st.packKwh,
+      eff: { city: brain.drive.range.eff('city'), highway: brain.drive.range.eff('highway') },
+      highwayMph: st.drive.highwayMph,
+      startSoc: pct(q.startSoc, 80), chargeTo: pct(q.chargeTo, 80),
+      homeRate: st.homeRate, compare: v, gasPrice,
+    }, tracker);
   });
   app.get<{ Params: { id: string } }>('/api/trips/:id', async (req, reply) => {
     const t = brain.trips.get(Number(req.params.id));
