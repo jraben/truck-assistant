@@ -45,12 +45,14 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
     } catch (e) { setErr((e as Error).message); setBusy(false); }
   };
   /** The 7 separate days with the most driving in 6 months, simulated back to back: a made-up hardest week. */
+  const [topBy, setTopBy] = useState<'miles' | 'highway' | 'city'>('miles');
   const topSeven = async () => {
     setBusy(true); setErr(null); setFound(null);
     try {
-      const r = await api<{ trips: number; top: { days: { day: string; miles: number }[]; miles: number } | null }>(`/api/trips/top-days?months=6&n=7${d ? `&driver=${encodeURIComponent(d.id)}` : ''}`);
+      const r = await api<{ trips: number; top: { days: { day: string; miles: number }[]; miles: number } | null }>(`/api/trips/top-days?months=6&n=7&by=${topBy}${d ? `&driver=${encodeURIComponent(d.id)}` : ''}`);
       if (!r.top) { setErr(`No stored phone trips in the last 6 months (${r.trips}). Import a Google Timeline (Settings, Import) or wait for the nightly import.`); setBusy(false); return; }
-      setSource('stored'); setFound(`Top ${r.top.days.length} days in 6 months, driven back to back: ${r.top.miles} mi (${r.top.days.map((x) => dow(x.day)).join(', ')}).`);
+      const what = topBy === 'highway' ? 'most highway' : topBy === 'city' ? 'most around-town driving' : 'most driving';
+      setSource('stored'); setFound(`The ${r.top.days.length} days with the ${what} in 6 months, back to back: ${r.top.miles} mi (${r.top.days.map((x) => dow(x.day)).join(', ')}).`);
       await run('stored', r.top.days[0].day, r.top.days.map((x) => x.day));
     } catch (e) { setErr((e as Error).message); setBusy(false); }
   };
@@ -72,7 +74,14 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
           <label class="f"><span>Week starting</span><input type="date" value={from} onInput={(e) => setFrom((e.target as HTMLInputElement).value)} /></label>
           <button type="button" class="btn primary" disabled={busy || (source === 'ha' && !tracker)} onClick={() => void run()}>{busy ? 'Working…' : 'Simulate'}</button>
           <button type="button" class="btn" disabled={busy} onClick={() => void busiest()} title="Find the 7 days with the most driving in the last 6 months of stored trips">Busiest week</button>
-          <button type="button" class="btn" disabled={busy} onClick={() => void topSeven()} title="The 7 separate days with the most driving in 6 months, as one made-up week">Top 7 days</button>
+          <label class="f"><span>Top 7 days by</span>
+            <select value={topBy} onChange={(e) => setTopBy((e.target as HTMLSelectElement).value as 'miles' | 'highway' | 'city')}>
+              <option value="miles">Most miles</option>
+              <option value="highway">Most highway</option>
+              <option value="city">Most around town</option>
+            </select>
+          </label>
+          <button type="button" class="btn" disabled={busy} onClick={() => void topSeven()} title="The 7 separate days with the most of that driving in 6 months, as one made-up week">Top 7 days</button>
         </div>
         {found && <div class="okmsg">{found}</div>}
         {err && <div class="err">{err}</div>}
