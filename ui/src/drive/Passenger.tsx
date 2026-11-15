@@ -34,6 +34,7 @@ export function PassengerSetting() {
   return (
     <section class="card" id="passenger">
       <h2>Passenger mode</h2>
+      <p class="help">Let a passenger use video, typing and apps on the tablet while the truck is moving. Applies at once, no Save.</p>
       <div class="row wrap" style="gap:var(--s15);align-items:center">
         <label class="check">
           <input type="checkbox" role="switch" checked={passenger} disabled={busy} onChange={(e) => void flip((e.target as HTMLInputElement).checked, setBusy)} />

@@ -383,8 +383,27 @@ textarea { min-height: 120px; font-family: var(--mono); font-size: var(--fs-capt
 /* settings portal */
 body.portal { overflow: auto; }
 .portal-wrap { max-width: 920px; margin: 0 auto; padding: var(--s2) max(var(--s2), env(safe-area-inset-left, 0px)) 80px; display: grid; gap: var(--s2); }
-.portal-head { display: flex; align-items: center; gap: var(--s15); flex-wrap: wrap; }
-.portal-head h1 { margin: 0; font-family: var(--display); font-weight: 800; letter-spacing: .12em; font-size: var(--fs-display-sm); }
+.portal-wrap > * { min-width: 0; }
+.portal-head { display: flex; align-items: center; gap: var(--s1) var(--s15); flex-wrap: wrap; }
+.portal-head h1 { margin: 0; flex: 1 1 auto; font-family: var(--display); font-weight: 800; letter-spacing: .12em; font-size: var(--fs-display-sm); overflow-wrap: anywhere; }
+.portal-head .nowrap { white-space: nowrap; }
+/* status chips: short words, the full text in the tooltip */
+.portal-chips { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: var(--s05) var(--s15); }
+.portal-chips .pill { min-height: 28px; padding: 0; font-size: var(--fs-body-sm); color: var(--dim); }
+.portal-chips a.pill { color: var(--fg); text-decoration: underline dotted; text-underline-offset: 3px; }
+@media (max-width: 480px) { .portal-head h1 { font-size: 20px; letter-spacing: .08em; } }
+/* settings search */
+.set-search { position: relative; display: grid; gap: var(--s1); }
+.set-search input { width: 100%; min-height: 48px; font-size: var(--fs-body); padding-left: 40px;
+  background: var(--panel) no-repeat 12px 50% / 18px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d9aa3' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E"); }
+.set-results { display: grid; gap: 2px; background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--radius-lg); padding: var(--s05); }
+.set-results > .help { padding: var(--s1) var(--s15); }
+.set-results button { display: grid; gap: 2px; text-align: left; width: 100%; min-height: 48px; padding: var(--s1) var(--s15); border: 0; border-radius: var(--radius);
+  background: transparent; color: var(--fg); font: inherit; cursor: pointer; }
+.set-results button:hover, .set-results button:focus-visible { background: var(--panel-2); }
+.set-results button:first-child { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.set-results .t { display: flex; align-items: center; gap: var(--s1); flex-wrap: wrap; font-family: var(--display); font-weight: 700; font-size: var(--fs-body); }
+.set-results .s { color: var(--dim); font-size: var(--fs-body-sm); line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .portal section.card { overflow: visible; }
 .portal h2 { margin: 0; font-family: var(--display); font-size: var(--fs-title); letter-spacing: .04em; }
 .portal p.help { margin: 0; color: var(--dim); font-size: var(--fs-body-sm); line-height: 1.5; }
@@ -392,6 +411,8 @@ body.portal { overflow: auto; }
   background: var(--bg); border-bottom: 1px solid var(--hairline); scrollbar-width: none; }
 .settings-tabs::-webkit-scrollbar { display: none; }
 @media (min-width: 821px) { .settings-tabs { flex-wrap: wrap; overflow-x: visible; } }
+/* Phone: the row scrolls sideways inside itself; fade the right edge so it reads as "more this way". */
+@media (max-width: 820px) { .settings-tabs { mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); padding-right: 32px; scroll-padding-inline: 16px; } }
 .settings-tabs a { flex: none; min-height: 44px; display: inline-flex; align-items: center; padding: 0 var(--s2); border-radius: var(--radius);
   border: 1px solid var(--hairline); color: var(--fg); text-decoration: none; font-family: var(--display); font-weight: 600; font-size: var(--fs-body-sm); letter-spacing: .03em; white-space: nowrap; }
 .settings-tabs a:hover { background: var(--panel-2); }
@@ -401,10 +422,20 @@ body.portal { overflow: auto; }
 [data-tab] section.card > h2[role="button"] { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: var(--s15); margin: 0; min-height: 44px; }
 [data-tab] section.card > h2[role="button"]::after { content: "▾"; font-size: .8em; color: var(--dim); transition: transform .15s; }
 [data-tab] section.card.folded > h2[role="button"]::after { transform: rotate(-90deg); }
-[data-tab] section.card.folded > :not(h2) { display: none !important; }
-[data-tab] section.card.folded { padding-block: var(--s1); }
+/* Folded: the title plus the first lines of its help, so a tab of folded cards still says what's in each. */
+[data-tab] section.card.folded > :not(h2):not(h2 + p.help) { display: none !important; }
+[data-tab] section.card.folded > h2 + p.help { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-top: -6px; }
+[data-tab] section.card.folded { padding-block: var(--s1) var(--s15); gap: 0; cursor: pointer; }
+[data-tab] section.card.folded > h2:only-child { margin-bottom: calc(var(--s05) - var(--s15)); }
+@media (max-width: 820px) { [data-tab] section.card > h2 { font-size: var(--fs-section); } }
+/* where a search or link landed */
+@keyframes setflash { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 0 0 3px transparent; } }
+section.card.flash { animation: setflash 1.6s ease-out; }
+html:has(.savebar) { scroll-padding-bottom: 96px; }
 @media (max-width: 820px) { .savebar .btn.big { min-height: 48px; padding: 0 var(--s2); font-size: var(--fs-body-sm); } .savebar { padding: var(--s1) 0; } }
-.savebar { position: sticky; bottom: 0; background: var(--bg); padding: var(--s15) 0; border-top: 1px solid var(--hairline); display: flex; gap: var(--s15); align-items: center; flex-wrap: wrap; z-index: 5; }
+@media (max-width: 480px) { .savebar > .dimtxt { display: none; } }
+.savebar { position: sticky; bottom: 0; background: var(--bg); padding: var(--s15) 0; border-top: 1px solid var(--hairline); display: flex; gap: var(--s15); align-items: center; flex-wrap: wrap; z-index: 5;
+  box-shadow: 0 -8px 16px color-mix(in srgb, var(--bg) 85%, transparent); }
 table.tou { width: 100%; border-collapse: collapse; font-size: var(--fs-body-sm); }
 table.tou td { padding: var(--s05); vertical-align: middle; }
 .daypick { display: flex; gap: 2px; }

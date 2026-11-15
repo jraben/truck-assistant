@@ -19,6 +19,7 @@ import { OpsSections } from '../ops/OpsSettings.tsx';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { TrafficSection } from './TrafficSection.tsx';
 import { ContactsSection } from './ContactsSection.tsx';
+import { chipLabel, readSections, searchSections, type SectionEntry } from './search.ts';
 
 const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -81,9 +82,17 @@ function monthsText(m: number[] | undefined): string {
   return m.join(',');
 }
 
-function Section({ id, title, help, children }: { id?: string; title: string; help?: string; children: preact.ComponentChildren }) {
-  return <section class="card" id={id}><h2>{title}</h2>{help && <p class="help">{help}</p>}{children}</section>;
+function Section({ id, title, help, keywords, children }: { id?: string; title: string; help?: string; keywords?: string; children: preact.ComponentChildren }) {
+  return <section class="card" id={id} data-keywords={keywords}><h2>{title}</h2>{help && <p class="help">{help}</p>}{children}</section>;
 }
+
+/** Scroll a section to just under the sticky tab row (scrollIntoView would tuck its title under it). */
+function scrollToSection(el: Element) {
+  const bar = document.querySelector<HTMLElement>('.settings-tabs');
+  window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - (bar?.offsetHeight ?? 0) - 12) });
+}
+/** The fold key of the section holding element `id` (a section, or something inside one). */
+const sectionKeyFor = (id: string) => (document.getElementById(id)?.closest<HTMLElement>('[data-tab] section.card')?.dataset.key) ?? id;
 
 function SecretField({ label, set, value, placeholder, onInput, onClear }: { label: string; set: string | undefined; value: string; placeholder?: string; onInput: (v: string) => void; onClear: () => void }) {
   return (
@@ -127,8 +136,10 @@ export function SettingsApp() {
   useEffect(() => {
     const onClick = (e: Event) => {
       if (e instanceof KeyboardEvent && e.key !== 'Enter' && e.key !== ' ') return;
-      const h = (e.target as HTMLElement).closest('[data-tab] section.card > h2');
-      const sec = h?.parentElement as HTMLElement | null;
+      // The title toggles; on a folded card the help line under it opens it too.
+      const t = e.target as HTMLElement;
+      const h = t.closest('[data-tab] section.card > h2');
+      const sec = (h?.parentElement ?? t.closest('[data-tab] section.card.folded')) as HTMLElement | null;
       if (!sec?.dataset.key) return;
       e.preventDefault();
       const k = sec.dataset.key;
@@ -145,14 +156,37 @@ export function SettingsApp() {
       const t = tabFromHash();
       setTab(t);
       const id = location.hash.slice(1);
-      if (id && !TABS.some((x) => x.id === id)) setOpen((o) => new Set(o).add(id));
-      if (id && !TABS.some((x) => x.id === id)) requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ block: 'start' }));
+      if (id && !TABS.some((x) => x.id === id)) { setOpen((o) => new Set(o).add(sectionKeyFor(id))); setScrollTarget(id); }
       else window.scrollTo({ top: 0 });
     };
     window.addEventListener('hashchange', go);
     return () => window.removeEventListener('hashchange', go);
   }, []);
-  useEffect(() => { if (draft && location.hash && !TABS.some((x) => x.id === location.hash.slice(1))) { const t = tabFromHash(); setTab(t); requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start' })); } }, [!!draft]);
+  useEffect(() => {
+    const id = location.hash.slice(1);
+    if (draft && id && !TABS.some((x) => x.id === id)) { setTab(tabFromHash()); setOpen((o) => new Set(o).add(sectionKeyFor(id))); setScrollTarget(id); }
+  }, [!!draft]);
+  // Scroll once the tab is showing and the section unfolded (the fold effect above runs first).
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null);
+  useEffect(() => {
+    if (!scrollTarget) return;
+    const el = document.getElementById(scrollTarget) ?? document.querySelector(`[data-key="${CSS.escape(scrollTarget)}"]`);
+    setScrollTarget(null);
+    if (!el) return;
+    const sec = el.closest('section.card') ?? el;
+    scrollToSection(el);
+    sec.classList.remove('flash'); void (sec as HTMLElement).offsetWidth; sec.classList.add('flash');
+  }, [scrollTarget, tab, open]);
+  // Keep the current tab in view inside the (phone-width, sideways-scrolling) tab row.
+  useEffect(() => {
+    const a = document.querySelector<HTMLElement>('.settings-tabs [aria-current="page"]');
+    const row = a?.parentElement;
+    if (a && row && row.scrollWidth > row.clientWidth) row.scrollLeft = a.offsetLeft - (row.clientWidth - a.offsetWidth) / 2;
+  }, [tab, !!draft]);
+
+  const [query, setQuery] = useState('');
+  // An "OK, saved" message clears itself; errors stay until the next try.
+  useEffect(() => { if (!msg?.ok) return; const id = setTimeout(() => setMsg(null), 4000); return () => clearTimeout(id); }, [msg]);
 
   // `base` is what this page loaded; Save sends only the fields changed since, so a page left open
   // can't put back values someone (or something) changed in the meantime.
@@ -200,16 +234,51 @@ export function SettingsApp() {
 
   const gps = state?.gps?.fix ? state.gps : null;
 
+  // Only the fields Save would send count as changes (the truck look, drive and goal save themselves).
+  const dirty = Object.values(keys).some((v) => v.trim() !== '')
+    || Object.entries(draft).some(([k, v]) => k !== 'truck' && k !== 'drive' && k !== 'payoffGoal' && JSON.stringify(v) !== JSON.stringify((base as Record<string, unknown> | null)?.[k]));
+  const undo = () => { setDraft(toDraft(settings)); setBase(toDraft(settings)); setKeys(NO_SECRETS); setMsg(null); };
+
+  const hits = query.trim() ? searchSections(readSections(document), query) : [];
+  const jump = (e: SectionEntry) => {
+    setQuery('');
+    setTab(e.tab as TabId);
+    setOpen((o) => new Set(o).add(e.key));
+    if (e.id) history.replaceState(null, '', `#${e.id}`);
+    setScrollTarget(e.id || e.key);
+  };
+  const tabLabel = (id: string) => TABS.find((t) => t.id === id)?.label ?? id;
+  const chips = health ? [
+    { ...chipLabel('mqtt', health.mqtt), raw: `MQTT: ${health.mqtt}`, href: undefined },
+    { ...chipLabel('gps', health.gps), raw: `GPS: ${health.gps}`, href: undefined },
+    { ...chipLabel('ha', health.ha), raw: `Home Assistant: ${health.ha}`, href: health.ha === 'connected' ? undefined : '#ha' },
+  ] : [];
+
   return (
     <div class="portal-wrap portal">
       <div class="portal-head">
-        <h1>{PROJECT.shortName} · SETTINGS</h1>
-        <span class="pill"><span class={`dot ${health ? 'ok' : 'bad'}`} />{health ? `brain v${health.version}` : 'brain unreachable'}</span>
-        {health && <span class="pill"><span class={`dot ${health.mqtt === 'connected' ? 'ok' : 'warn'}`} />MQTT {health.mqtt}</span>}
-        {health && <span class="pill"><span class={`dot ${health.gps === 'fix' || health.gps === 'sim' || health.gps === 'tablet' ? 'ok' : 'warn'}`} />GPS {health.gps}</span>}
-        {health && <span class="pill"><span class={`dot ${health.ha === 'connected' ? 'ok' : 'warn'}`} />HA {health.ha}</span>}
-        <span style="flex:1" />
+        <h1>{PROJECT.shortName} · <span class="nowrap">SETTINGS</span></h1>
         <a class="btn" href="/">Back to cockpit</a>
+        <div class="portal-chips" role="status">
+          <span class="pill" title={health ? `Brain v${health.version}, up ${Math.round(health.uptimeS / 60)} min` : 'The brain did not answer /api/health'}><span class={`dot ${health ? 'ok' : 'bad'}`} />{health ? `brain v${health.version}` : 'brain unreachable'}</span>
+          {chips.map((c) => c.href
+            ? <a class="pill" href={c.href} title={`${c.raw} (open its settings)`}><span class={`dot ${c.level}`} />{c.text}</a>
+            : <span class="pill" title={c.raw}><span class={`dot ${c.level}`} />{c.text}</span>)}
+        </div>
+      </div>
+
+      <div class="set-search" role="search">
+        <input type="search" value={query} placeholder="Search settings: timeline, Wi-Fi, Spotify, password…" aria-label="Search settings"
+          onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && hits[0]) { e.preventDefault(); jump(hits[0].entry); (e.target as HTMLInputElement).blur(); } else if (e.key === 'Escape') setQuery(''); }} />
+        {query.trim() && <div class="set-results">
+          {hits.length ? hits.map((h) => (
+            <button type="button" onClick={() => jump(h.entry)}>
+              <span class="t">{h.entry.title}<span class="tag dim">{tabLabel(h.entry.tab)}</span></span>
+              {h.snippet && <span class="s">{h.snippet}</span>}
+            </button>
+          )) : <p class="help">Nothing matches “{query.trim()}”. Try a shorter or different word, or browse the tabs below.</p>}
+        </div>}
       </div>
 
       <nav class="settings-tabs" aria-label="Settings sections">
@@ -224,7 +293,7 @@ export function SettingsApp() {
         <CostSessions s={state} go={() => {}} />
       </Section>
 
-      <Section title="Home electricity" help="Prices home charging. Time-of-use periods are matched by when the session started; times outside every period use the flat rate.">
+      <Section id="home-rate" keywords="time of use tou on-peak off-peak tariff utility bill price kwh demand" title="Home electricity" help="Prices home charging. Time-of-use periods are matched by when the session started; times outside every period use the flat rate.">
         <div class="form">
           <div class="fields">
             <label class="f"><span>Flat $/kWh</span><input type="number" step="0.001" value={draft.homeRate.flatPerKwh ?? ''} placeholder="not set" onInput={(e) => { const v = (e.target as HTMLInputElement).value; setRate('flatPerKwh', v === '' ? null : Number(v)); }} /></label>
@@ -260,13 +329,13 @@ export function SettingsApp() {
         <GoalSettings value={settings.payoffGoal} onSaved={(g) => settingsStore.set({ ...settings, payoffGoal: g })} />
       </Section>
 
-      <Section id="gas" title="Gas comparison" help="What the gas vehicle you'd otherwise drive would have cost for the same miles. A driver can pick their own vehicle in Drivers.">
+      <Section id="gas" keywords="mpg fuel gasbuddy savings vehicle" title="Gas comparison" help="What the gas vehicle you'd otherwise drive would have cost for the same miles. A driver can pick their own vehicle in Drivers.">
         <VehiclePicker value={draft.compareVehicle} onChange={(v) => set('compareVehicle', v)} />
         <h3 class="sub">Gas price</h3>
         <GasSection gas={draft.gas} onChange={(g) => set('gas', g)} haReady={haReady} />
       </Section>
 
-      <Section title="Charger API keys" help="Free keys: developer.nlr.gov/signup (AFDC; NREL is now the National Laboratory of the Rockies, and old NREL keys still work) and openchargemap.org (My Profile → API keys). Google Places is optional and billed: it adds live free-stall counts, no prices; enable Places API (New) in Google Cloud and paste the key. It is asked at most every 5 minutes. Stored on the truck only, never shown again in full.">
+      <Section id="charger-keys" keywords="api key nrel afdc openchargemap ocm google places chargers stations" title="Charger API keys" help="Free keys: developer.nlr.gov/signup (AFDC; NREL is now the National Laboratory of the Rockies, and old NREL keys still work) and openchargemap.org (My Profile → API keys). Google Places is optional and billed: it adds live free-stall counts, no prices; enable Places API (New) in Google Cloud and paste the key. It is asked at most every 5 minutes. Stored on the truck only, never shown again in full.">
         <div class="fields form">
           {(['afdc', 'openChargeMap', 'googlePlaces'] as const).map((k) => (
             <SecretField label={KEY_LABELS[k]} set={settings.keys[k]} value={keys[k]} onInput={(v) => setKeys({ ...keys, [k]: v })} onClear={() => void clear({ keys: { [k]: '' } })} />
@@ -284,7 +353,7 @@ export function SettingsApp() {
       </div>
 
       <div data-tab="truck" hidden={tab !== 'truck'}>
-      <Section title="Truck" help="These settings are the truck's, whoever is driving.">
+      <Section id="truck-basics" keywords="battery pack range efficiency home location gps tablet sleep screen who's driving" title="Truck" help="These settings are the truck's, whoever is driving.">
         <div class="fields form">
           <label class="f"><span>Truck id (MQTT prefix)</span><input type="text" value={draft.truckId} onInput={(e) => set('truckId', (e.target as HTMLInputElement).value)} /></label>
           <label class="f"><span>Usable pack kWh</span><input type="number" step="0.1" value={draft.packKwh} onInput={(e) => set('packKwh', num((e.target as HTMLInputElement).value))} /></label>
@@ -322,7 +391,7 @@ export function SettingsApp() {
         })()}
       </Section>
 
-      <Section title="Relay names & power" help="The six upfit relays in the truck box, and what each load draws when on (from its label or manual). Nothing measures current, so the Control screen's watts are these numbers.">
+      <Section id="relays" keywords="upfit relay watts power loads switches" title="Relay names & power" help="The six upfit relays in the truck box, and what each load draws when on (from its label or manual). Nothing measures current, so the Control screen's watts are these numbers.">
         <div class="fields form">
           {RELAYS.map((id, i) => (
             <div class="row" style="gap:var(--s1);align-items:flex-end">
@@ -335,7 +404,7 @@ export function SettingsApp() {
         </div>
       </Section>
 
-      <Section title="Trip energy model" help="Trips → a trip → Energy shows power used and regenerated along the route. Until the truck box can read the pack's own power (CAN), it is worked out from speed, hills and weight with these numbers. They start as estimates: they show where the energy went better than exactly how much.">
+      <Section id="energy-model" keywords="regen drag weight efficiency consumption" title="Trip energy model" help="Trips → a trip → Energy shows power used and regenerated along the route. Until the truck box can read the pack's own power (CAN), it is worked out from speed, hills and weight with these numbers. They start as estimates: they show where the energy went better than exactly how much.">
         <div class="fields form">
           {([
             ['curbLb', 'Truck, empty (lb)', 1], ['driverLb', 'Driver (lb)', 1], ['cdA', 'Drag area CdA (m²)', 0.01], ['crr', 'Rolling resistance', 0.001],
@@ -354,7 +423,7 @@ export function SettingsApp() {
       </div>
 
       <div data-tab="connections" hidden={tab !== 'connections'}>
-      <Section id="network" title="Getting online" help="The cockpit has no modem: it joins home Wi-Fi in the driveway, else the active driver's phone hotspot (set per driver in Drivers), else another driver's, else Bluetooth tethering. The truck's own Wi-Fi (slate-truck) is separate and stays on for the truck box.">
+      <Section id="network" keywords="wifi wi-fi hotspot internet bluetooth tethering ssid data" title="Getting online" help="The cockpit has no modem: it joins home Wi-Fi in the driveway, else the active driver's phone hotspot (set per driver in Drivers), else another driver's, else Bluetooth tethering. The truck's own Wi-Fi (slate-truck) is separate and stays on for the truck box.">
         <div class="fields form">
           <label class="f"><span>Home Wi-Fi name (SSID)</span><input type="text" value={draft.homeWifi?.ssid ?? ''} placeholder="not set" onInput={(e) => { const v = (e.target as HTMLInputElement).value; set('homeWifi', v ? { ssid: v } : null); }} /></label>
           <SecretField label="Home Wi-Fi password" set={settings.homeWifi?.password} value={keys.homeWifi} onInput={(v) => setKeys({ ...keys, homeWifi: v })} onClear={() => void clear({ homeWifi: settings.homeWifi ? { ssid: settings.homeWifi.ssid, password: '' } : null })} />
@@ -363,7 +432,7 @@ export function SettingsApp() {
         <p class="help">Data used over each driver's phone is shown on the cockpit (tap the network label in the top strip).</p>
       </Section>
 
-      <Section id="ha" title="Home Assistant" help="Two links. MQTT discovery gives HA a 'Slate Truck' device (charge level, range, location, speed, trip, current place, driver, charging cost). The URL and token let the brain read HA: phone presence for the driver suggestion, zones for stop names, phone history, and GasBuddy prices.">
+      <Section id="ha" keywords="hass mqtt token presence zones wall charger emporia" title="Home Assistant" help="Two links. MQTT discovery gives HA a 'Slate Truck' device (charge level, range, location, speed, trip, current place, driver, charging cost). The URL and token let the brain read HA: phone presence for the driver suggestion, zones for stop names, phone history, and GasBuddy prices.">
         <label class="check"><input type="checkbox" checked={draft.homeAssistant.bridge} onChange={(e) => set('homeAssistant', { ...draft.homeAssistant, bridge: (e.target as HTMLInputElement).checked })} /> Publish to Home Assistant (MQTT)</label>
         <div class="fields form">
           <label class="f"><span>Home Assistant URL</span><input type="url" value={draft.homeAssistant.url ?? ''} placeholder="http://homeassistant.local:8123" onInput={(e) => set('homeAssistant', { ...draft.homeAssistant, url: (e.target as HTMLInputElement).value || null })} /></label>
@@ -383,11 +452,11 @@ export function SettingsApp() {
         <p class="help">Session energy is read from HA's mqtt_statestream (base_topic: homeassistant) when the bridge is up; used for home session kWh instead of the charge-level estimate. The power sensor (W or kW, by its unit) is read every 30 s: over 500 W during an on-peak period with alerts on is "charging on-peak". The token is stored on the truck only and never shown again in full.</p>
       </Section>
 
-      <Section id="import" title="Import trips (phone & Google Timeline)" help="Real drives before the truck arrives, for Trips and WEEK: a Google Maps Timeline export (months at once), or a driver's phone locations from Home Assistant (the last ~10 days).">
+      <Section id="import" keywords="google maps timeline takeout location history export json upload file phone history past drives" title="Import trips (phone & Google Timeline)" help="Real drives before the truck arrives, for Trips and WEEK: a Google Maps Timeline export (months at once), or a driver's phone locations from Home Assistant (the last ~10 days).">
         <ImportSection settings={settings} haReady={haReady} />
       </Section>
 
-      <Section id="places" title="Places" help="Stops are named, first match wins: your saved places, then Home Assistant zones, then the places feed, then OpenStreetMap (© OpenStreetMap contributors), else 'Unnamed stop'.">
+      <Section id="places" keywords="saved places stops names zones feed openstreetmap" title="Places" help="Stops are named, first match wins: your saved places, then Home Assistant zones, then the places feed, then OpenStreetMap (© OpenStreetMap contributors), else 'Unnamed stop'.">
         <PlacesSection />
         <h3 class="sub">Places feed (optional)</h3>
         <div class="fields form">
@@ -411,9 +480,13 @@ export function SettingsApp() {
       <OpsSections />
       </div>
 
-      {DRAFT_TABS.includes(tab) && <div class="savebar">
-        <button class="btn big primary" type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save truck settings'}</button>
-        <button class="btn big" type="button" onClick={() => { setDraft(toDraft(settings)); setBase(toDraft(settings)); setKeys(NO_SECRETS); setMsg(null); }}>Undo changes</button>
+      {/* Only while there's something to save (on any tab, so a change isn't lost by switching), or to say how it went. */}
+      {(dirty || busy || (msg && DRAFT_TABS.includes(tab))) && <div class="savebar">
+        {(dirty || busy) && <>
+          <button class="btn big primary" type="button" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save truck settings'}</button>
+          <button class="btn big" type="button" disabled={busy} onClick={undo}>Undo changes</button>
+          {!msg && <span class="dimtxt">Unsaved changes</span>}
+        </>}
         {msg && <span class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</span>}
       </div>}
     </div>
