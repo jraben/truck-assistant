@@ -83,9 +83,13 @@ export function ImportSection({ settings, haReady }: { settings: Settings; haRea
   const pct = job && job.daysTotal ? Math.round((job.daysDone / job.daysTotal) * 100) : 0;
   return (
     <div class="form">
-      {!haReady && <div class="banner">{NOT_CONNECTED}</div>}
       <div class="fields">
         <label class="f"><span>Driver</span><select value={driverId} onChange={(e) => setDriverId((e.target as HTMLSelectElement).value)}>{named.map((x) => <option value={x.id}>{x.name}</option>)}</select></label>
+      </div>
+      <TimelineImport driverId={driverId} driverName={d?.name ?? driverId} />
+      <h3 class="sub">From Home Assistant (Life360 or the phone app)</h3>
+      {!haReady && <div class="banner">{NOT_CONNECTED}</div>}
+      <div class="fields">
         <label class="f"><span>From</span><input type="date" value={from} onInput={(e) => setFrom((e.target as HTMLInputElement).value)} /></label>
         <label class="f"><span>To</span><input type="date" value={to} onInput={(e) => setTo((e.target as HTMLInputElement).value)} /></label>
       </div>
@@ -104,7 +108,6 @@ export function ImportSection({ settings, haReady }: { settings: Settings; haRea
       )}
       <p class="help">Reads the tracker's location history from Home Assistant's recorder, one day at a time, and finds the same trips and stops the truck would. Phone locations are sparse, so routes are straight lines between points and marked "from phone, approximate"; they never count as truck miles.</p>
       <AutoImport />
-      <TimelineImport driverId={driverId} driverName={d?.name ?? driverId} />
     </div>
   );
 }
@@ -137,9 +140,9 @@ function TimelineImport({ driverId, driverName }: { driverId: string; driverName
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); } finally { setBusy(false); }
   };
   return (
-    <div class="form" style="gap:var(--s1);margin-top:var(--s15)">
+    <div class="form" style="gap:var(--s1)">
       <h3 class="sub">Google Maps Timeline</h3>
-      <p class="help">Months of drives at once, with Google's own distances. On the phone: Google Maps, your picture, Your Timeline, the ⋮ menu, Export Timeline data, which saves Timeline.json. (An older Google Takeout "Semantic Location History" month file works too.) Pick the file here; importing again replaces {driverName}'s phone trips over the same dates.</p>
+      <p class="help">Months of drives at once, each measured along the phone's GPS path. On the phone: Google Maps, your picture, Your Timeline, the ⋮ menu, Export Timeline data, which saves Timeline.json. (An older Google Takeout "Semantic Location History" month file works too.) Pick the file here; importing again replaces {driverName}'s phone trips over the same dates.</p>
       <label class="btn" style="width:max-content">{busy ? 'Importing…' : `Import Timeline for ${driverName}`}
         <input type="file" accept=".json,application/json" multiple disabled={busy} style="display:none" onChange={(e) => void upload((e.target as HTMLInputElement).files)} />
       </label>
