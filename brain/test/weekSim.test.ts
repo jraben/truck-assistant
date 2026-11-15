@@ -112,5 +112,29 @@ describe('stored phone trips', () => {
     expect(yearsToMultiple(0.8, 3)).toBe(0);
     expect(compareCars(sim, [{ vehicle: { label: 'X', mpgCity: 10, mpgHighway: 20, mpgCombined: 13, fuel: 'premium' }, gasPrice: null }])[0].saved).toBeNull();
   });
+  it('counts time at fast chargers, plugging in at home, and at the pump', async () => {
+    const { simulateWeek, simulateStored, compareCars, FAST_AVG_KW, FAST_STOP_MIN, GAS_FILL_MIN, tankEstimate } = await import('../src/weekSim.ts');
+    const base = new Date(2026, 10, 9, 8).getTime();
+    const r = simulateWeek(drive(base, 160), [day(9)], { ...P, dcPerKwh: 0.5 }, 't');
+    const d = r.days[0];
+    expect(d.fastStops).toBeGreaterThan(0);
+    // Each stop: 10% -> 80% of a 50 kWh pack at FAST_AVG_KW, plus the stop overhead.
+    expect(d.fastMinutes).toBeGreaterThanOrEqual(Math.floor(d.fastStops * ((0.7 * 50 / FAST_AVG_KW) * 60 + FAST_STOP_MIN)) - 1);
+    expect(d.homeMinutes).toBe(1);
+    expect(r.totals.chargeMinutes).toBe(d.fastMinutes + 1);
+    expect(d.homeChargeHours).toBeCloseTo(d.chargeKwh * 0.9 / 7.5, 1);
+    const t0 = new Date(2026, 10, 9, 9).getTime();
+    const sim = simulateStored([{ startedAt: t0, endedAt: t0 + 3_600_000, miles: 30, straight: false }], [[new Date(2026, 10, 9), new Date(2026, 10, 10)]], P, 'J');
+    const [c, e] = compareCars(sim, [
+      { vehicle: { label: 'T', mpgCity: 10, mpgHighway: 20, mpgCombined: 12, fuel: 'regular', tankGal: 20 }, gasPrice: 4 },
+      { vehicle: { label: 'E', mpgCity: 10, mpgHighway: 20, mpgCombined: 19, fuel: 'regular' }, gasPrice: 4 },
+    ]);
+    expect(c.fills).toBeCloseTo(3 / 15, 1);           // 3 gal of a 20 gal tank filled at 1/4
+    expect(c.fillMinutes).toBe(Math.round((3 / 15) * GAS_FILL_MIN));
+    expect(c.chargeMinutes).toBe(1);                   // just plugging in at home
+    expect(e.tankEstimated).toBe(true);
+    expect(e.tankGal).toBe(tankEstimate(19));
+    expect(tankEstimate(13)).toBeCloseTo(29.2, 1);
+  });
 });
 

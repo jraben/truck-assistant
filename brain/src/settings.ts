@@ -311,7 +311,8 @@ export function validateVehicle(v: unknown, where = 'compareVehicle'): CompareVe
   const label = typeof v.label === 'string' && v.label.trim() ? v.label.trim().slice(0, 80) : 'Custom';
   const mpgCity = num(v.mpgCity, `${where}.mpgCity`, 1, 200), mpgHighway = num(v.mpgHighway, `${where}.mpgHighway`, 1, 200), mpgCombined = num(v.mpgCombined, `${where}.mpgCombined`, 1, 200);
   if (!['regular', 'midgrade', 'premium', 'diesel'].includes(v.fuel as string)) throw new SettingsError(`${where}.fuel must be regular, midgrade, premium or diesel`);
-  return { id: id as number | null, label, mpgCity, mpgHighway, mpgCombined, fuel: v.fuel as CompareVehicle['fuel'] };
+  const tankGal = v.tankGal === undefined || v.tankGal === null || v.tankGal === '' ? null : num(v.tankGal, `${where}.tankGal`, 3, 100);
+  return { id: id as number | null, label, mpgCity, mpgHighway, mpgCombined, fuel: v.fuel as CompareVehicle['fuel'], ...(tankGal === null ? {} : { tankGal }) };
 }
 
 const YMD = /^(\d{4})-(\d{2})-(\d{2})$/;

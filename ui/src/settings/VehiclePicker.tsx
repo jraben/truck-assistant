@@ -16,7 +16,7 @@ async function menu(path: string): Promise<Item[]> {
 }
 
 export function vehicleLine(v: CompareVehicle) {
-  return `${v.label} · ${v.mpgCity} city / ${v.mpgHighway} hwy / ${v.mpgCombined} combined mpg · ${v.fuel}`;
+  return `${v.label} · ${v.mpgCity} city / ${v.mpgHighway} hwy / ${v.mpgCombined} combined mpg · ${v.fuel}${v.tankGal ? ` · ${v.tankGal} gal tank` : ''}`;
 }
 
 export function VehiclePicker({ value, onChange }: { value: CompareVehicle; onChange: (v: CompareVehicle) => void }) {
@@ -64,6 +64,7 @@ export function VehiclePicker({ value, onChange }: { value: CompareVehicle; onCh
           <label class="f"><span>Fuel</span><select value={value.fuel} onChange={(e) => onChange({ ...value, id: null, fuel: (e.target as HTMLSelectElement).value as CompareVehicle['fuel'] })}>{FUELS.map((f) => <option value={f}>{f}</option>)}</select></label>
         </div>
       )}
+      <label class="f" style="max-width:200px"><span>Fuel tank, gallons</span><input type="number" step="0.1" min="3" placeholder="estimate from mpg" value={value.tankGal ?? ''} onInput={(e) => { const n = Number((e.target as HTMLInputElement).value); onChange({ ...value, tankGal: n > 0 ? n : null }); }} /></label>
       {busy && <span class="dimtxt" style="font-size:var(--fs-caption)">Asking fueleconomy.gov…</span>}
       {err && <span class="err">{err}</span>}
       <p class="help">Vehicle data: fueleconomy.gov (US DOE/EPA). City mpg is used for city miles and highway mpg for highway miles once trips record that split; until then, combined.</p>

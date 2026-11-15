@@ -242,7 +242,7 @@ export type Driver = {
 };
 
 export type FuelGrade = 'regular' | 'midgrade' | 'premium' | 'diesel';
-export type CompareVehicle = { id: number | null; label: string; mpgCity: number; mpgHighway: number; mpgCombined: number; fuel: FuelGrade };
+export type CompareVehicle = { id: number | null; label: string; mpgCity: number; mpgHighway: number; mpgCombined: number; fuel: FuelGrade; /** Fuel tank, gallons (for fill-ups); unset = estimated from mpg. */ tankGal?: number | null };
 
 export type Charger = {
   id: string; source: 'afdc' | 'ocm' | 'google';
