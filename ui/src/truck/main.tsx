@@ -4,6 +4,7 @@ import '../styles.css';
 import '../cams.css';
 import { TruckApp } from './TruckApp.tsx';
 import { App } from '../components/App.tsx';
+import { AskHost } from '../components/Ask.tsx';
 import { connect, pollSettings } from '../lib/brain.ts';
 import { PROJECT } from '../../../brain/src/project.ts';
 
@@ -11,7 +12,7 @@ document.title = `${PROJECT.name} · Truck`;
 const framed = (() => { try { return window.self !== window.top; } catch { return true; } })();
 if (framed) {
   // Inside a Home Assistant panel or WOPR: just the truck, as before.
-  render(<TruckApp />, document.getElementById('app')!);
+  render(<><TruckApp /><AskHost /></>, document.getElementById('app')!);
 } else {
   // Opened on its own: inside the cockpit, like every other page.
   connect();

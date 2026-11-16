@@ -10,6 +10,7 @@ import { countTiles, type Bbox } from '../../../brain/src/maps/tiles.ts';
 import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import { addOfflineAreas, mapsInfo, osmLayer } from '../lib/basemap.ts';
 import { isLight } from '../lib/theme.ts';
+import { ask, askText } from '../components/Ask.tsx';
 
 type Area = MapsView['areas'][number];
 
@@ -90,7 +91,7 @@ export function MapsSection() {
     try { await api('/api/maps/areas', { method: 'POST', body: JSON.stringify({ maxZoom: zoom, ...body }) }); setName(''); await load(); toast('Download started'); } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
   const act = async (a: Area, what: 'update' | 'retry' | 'delete') => {
-    if (what === 'delete' && !confirm(`Delete the offline map "${a.name}"? Its ${size(a.bytes)} is freed; parts another area also covers are kept.`)) return;
+    if (what === 'delete' && !await ask(`Delete the offline map "${a.name}"? Its ${size(a.bytes)} is freed; parts another area also covers are kept.`)) return;
     try {
       if (what === 'delete') await api(`/api/maps/areas/${a.id}`, { method: 'DELETE' });
       else await api(`/api/maps/areas/${a.id}/download`, { method: 'POST', body: JSON.stringify({ fresh: what === 'update' }) });

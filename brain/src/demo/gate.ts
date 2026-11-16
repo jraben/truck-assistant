@@ -58,7 +58,8 @@ export function allowedHost(host: string | null | undefined): boolean {
 
 /** A command's base name, for the blocklist ("/usr/bin/ssh" -> "ssh"). Pure. */
 export function commandName(cmd: string): string {
-  return path.basename(String(cmd).trim().split(/\s+/)[0] ?? '').replace(/\.exe$/i, '').toLowerCase();
+  // Either kind of slash, whatever OS runs this: path.basename on Linux leaves C:\Windows\...\curl.exe whole.
+  return (String(cmd).trim().split(/\s+/)[0] ?? '').split(/[\\/]/).pop()!.replace(/\.exe$/i, '').toLowerCase();
 }
 
 export type FakeBackend = (url: URL, init: RequestInit | undefined) => Promise<Response | null>;

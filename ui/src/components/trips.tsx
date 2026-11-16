@@ -75,7 +75,8 @@ export function Trips({ s }: WP) {
     <DrivingLock what="list" summary={s?.trip ? <>This trip: <b class="num">{s.trip.miles.toFixed(1)} mi</b></> : null}>
     <div class="trips">
       <Card label="Trips" right={
-        <div class="row" style="gap:var(--s05)">
+        // Wraps instead of running off the card: WEEK used to be cut in half on the tablet.
+        <div class="row wrap" style="gap:var(--s05);justify-content:flex-end;min-width:0">
           {(['day', 'trips', 'places'] as const).map((t) => <button type="button" class={`tag ${tab === t ? 'accent' : 'dim'}`} onClick={() => setTab(t)}>{t.toUpperCase()}</button>)}
           {/* The mileage and maintenance logs (they had their own rail icon) */}
           <button type="button" class="tag dim" onClick={() => logsStore.set('mileage')}>MILEAGE</button>

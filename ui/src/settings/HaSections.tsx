@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, type GasSensor, type GasStatus, type ImportJob, type Place, type Settings } from '../lib/brain.ts';
 import { fmtDateTime } from '../lib/fmt.ts';
+import { ask, askText } from '../components/Ask.tsx';
 
 const NOT_CONNECTED = 'Connect Home Assistant on this page first (URL and token above, then Save).';
 
@@ -157,12 +158,12 @@ export function PlacesSection() {
   const load = () => api<Place[]>('/api/places').then(setPlaces).catch((e) => setErr(e.message));
   useEffect(() => { void load(); }, []);
   const rename = async (p: Place) => {
-    const name = prompt('Name', p.name);
+    const name = await askText('Name this place', p.name);
     if (!name?.trim()) return;
     try { await api(`/api/places/${p.id}`, { method: 'PUT', body: JSON.stringify({ name }) }); await load(); } catch (e) { setErr((e as Error).message); }
   };
   const remove = async (p: Place) => {
-    if (!confirm(`Forget "${p.name}"? Its stops go back to their other names.`)) return;
+    if (!await ask(`Forget "${p.name}"? Its stops go back to their other names.`)) return;
     try { await api(`/api/places/${p.id}`, { method: 'DELETE' }); await load(); } catch (e) { setErr((e as Error).message); }
   };
   return (

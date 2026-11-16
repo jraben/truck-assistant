@@ -7,6 +7,7 @@ import { refreshGoal, useGoal } from '../lib/data.ts';
 import { money } from '../lib/fmt.ts';
 import { Card } from './common.tsx';
 import type { WP } from './drive.tsx';
+import { ask, askText } from './Ask.tsx';
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const usd0 = (v: number) => v.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -90,7 +91,7 @@ function Adjustments({ list, onChange }: { list: GoalAdjustment[]; onChange: () 
     catch (x) { setErr((x as Error).message); }
   };
   const del = async (a: GoalAdjustment) => {
-    if (!confirm(`Remove "${a.label}" (${money(a.amount)})?`)) return;
+    if (!await ask(`Remove "${a.label}" (${money(a.amount)})?`)) return;
     try { await api(`/api/goal/adjustments/${a.id}`, { method: 'DELETE', headers: {} }); onChange(); } catch (x) { setErr((x as Error).message); }
   };
   return (
@@ -174,7 +175,7 @@ export function GoalSettings({ value, onSaved }: { value: PayoffGoal; onSaved: (
     finally { setBusy(false); }
   };
   const recalc = async () => {
-    if (!confirm('Recalculate every day, including closed months, with today\'s comparison vehicle, gas prices and settings? The old figures are replaced.')) return;
+    if (!await ask('Recalculate every day, including closed months, with today\'s comparison vehicle, gas prices and settings? The old figures are replaced.')) return;
     try { await api('/api/goal/recalc', { method: 'POST', body: JSON.stringify({ confirm: true }) }); toast('Ledger recalculated'); load(); }
     catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };

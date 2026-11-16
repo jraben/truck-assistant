@@ -7,6 +7,7 @@ import { truckOf, truckPhotoUrl } from '../drive/hooks.ts';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { errText, post, put, type SetupResp } from './api.ts';
 import './ops.css';
+import { ask, askText } from '../components/Ask.tsx';
 
 const TITLES: Record<string, string> = { password: 'Admin password', ap: "Truck Wi-Fi password", truck: 'Truck', home: 'Home', drivers: 'Drivers', ha: 'Home Assistant', hotspot: 'Phone hotspots', vehicle: 'Gas comparison' };
 
@@ -139,7 +140,7 @@ function DriversStep({ settings, next }: StepProps) {
       <p class="help">Who drives the truck. Each gets their own theme, layout and charging preferences (more in Settings, Drivers). A Guest profile always exists.</p>
       <div class="list">{named.map((d) => (
         <div class="item row" style="justify-content:space-between"><span><b>{d.name}</b> <span class="dimtxt">{d.tracker ?? 'no phone tracker'}</span></span>
-          <button class="btn sm danger" type="button" disabled={named.length <= 1} onClick={() => { if (confirm(`Remove ${d.name}?`)) void act(() => api(`/api/drivers/${d.id}`, { method: 'DELETE' })); }}>Remove</button></div>))}</div>
+          <button class="btn sm danger" type="button" disabled={named.length <= 1} onClick={async () => { if (await ask(`Remove ${d.name}?`)) void act(() => api(`/api/drivers/${d.id}`, { method: 'DELETE' })); }}>Remove</button></div>))}</div>
       <div class="row"><input type="text" placeholder="Add a driver" value={name} onInput={(e) => setName(val(e))} style="max-width:280px" /><button class="btn" type="button" disabled={!name.trim()} onClick={() => void act(async () => { await post('/api/drivers', { name: name.trim() }); setName(''); })}>Add</button></div>
       <div class="row"><button class="btn big primary" type="button" onClick={() => void next()}>These are the drivers</button><Err e={err} /></div>
     </div>

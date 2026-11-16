@@ -25,6 +25,7 @@ import { SetupOverlay } from '../ops/Wizard.tsx';
 import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
 import { VersionBar } from './VersionBar.tsx';
+import { AskHost } from './Ask.tsx';
 import { PickupBanner, PickupPill } from './PickupBanner.tsx';
 import { askPassengerThen, PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
@@ -237,6 +238,7 @@ export function App({ page }: { page?: AppPage } = {}) {
       <SetupOverlay />
       {simAvailable && <TestPanel open={simOpen} onClose={() => setSimOpen(false)} go={go} />}
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
+      <AskHost />
     </div>
   );
 }

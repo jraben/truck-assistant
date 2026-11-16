@@ -7,6 +7,7 @@ import type { Layout } from '../../../brain/src/types.ts';
 import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import type { WP } from '../components/drive.tsx';
 import './home.css';
+import { ask, askText } from '../components/Ask.tsx';
 
 type Tile = { entity: string; domain: string; name: string; state: string; unit: string | null; deviceClass: string | null; actions: string[]; brightness: number | null; detail?: string };
 type GarageConfig = { cover: string | null; light: string | null; obstruction: string | null; ask: boolean; nearM: number };
@@ -263,7 +264,7 @@ function TileBtn({ t, onDone, edit, onRemove }: { t: Tile; onDone: () => void; e
     if (t.domain === 'cover') action = t.state === 'open' || t.state === 'opening' ? 'close' : 'open';
     if (t.domain === 'lock') {
       action = t.state === 'locked' ? 'unlock' : 'lock';
-      if (action === 'unlock' && !confirm(`Unlock ${t.name}?`)) return;
+      if (action === 'unlock' && !await ask(`Unlock ${t.name}?`)) return;
     }
     setBusy(true);
     try { await act(t.entity, action); setTimeout(onDone, 700); } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
@@ -354,7 +355,7 @@ export function HaPanelW() {
           </div>
           <div class="row wrap" style="justify-content:flex-end">
             {!cur && <button class="btn" type="button" onClick={() => void save({ ...c, pages: [...c.pages, { title: 'Home', dashboard: null, entities: [] }] })}>+ Empty page</button>}
-            {cur && <button class="btn danger" type="button" onClick={() => { if (!confirm(`Remove the ${cur.title} page?`)) return; void save({ ...c, pages: c.pages.filter((_, i) => i !== pageIdx) }); setPage(0); }}>Remove {cur.title} page</button>}
+            {cur && <button class="btn danger" type="button" onClick={async () => { if (!await ask(`Remove the ${cur.title} page?`)) return; void save({ ...c, pages: c.pages.filter((_, i) => i !== pageIdx) }); setPage(0); }}>Remove {cur.title} page</button>}
           </div>
         </div>
       )}

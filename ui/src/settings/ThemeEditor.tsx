@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { putDriver, toast, type Driver } from '../lib/brain.ts';
 import { allThemes, checkContrast, COLOR_KEYS, FONTS, MIN_CONTRAST, PRESETS, themeVars, type ColorKey, type Theme } from '../lib/theme.ts';
 import { Ring } from '../components/drive.tsx';
+import { ask, askText } from '../components/Ask.tsx';
 
 const LABELS: Record<ColorKey, string> = {
   bg: 'Background', panel: 'Panel', panel2: 'Panel 2', line: 'Lines', fg: 'Text', dim: 'Dim text',
@@ -51,7 +52,7 @@ export function ThemeEditor({ driver }: { driver: Driver }) {
     } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };
   const remove = async () => {
-    if (!confirm(`Delete the theme "${draft.name}"?`)) return;
+    if (!await ask(`Delete the theme "${draft.name}"?`)) return;
     // Anything that pointed at the deleted theme falls back to the matching preset.
     const or = (id: string, fb: string) => (id === draft.id ? fb : id);
     try {

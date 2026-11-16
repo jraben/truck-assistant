@@ -4,6 +4,7 @@ import { ago, deleteSession, saveSession, useChargers, useCharges, useGas } from
 import { fmtDateTime, fromLocalInput, money, toLocalInput } from '../lib/fmt.ts';
 import { Card, Modal, V } from './common.tsx';
 import type { WP } from './drive.tsx';
+import { ask, askText } from './Ask.tsx';
 
 const monthKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 const lastMonths = (n: number) => {
@@ -146,7 +147,7 @@ export function ChargeForm({ session, onDone, prefill }: { session: ChargeSessio
   };
 
   const remove = async () => {
-    if (!session || !confirm('Delete this charge session?')) return;
+    if (!session || !await ask('Delete this charge session?')) return;
     try { await deleteSession(session.id); toast('Deleted'); onDone(); } catch (x) { setErr((x as Error).message); }
   };
 
