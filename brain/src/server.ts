@@ -27,7 +27,7 @@ import { HaPanel } from './ha/panel.ts';
 import type { TimelineItem } from './types.ts';
 import { registerDriveRoutes } from './drive/routes.ts';
 import { RoutingError } from './roadtrip/routing.ts';
-import { busiestWeek, compareCars, roadMiles, simulateStored, simulateWeek, topDays, type GasCar, type StoredDrive, type WeekSim } from './weekSim.ts';
+import { DEFAULT_DC_PER_KWH, busiestWeek, compareCars, roadMiles, simulateStored, simulateWeek, topDays, type GasCar, type StoredDrive, type WeekSim } from './weekSim.ts';
 import type { Trip } from './types.ts';
 import type { CompareVehicle } from './types.ts';
 import { kvGet, kvSet } from './db.ts';
@@ -153,11 +153,13 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const paid = brain.charges.store.list(null, null, null).filter((c) => c.place === 'public' && c.cost !== null && c.kwh !== null && c.kwh > 0 && !c.simulated);
     const dcAvg = paid.length ? paid.reduce((s, c) => s + c.cost!, 0) / paid.reduce((s, c) => s + c.kwh!, 0) : null;
     const dcq = Number(q.dcPerKwh);
-    const dcPerKwh = Number.isFinite(dcq) && dcq > 0 && dcq < 5 ? dcq : dcAvg === null ? null : Math.round(dcAvg * 1000) / 1000;
+    const asked = Number.isFinite(dcq) && dcq > 0 && dcq < 5;
+    const dcPerKwh = asked ? dcq : dcAvg === null ? DEFAULT_DC_PER_KWH : Math.round(dcAvg * 1000) / 1000;
+    const dcEstimated = !asked && dcAvg === null;
     return {
       packKwh: st.packKwh, eff: { city: brain.drive.range.eff('city'), highway: brain.drive.range.eff('highway') }, highwayMph: st.drive.highwayMph,
       startSoc: pct(q.startSoc, 80), chargeTo: pct(q.chargeTo, 80), homeRate: st.homeRate, compare: v,
-      gasPrice: g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null), dcPerKwh,
+      gasPrice: g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null), dcPerKwh, dcEstimated,
     };
   };
   // The gas cars a simulated week is compared against: the driver's compare vehicle, then
@@ -179,7 +181,10 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
       if (regular === null) return { gasPrice: null, priceEstimated: false };
       return { gasPrice: Math.round((regular + (SPREAD[fuel] ?? 0)) * 100) / 100, priceEstimated: fuel !== 'regular' };
     };
-    const cars: GasCar[] = [brain.compareVehicle(driverId), ...weekVehicles()].map((v) => ({ vehicle: v, ...priced(v.fuel) }));
+    // The driver's own compare vehicle first; a saved one that is the same car isn't listed twice.
+    const main = brain.compareVehicle(driverId);
+    const same = (a: CompareVehicle, b: CompareVehicle) => (a.id !== null && a.id === b.id) || (a.label === b.label && a.mpgCity === b.mpgCity && a.mpgHighway === b.mpgHighway);
+    const cars: GasCar[] = [main, ...weekVehicles().filter((v) => !same(v, main))].map((v) => ({ vehicle: v, ...priced(v.fuel) }));
     return { ...sim, compare: compareCars(sim, cars) };
   };
   const weekVehicles = () => kvGet<CompareVehicle[]>(brain.db, 'weekSim.vehicles') ?? [];
