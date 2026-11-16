@@ -291,7 +291,10 @@ export function SettingsApp({ embedded = false }: { embedded?: boolean } = {}) {
       </div>
 
       <nav class="settings-tabs" aria-label="Settings sections">
-        {TABS.map((t) => <a href={`#${t.id}`} aria-current={tab === t.id ? 'page' : undefined}>{t.label}</a>)}
+        {/* Tabs swap in place (replaceState): they used to add a history entry each, so Back
+            walked through tabs and Settings felt like a trap. Back now leaves Settings. */}
+        {TABS.map((t) => <a href={`#${t.id}`} aria-current={tab === t.id ? 'page' : undefined}
+          onClick={(e) => { e.preventDefault(); history.replaceState(null, '', `#${t.id}`); setTab(t.id); scrollTop(); }}>{t.label}</a>)}
       </nav>
 
       <div data-tab="charging" hidden={tab !== 'charging'}>
