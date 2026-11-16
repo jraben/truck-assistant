@@ -683,3 +683,11 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
   background: transparent; color: inherit; font-size: 24px; line-height: 1; cursor: pointer; }
 .pickupbanner > .bn-x:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 .pickup-pill { flex: none; }
+
+/* Pages off the cockpit (Settings, Truck) share one way between them (components/PageNav.tsx). */
+.page-nav { display: flex; flex-wrap: wrap; gap: var(--s05); }
+.page-nav a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--s15); border-radius: 999px; border: 1px solid var(--hairline); background: var(--panel); color: var(--fg); text-decoration: none; font-weight: 600; font-size: var(--fs-body-sm); }
+.page-nav a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.truck .head h1 { flex: 1 1 auto; }
+.truck .head .versionbar.inline { flex-basis: 100%; }
+.truck .nowrap { white-space: nowrap; }

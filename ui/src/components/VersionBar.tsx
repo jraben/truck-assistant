@@ -38,12 +38,15 @@ export function wifiAdvice(link: string | undefined, big: boolean): { text: stri
 }
 
 /** `inline`: placed in a page (the Settings header) instead of floating at the foot of the cockpit. */
-export function VersionBar({ inline = false }: { inline?: boolean } = {}) {
+export function VersionBar({ inline = false, quiet = false }: { inline?: boolean; quiet?: boolean } = {}) {
   const s = useStore(stateStore);
   const [u, setU] = useState<UpdateStatus | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    const load = () => void api<UpdateStatus>('/api/update').then(setU, () => {});
+    // /api/update needs the login; the version alone is public, so pages opened without it
+    // (the Truck page in a Home Assistant panel) still show which version is running.
+    const load = () => void api<UpdateStatus>('/api/update').then(setU, () =>
+      api<UpdateStatus['installed']>('/api/update/version').then((installed) => setU({ phase: 'idle', installed, latest: null } as unknown as UpdateStatus), () => {}));
     load();
     const t = setInterval(load, 10 * 60_000);
     return () => clearInterval(t);
@@ -56,7 +59,7 @@ export function VersionBar({ inline = false }: { inline?: boolean } = {}) {
     <>
       <div class={`versionbar${inline ? ' inline' : ''}`} role="status" aria-label="Software version">
         <span>{versionLabel(u)}{updated ? ` · updated ${updated}` : ''}</span>
-        {(available || busy) && (
+        {!quiet && (available || busy) && (
           <button type="button" class={`vb-chip ${busy ? 'busy' : ''}`} onClick={() => setOpen(true)}>{busy ? `Updating: ${u.message ?? u.phase}` : 'Update available'}</button>
         )}
       </div>

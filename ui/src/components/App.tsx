@@ -208,7 +208,7 @@ export function App() {
       {healthOpen && <HealthPanel s={s} connected={link.connected} onClose={() => setHealthOpen(false)} onNetwork={() => { setHealthOpen(false); setNetOpen(true); }} />}
       {netOpen && <NetPanel s={s} onClose={() => setNetOpen(false)} />}
       {picker && driver && <ThemePicker driver={driver} shown={shown.current!} onClose={() => setPicker(false)} />}
-      {!s?.drive?.lockout.bigTargets && <VersionBar />}
+      <VersionBar quiet={!!s?.drive?.lockout.bigTargets} />
       <div class="banners">
         {/* Most urgent first: only the first is shown in full, the rest as one line each (styles.css .banners). */}
         <TireBanner s={s} go={go} />
