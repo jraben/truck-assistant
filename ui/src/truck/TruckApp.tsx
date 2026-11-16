@@ -34,7 +34,8 @@ function MapBox({ pos }: { pos: TruckSnapshot['position'] }) {
   );
 }
 
-export function TruckApp() {
+/** `embedded`: shown inside the cockpit (truck/main.tsx), which paints the theme and has the title, rail and version line. */
+export function TruckApp({ embedded = false }: { embedded?: boolean } = {}) {
   const [snap, setSnap] = useState<TruckSnapshot | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useState(false);
@@ -44,7 +45,7 @@ export function TruckApp() {
   const [photo, setPhoto] = useState<string | null>('/api/vehicle/photo');
   const load = () => rapi<TruckSnapshot>('/api/truck').then((s) => { setSnap(s); setErr(null); }).catch((e) => setErr((e as Error).message));
   useEffect(() => { void load(); const id = setInterval(load, 5000); return () => clearInterval(id); }, []);
-  useEffect(() => { paintTheme(pickTheme(undefined, snap?.position ?? null)); }, [snap?.position?.lat]);
+  useEffect(() => { if (!embedded) paintTheme(pickTheme(undefined, snap?.position ?? null)); }, [snap?.position?.lat]);
   useViewerHeartbeat(view);
 
   const relay = async (id: string, on: boolean) => {
@@ -55,7 +56,7 @@ export function TruckApp() {
   };
   const doWake = async () => { setBusy('wake'); try { await wake(); setView(true); void load(); } catch (e) { setErr((e as Error).message); } finally { setBusy(null); } };
 
-  const top = (
+  const top = embedded ? null : (
     <div class="head">
       <h1>{PROJECT.shortName} · <span class="nowrap">TRUCK</span></h1>
       <PageNav current="/truck" />

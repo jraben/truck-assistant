@@ -92,8 +92,12 @@ function Section({ id, title, help, keywords, children }: { id?: string; title: 
 /** Scroll a section to just under the sticky tab row (scrollIntoView would tuck its title under it). */
 function scrollToSection(el: Element) {
   const bar = document.querySelector<HTMLElement>('.settings-tabs');
+  // Inside the cockpit the page scrolls in the stage, not the window.
+  const box = el.closest<HTMLElement>('.page-stage');
+  if (box) { box.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - (bar?.offsetHeight ?? 0) - 12) }); return; }
   window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - (bar?.offsetHeight ?? 0) - 12) });
 }
+const scrollTop = () => { const box = document.querySelector<HTMLElement>('.page-stage'); if (box) box.scrollTo({ top: 0 }); else window.scrollTo({ top: 0 }); };
 /** The fold key of the section holding element `id` (a section, or something inside one). */
 const sectionKeyFor = (id: string) => (document.getElementById(id)?.closest<HTMLElement>('[data-tab] section.card')?.dataset.key) ?? id;
 
@@ -110,7 +114,8 @@ function SecretField({ label, set, value, placeholder, onInput, onClear }: { lab
 
 const KEY_LABELS = { afdc: 'NREL / NLR AFDC key', openChargeMap: 'Open Charge Map key', googlePlaces: 'Google Places key (live stalls, optional)' } as const;
 
-export function SettingsApp() {
+/** `embedded`: shown inside the cockpit (settings/main.tsx), whose top bar, rail and version line replace this page's own. */
+export function SettingsApp({ embedded = false }: { embedded?: boolean } = {}) {
   const settings = useStore(settingsStore);
   const state = useStore(stateStore);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -160,7 +165,7 @@ export function SettingsApp() {
       setTab(t);
       const id = location.hash.slice(1);
       if (id && !TABS.some((x) => x.id === id)) { setOpen((o) => new Set(o).add(sectionKeyFor(id))); setScrollTarget(id); }
-      else window.scrollTo({ top: 0 });
+      else scrollTop();
     };
     window.addEventListener('hashchange', go);
     return () => window.removeEventListener('hashchange', go);
@@ -260,15 +265,15 @@ export function SettingsApp() {
   return (
     <div class="portal-wrap portal">
       <div class="portal-head">
-        <h1>{PROJECT.shortName} · <span class="nowrap">SETTINGS</span></h1>
-        <PageNav current="/settings" />
+        {!embedded && <h1>{PROJECT.shortName} · <span class="nowrap">SETTINGS</span></h1>}
+        {!embedded && <PageNav current="/settings" />}
         <div class="portal-chips" role="status">
           <span class="pill" title={health ? `Brain v${health.version}, up ${Math.round(health.uptimeS / 60)} min` : 'The brain did not answer /api/health'}><span class={`dot ${health ? 'ok' : 'bad'}`} />{health ? `brain v${health.version}` : 'brain unreachable'}</span>
           {chips.map((c) => c.href
             ? <a class="pill" href={c.href} title={`${c.raw} (open its settings)`}><span class={`dot ${c.level}`} />{c.text}</a>
             : <span class="pill" title={c.raw}><span class={`dot ${c.level}`} />{c.text}</span>)}
         </div>
-        <VersionBar inline />
+        {!embedded && <VersionBar inline />}
       </div>
 
       <div class="set-search" role="search">
