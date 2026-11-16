@@ -7,6 +7,7 @@ import { ChargeForm, CostSessions, CostSummary } from '../components/costs.tsx';
 import { GoalSettings } from '../components/goal.tsx';
 import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
+import { VersionBar } from '../components/VersionBar.tsx';
 import { CompareVehicles } from './CompareVehicles.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
@@ -266,6 +267,7 @@ export function SettingsApp() {
             ? <a class="pill" href={c.href} title={`${c.raw} (open its settings)`}><span class={`dot ${c.level}`} />{c.text}</a>
             : <span class="pill" title={c.raw}><span class={`dot ${c.level}`} />{c.text}</span>)}
         </div>
+        <VersionBar inline />
       </div>
 
       <div class="set-search" role="search">
