@@ -15,6 +15,32 @@ async function menu(path: string): Promise<Item[]> {
   return r;
 }
 
+/**
+ * A number box that lets you type freely ("19.", "", "17.5") and only reports a
+ * number once the text is one. Writing the parsed number back on every key
+ * turned "19." into "19" and threw the cursor to the start ("19.1" -> "119").
+ */
+export function NumField({ label, value, onChange, min = 0, step = '0.1', placeholder, id }: { label: string; value: number | null | undefined; onChange: (v: number | null) => void; min?: number; step?: string; placeholder?: string; id?: string }) {
+  const shown = value === null || value === undefined ? '' : String(value);
+  const [text, setText] = useState(shown);
+  const [editing, setEditing] = useState(false);
+  useEffect(() => { if (!editing) setText(shown); }, [shown, editing]);
+  const parse = (t: string) => { const n = Number(t); return t.trim() !== '' && Number.isFinite(n) && n >= min ? n : null; };
+  return (
+    <label class="f"><span>{label}</span>
+      <input id={id} type="text" inputMode="decimal" autoComplete="off" value={text} placeholder={placeholder} data-step={step}
+        onFocus={() => setEditing(true)}
+        onBlur={() => { setEditing(false); setText(shown); }}
+        onInput={(e) => {
+          const t = (e.target as HTMLInputElement).value.replace(',', '.');
+          setText(t);
+          if (t.trim() === '') onChange(null);
+          else { const n = parse(t); if (n !== null) onChange(n); }
+        }} />
+    </label>
+  );
+}
+
 export function vehicleLine(v: CompareVehicle) {
   return `${v.label} · ${v.mpgCity} city / ${v.mpgHighway} hwy / ${v.mpgCombined} combined mpg · ${v.fuel}${v.tankGal ? ` · ${v.tankGal} gal tank` : ''}`;
 }
@@ -39,7 +65,6 @@ export function VehiclePicker({ value, onChange }: { value: CompareVehicle; onCh
     if (model) void guard(async () => setOpts(await menu(`options?year=${encodeURIComponent(sel.year)}&make=${encodeURIComponent(sel.make)}&model=${encodeURIComponent(model)}`)));
   };
   const pickOption = (id: string) => { if (id) void guard(async () => onChange(await api<CompareVehicle>(`/api/vehicles/${id}`))); };
-  const num = (v: string) => Math.max(1, Number(v) || 1);
 
   return (
     <div class="form" style="gap:var(--s1)">
@@ -58,13 +83,13 @@ export function VehiclePicker({ value, onChange }: { value: CompareVehicle; onCh
       ) : (
         <div class="fields">
           <label class="f"><span>Label</span><input type="text" value={value.id === null ? value.label : 'Custom'} onInput={(e) => onChange({ ...value, id: null, label: (e.target as HTMLInputElement).value || 'Custom' })} /></label>
-          <label class="f"><span>City mpg</span><input type="number" step="0.5" value={value.mpgCity} onInput={(e) => onChange({ ...value, id: null, mpgCity: num((e.target as HTMLInputElement).value) })} /></label>
-          <label class="f"><span>Highway mpg</span><input type="number" step="0.5" value={value.mpgHighway} onInput={(e) => onChange({ ...value, id: null, mpgHighway: num((e.target as HTMLInputElement).value) })} /></label>
-          <label class="f"><span>Combined mpg</span><input type="number" step="0.5" value={value.mpgCombined} onInput={(e) => onChange({ ...value, id: null, mpgCombined: num((e.target as HTMLInputElement).value) })} /></label>
+          <NumField label="City mpg" min={1} value={value.mpgCity} onChange={(n) => { if (n !== null) onChange({ ...value, id: null, mpgCity: n }); }} />
+          <NumField label="Highway mpg" min={1} value={value.mpgHighway} onChange={(n) => { if (n !== null) onChange({ ...value, id: null, mpgHighway: n }); }} />
+          <NumField label="Combined mpg" min={1} value={value.mpgCombined} onChange={(n) => { if (n !== null) onChange({ ...value, id: null, mpgCombined: n }); }} />
           <label class="f"><span>Fuel</span><select value={value.fuel} onChange={(e) => onChange({ ...value, id: null, fuel: (e.target as HTMLSelectElement).value as CompareVehicle['fuel'] })}>{FUELS.map((f) => <option value={f}>{f}</option>)}</select></label>
         </div>
       )}
-      <label class="f" style="max-width:200px"><span>Fuel tank, gallons</span><input type="number" step="0.1" min="3" placeholder="estimate from mpg" value={value.tankGal ?? ''} onInput={(e) => { const n = Number((e.target as HTMLInputElement).value); onChange({ ...value, tankGal: n > 0 ? n : null }); }} /></label>
+      <div style="max-width:200px"><NumField label="Fuel tank, gallons" min={0.1} placeholder="estimate from mpg" value={value.tankGal ?? null} onChange={(n) => onChange({ ...value, tankGal: n })} /></div>
       {busy && <span class="dimtxt" style="font-size:var(--fs-caption)">Asking fueleconomy.gov…</span>}
       {err && <span class="err">{err}</span>}
       <p class="help">Vehicle data: fueleconomy.gov (US DOE/EPA). City mpg is used for city miles and highway mpg for highway miles once trips record that split; until then, combined.</p>

@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { CarCompare, WeekSim as BaseSim } from '../../../brain/src/weekSim.ts';
 import { api, settingsStore, useStore, type CompareVehicle } from '../lib/brain.ts';
-import { VehiclePicker, vehicleLine } from '../settings/VehiclePicker.tsx';
+import { CompareVehicles } from '../settings/CompareVehicles.tsx';
 import { Modal } from './common.tsx';
 
 type Sim = BaseSim & { compare?: CarCompare[] };
@@ -150,14 +150,6 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
 
 /** The week against each gas car: cost, savings highway vs town, and where gas would win. */
 function CarTable({ cars, onVehicles }: { cars: CarCompare[]; onVehicles: () => void }) {
-  const [list, setList] = useState<CompareVehicle[] | null>(null);
-  const [adding, setAdding] = useState<CompareVehicle | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { void api<CompareVehicle[]>('/api/trips/week-vehicles').then(setList).catch(() => setList([])); }, []);
-  const save = async (next: CompareVehicle[]) => {
-    setErr(null);
-    try { setList(await api<CompareVehicle[]>('/api/trips/week-vehicles', { method: 'PUT', body: JSON.stringify(next) })); setAdding(null); onVehicles(); } catch (e) { setErr((e as Error).message); }
-  };
   const th = (h: string) => <th style={cell} class="lbl">{h}</th>;
   const slate = cars[0];
   return (
@@ -186,21 +178,8 @@ function CarTable({ cars, onVehicles }: { cars: CarCompare[]; onVehicles: () => 
         </table>
       </div>
       <p class="help" style="margin:0">"Gas wins below": the gas price at which that car would have cost the same as the Slate this week. "Power could rise": how many times over electricity (home and fast charging) could cost before that car is cheaper, and how many years that takes at {ELEC_RISES.map((r) => `${r.pct}%/yr (${r.label})`).join(', ')}, gas held still. Highway and town split the Slate's cost by energy. Fuelling time: fast charging at about 63 kW (Slate: 20-80% in ~30 min) plus 5 min a stop, 1 min a night to plug in at home (the hours charging overnight are shown apart: they aren't your time); gas at 8 min a fill-up, filling at a quarter tank (tank estimated from mpg unless set).</p>
-      <div class="row wrap" style="gap:var(--s1);align-items:center">
-        <span class="lbl">Also compare with:</span>
-        {(list ?? []).map((v, i) => <span class="chip">{v.label} <button type="button" class="btn sm" aria-label={`Remove ${v.label}`} onClick={() => void save((list ?? []).filter((_, j) => j !== i))}>×</button></span>)}
-        {!adding && <button type="button" class="btn sm" onClick={() => setAdding({ id: null, label: 'Custom', mpgCity: 20, mpgHighway: 28, mpgCombined: 23, fuel: 'regular' })}>Add a vehicle</button>}
-      </div>
-      {adding && (
-        <div style="display:grid;gap:var(--s1)">
-          <VehiclePicker value={adding} onChange={setAdding} />
-          <div class="row" style="gap:var(--s1)">
-            <button type="button" class="btn primary sm" onClick={() => void save([...(list ?? []), adding])}>Add {vehicleLine(adding).split(' · ')[0]}</button>
-            <button type="button" class="btn sm" onClick={() => setAdding(null)}>Cancel</button>
-          </div>
-        </div>
-      )}
-      {err && <div class="err">{err}</div>}
+      <h4 style="margin:0">Also compare with</h4>
+      <CompareVehicles onChanged={onVehicles} />
     </div>
   );
 }
