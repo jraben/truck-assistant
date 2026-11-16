@@ -9,6 +9,7 @@ import { MaintenanceView } from './Maintenance.tsx';
 import { MileageSettings, MileageView } from './Mileage.tsx';
 import { SetupWizard } from './Wizard.tsx';
 import './ops.css';
+import { ask, askText } from '../components/Ask.tsx';
 
 function Section({ id, title, help, keywords, children }: { id?: string; title: string; help?: string; keywords?: string; children: ComponentChildren }) {
   return <section class="card" id={id} data-keywords={keywords}><h2>{title}</h2>{help && <p class="help">{help}</p>}{children}</section>;
@@ -38,7 +39,7 @@ export function UpdatesSection() {
       <div class="row wrap">
         <button class="btn sm" type="button" disabled={repo === (s.repo ?? '')} onClick={() => void act(() => put('/api/update/config', { repo: repo || null }))}>Save repository</button>
         <button class="btn" type="button" disabled={!s.repo || BUSY.includes(s.phase)} onClick={() => void act(() => post('/api/update/check'))}>Check for updates</button>
-        <button class="btn danger" type="button" disabled={!s.canRollback} onClick={() => { if (confirm('Go back to the previous version?')) void act(() => post('/api/update/rollback')); }}>Roll back</button>
+        <button class="btn danger" type="button" disabled={!s.canRollback} onClick={async () => { if (await ask('Go back to the previous version?')) void act(() => post('/api/update/rollback')); }}>Roll back</button>
       </div>
       <label class="check"><input type="checkbox" checked={s.auto.enabled} disabled={!s.repo} onChange={(e) => void act(() => put('/api/update/config', { auto: { enabled: (e.target as HTMLInputElement).checked } }))} /> Install updates automatically</label>
       {s.auto.enabled && (
@@ -60,7 +61,7 @@ export function UpdatesSection() {
       {s.releases.slice(0, 5).map((r, i) => (
         <div class="item">
           <div class="row between wrap"><b>{r.name}{i === 0 ? ' · latest' : ''}</b><span class="dimtxt">{r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : ''}</span>
-            <button class="btn sm primary" type="button" disabled={!s.canInstall} onClick={() => { if (confirm(`Install ${r.tag}? The cockpit restarts (about a minute; longer if it has to build).`)) void act(() => post('/api/update/install', { tag: r.tag })); }}>Install</button></div>
+            <button class="btn sm primary" type="button" disabled={!s.canInstall} onClick={async () => { if (await ask(`Install ${r.tag}? The cockpit restarts (about a minute; longer if it has to build).`)) void act(() => post('/api/update/install', { tag: r.tag })); }}>Install</button></div>
           {r.notes && <pre class="notes">{r.notes}</pre>}
         </div>
       ))}
@@ -85,7 +86,7 @@ export function BackupsSection() {
   const t = draft.target;
   const setT = (n: BackupTarget) => setDraft({ ...draft, target: n });
   const go = async (f: () => Promise<unknown>, ok: string) => { setBusy(true); setMsg(null); try { await f(); setMsg({ ok: true, text: ok }); await load(); } catch (e) { setMsg({ ok: false, text: errText(e) }); } finally { setBusy(false); } };
-  const restore = (name: string, from: 'local' | 'target') => { if (confirm(`Restore ${name}? Today's trips, logs and settings are replaced by the backup's (the current data is kept aside on the truck). The brain restarts.`)) void go(async () => { const r = await post<{ message: string }>('/api/backup/restore', { name, from }); toast(r.message); }, 'Restore staged.'); };
+  const restore = async (name: string, from: 'local' | 'target') => { if (await ask(`Restore ${name}? Today's trips, logs and settings are replaced by the backup's (the current data is kept aside on the truck). The brain restarts.`)) void go(async () => { const r = await post<{ message: string }>('/api/backup/restore', { name, from }); toast(r.message); }, 'Restore staged.'); };
   const st = b.status;
   return (
     <Section id="backups" title="Backups" help="Nightly, when the truck is parked on home Wi-Fi: the trip database (a consistent copy), settings, the clips index (not the videos) and maintenance receipts, in one .tar.gz. A few copies also stay on the truck.">
@@ -122,7 +123,7 @@ export function BackupsSection() {
         {list.target.error && <span class="err">{list.target.error}</span>}
         {list.target.names === null && !list.target.error && <span class="dimtxt">This target can't list its files (HTTP); restore by uploading the file below.</span>}
         {list.target.names?.map((n) => <div class="item row" style="justify-content:space-between"><span class="num">{n}</span><button class="btn sm danger" type="button" onClick={() => restore(n, 'target')}>Restore</button></div>)}
-        <label class="f"><span>Restore from a file</span><input type="file" accept=".gz,application/gzip" onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f && confirm(`Restore ${f.name}? The brain restarts.`)) void go(async () => { const r = await upload<{ message: string }>('/api/backup/restore-upload', f, 'application/gzip'); toast(r.message); }, 'Restore staged.'); }} /></label>
+        <label class="f"><span>Restore from a file</span><input type="file" accept=".gz,application/gzip" onChange={async (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f && await ask(`Restore ${f.name}? The brain restarts.`)) void go(async () => { const r = await upload<{ message: string }>('/api/backup/restore-upload', f, 'application/gzip'); toast(r.message); }, 'Restore staged.'); }} /></label>
       </div>}
     </Section>
   );
@@ -171,7 +172,7 @@ function AccessKeysPanel() {
   useEffect(() => { void load(); }, []);
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'never');
   const create = async () => { setErr(null); try { const r = await post<{ key: string; name: string }>('/api/security/keys', { name }); setFresh({ name: r.name, key: r.key }); setCopied(false); setName(''); void load(); } catch (e) { setErr(errText(e)); } };
-  const revoke = async (k: AccessKey) => { if (!confirm(`Revoke "${k.name}"? Anything using it stops working.`)) return; try { await api(`/api/security/keys/${k.id}`, { method: 'DELETE' }); void load(); } catch (e) { setErr(errText(e)); } };
+  const revoke = async (k: AccessKey) => { if (!await ask(`Revoke "${k.name}"? Anything using it stops working.`)) return; try { await api(`/api/security/keys/${k.id}`, { method: 'DELETE' }); void load(); } catch (e) { setErr(errText(e)); } };
   return (
     <div class="form" style="gap:var(--s1);margin-top:var(--s2)">
       <h3 class="sub">Access keys (read-only)</h3>

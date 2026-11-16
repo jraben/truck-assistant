@@ -7,6 +7,7 @@ import { DriverBadge } from '../components/drivers.tsx';
 import { squareJpeg } from '../lib/squarePhoto.ts';
 import { ThemeEditor } from './ThemeEditor.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
+import { ask, askText } from '../components/Ask.tsx';
 
 const AMENITIES = ['restroom', 'food', 'coffee', 'shade'];
 const list = (t: string) => t.split(',').map((x) => x.trim()).filter(Boolean);
@@ -73,7 +74,7 @@ export function DriversSection({ settings }: { settings: Settings }) {
     catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };
   const remove = async () => {
-    if (!confirm(`Delete ${d.name}'s profile? Their trips stay, labelled with the old id.`)) return;
+    if (!await ask(`Delete ${d.name}'s profile? Their trips stay, labelled with the old id.`)) return;
     try { await api(`/api/drivers/${d.id}`, { method: 'DELETE' }); await loadSettings(); setSel(settings.drivers.find((x) => x.id !== d.id)!.id); }
     catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
   };

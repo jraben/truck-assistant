@@ -6,12 +6,13 @@
 import { useState } from 'preact/hooks';
 import { toast } from '../lib/brain.ts';
 import { setPassenger, useLockout } from './hooks.ts';
+import { ask, askText } from '../components/Ask.tsx';
 
 const CONFIRM = 'Are you the passenger?\n\nPassenger mode keeps video, the browser, games and typing open while the truck is moving. The driver should not watch or use the screen while driving.\n\nIt stays on until the truck next starts up. Tap the Passenger pill at the top to turn it off sooner.';
 
 /** Turn passenger mode on (asking first) or off. True when it changed. */
 async function flip(on: boolean, setBusy: (b: boolean) => void): Promise<boolean> {
-  if (on && !confirm(CONFIRM)) return false;
+  if (on && !(await ask(CONFIRM, { ok: "Yes, I'm the passenger", danger: false }))) return false;
   setBusy(true);
   try { await setPassenger(on); toast(on ? 'Passenger mode on' : 'Passenger mode off'); return true; } catch (e) { toast(`Not changed: ${(e as Error).message}`); return false; } finally { setBusy(false); }
 }

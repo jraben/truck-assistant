@@ -7,6 +7,7 @@ import { deleteClip, fmtBytes, listClips, rearCamera, saveClip, useCamStatus, us
 import { Modal } from './common.tsx';
 import { CamPlayer } from './camplayer.tsx';
 import type { WP } from './drive.tsx';
+import { ask, askText } from './Ask.tsx';
 
 const LAYOUT_KEY = 'slate.cams.layout';
 const readPref = () => { try { return JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? 'null') as { mode: 'grid' | 'single'; cam: string | null } | null; } catch { return null; } };
@@ -79,7 +80,7 @@ export function ClipsModal({ cams, onClose }: { cams: CamInfo[]; onClose: () => 
   const load = () => listClips().then(setClips).catch((e) => setErr((e as Error).message));
   useEffect(() => { void load(); const id = setInterval(load, 5000); return () => clearInterval(id); }, []);
   const name = (id: string) => cams.find((c) => c.id === id)?.name ?? id;
-  const del = async (c: Clip) => { if (!confirm(`Delete the ${name(c.camera)} clip from ${new Date(c.startedAt).toLocaleString()}?`)) return; try { await deleteClip(c.id); if (playing?.id === c.id) setPlaying(null); void load(); } catch (e) { toast((e as Error).message); } };
+  const del = async (c: Clip) => { if (!await ask(`Delete the ${name(c.camera)} clip from ${new Date(c.startedAt).toLocaleString()}?`)) return; try { await deleteClip(c.id); if (playing?.id === c.id) setPlaying(null); void load(); } catch (e) { toast((e as Error).message); } };
   return (
     <Modal title="Dashcam clips" onClose={onClose}>
       {err && <div class="err">{err}</div>}

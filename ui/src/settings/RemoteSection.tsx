@@ -7,6 +7,7 @@ import { ALERT_META as ALERT_META_UI } from '../../../brain/src/remote/alertMeta
 import { rapi } from '../lib/cams.ts';
 import { Guides } from '../components/camplayer.tsx';
 import '../cams.css';
+import { ask, askText } from '../components/Ask.tsx';
 
 type Secrets = { lte: string; ntfy: string };
 const ROLES: CameraConfig['role'][] = ['rear', 'front', 'bed', 'hitch', '360', 'cabin', 'other'];
@@ -243,7 +244,7 @@ function TruckLink({ url, onNew }: { url: string; onNew: () => void }) {
         <div class="row wrap">
           <button class="btn sm" type="button" onClick={() => setShown(!shown)}>{shown ? 'Hide' : 'Show link + QR'}</button>
           <button class="btn sm" type="button" onClick={() => void navigator.clipboard?.writeText(url)}>Copy</button>
-          <button class="btn sm danger" type="button" onClick={() => { if (confirm('Make a new token? Every phone has to open the new link.')) onNew(); }}>New token</button>
+          <button class="btn sm danger" type="button" onClick={async () => { if (await ask('Make a new token? Every phone has to open the new link.')) onNew(); }}>New token</button>
         </div>
         <span class="help">On the Pi this host is the cockpit's own address; from a phone use the Tailscale name instead (http://slate-truck:8080/truck?token=…).</span>
       </div>

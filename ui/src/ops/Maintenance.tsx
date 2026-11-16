@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { api, toast } from '../lib/brain.ts';
 import { errText, post, put, qs, upload, type MaintEntry, type MaintResp, type ReminderStatus, type TpmsPoint } from './api.ts';
 import './ops.css';
+import { ask, askText } from '../components/Ask.tsx';
 
 const STATE_TAG: Record<string, string> = { due: 'bad', soon: 'warn', ok: 'ok', unset: 'dim', 'needs-odometer': 'dim' };
 const STATE_LABEL: Record<string, string> = { due: 'due', soon: 'soon', ok: 'ok', unset: 'interval not set', 'needs-odometer': 'needs odometer' };
@@ -57,7 +58,7 @@ function LogRow({ e, onChange }: { e: MaintEntry; onChange: () => void }) {
       <td class="n">{e.odometer ?? '—'}</td><td class="n">{e.cost !== null ? `$${e.cost.toFixed(2)}` : '—'}</td>
       <td>{e.shop ?? ''}</td><td>{e.note ?? ''}</td>
       <td>{e.receipt ? <a href={`/api/maintenance/receipts/${e.receipt}`} target="_blank" rel="noopener">view</a> : <label class="btn sm">Add<input type="file" accept="image/*,application/pdf" capture="environment" hidden onChange={(x) => void attach((x.target as HTMLInputElement).files?.[0])} /></label>}</td>
-      <td><button class="btn sm danger" type="button" onClick={async () => { if (!confirm(`Delete "${e.item}" on ${new Date(e.date).toLocaleDateString()}?`)) return; await api(`/api/maintenance/log/${e.id}`, { method: 'DELETE' }); onChange(); }}>Delete</button></td>
+      <td><button class="btn sm danger" type="button" onClick={async () => { if (!await ask(`Delete "${e.item}" on ${new Date(e.date).toLocaleDateString()}?`)) return; await api(`/api/maintenance/log/${e.id}`, { method: 'DELETE' }); onChange(); }}>Delete</button></td>
     </tr>
   );
 }
