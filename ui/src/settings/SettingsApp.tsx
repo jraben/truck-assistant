@@ -7,6 +7,7 @@ import { ChargeForm, CostSessions, CostSummary } from '../components/costs.tsx';
 import { GoalSettings } from '../components/goal.tsx';
 import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
+import { CompareVehicles } from './CompareVehicles.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
 import { MapsSection } from './MapsSection.tsx';
@@ -329,8 +330,11 @@ export function SettingsApp() {
         <GoalSettings value={settings.payoffGoal} onSaved={(g) => settingsStore.set({ ...settings, payoffGoal: g })} />
       </Section>
 
-      <Section id="gas" keywords="mpg fuel gasbuddy savings vehicle" title="Gas comparison" help="What the gas vehicle you'd otherwise drive would have cost for the same miles. A driver can pick their own vehicle in Drivers.">
+      <Section id="gas" keywords="mpg fuel gasbuddy savings vehicle vehicles car truck corvette tank gallons compare" title="Gas comparison" help="What the gas vehicle you'd otherwise drive would have cost for the same miles. A driver can pick their own vehicle in Drivers.">
         <VehiclePicker value={draft.compareVehicle} onChange={(v) => set('compareVehicle', v)} />
+        <h3 class="sub">Also compare with</h3>
+        <p class="help" style="margin:0">More gas vehicles for Trips, WEEK to compare side by side, each with its own mpg, fuel and tank. They save as you add or edit them.</p>
+        <CompareVehicles />
         <h3 class="sub">Gas price</h3>
         <GasSection gas={draft.gas} onChange={(g) => set('gas', g)} haReady={haReady} />
       </Section>
