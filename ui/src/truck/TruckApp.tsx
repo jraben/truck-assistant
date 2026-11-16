@@ -8,6 +8,9 @@ import { CamPlayer } from '../components/camplayer.tsx';
 import { ClipPlayer } from '../components/cams.tsx';
 import { fmtBytes, rapi, tileView, useCamStatus, useViewerHeartbeat, wake, withToken, type Clip, type TruckSnapshot } from '../lib/cams.ts';
 import { paintTheme, pickTheme } from '../lib/theme.ts';
+import { PROJECT } from '../../../brain/src/project.ts';
+import { PageNav } from '../components/PageNav.tsx';
+import { VersionBar } from '../components/VersionBar.tsx';
 
 const ago = (iso: string | null) => {
   if (!iso) return 'never';
@@ -52,14 +55,20 @@ export function TruckApp() {
   };
   const doWake = async () => { setBusy('wake'); try { await wake(); setView(true); void load(); } catch (e) { setErr((e as Error).message); } finally { setBusy(null); } };
 
-  if (!snap) return <div class="truck"><h1>SLATE TRUCK</h1><p class="dimtxt">{err ? `Can't reach the truck: ${err}` : 'Loading…'}</p></div>;
+  const top = (
+    <div class="head">
+      <h1>{PROJECT.shortName} · <span class="nowrap">TRUCK</span></h1>
+      <PageNav current="/truck" />
+      <VersionBar inline />
+    </div>
+  );
+  if (!snap) return <div class="truck">{top}<p class="dimtxt">{err ? `Can't reach the truck: ${err}` : 'Loading…'}</p></div>;
   const w = snap.watch;
   return (
     <div class="truck">
       {photo && <img class="truckphoto" src={photo} alt="The truck" onError={() => setPhoto(null)} />}
+      {top}
       <div class="head">
-        <h1>SLATE TRUCK</h1>
-        <span class="sp" />
         <span class="tag ok" title={snap.power.why}>PI AWAKE · {snap.power.why}</span>
         <span class={`tag ${w.online ? 'ok' : 'dim'}`} title="Tier 1: the always-on LTE-M watch">WATCH {w.online ? 'ONLINE' : 'OFFLINE'} · {ago(w.lastSeen)}</span>
       </div>

@@ -7,6 +7,8 @@ import { ChargeForm, CostSessions, CostSummary } from '../components/costs.tsx';
 import { GoalSettings } from '../components/goal.tsx';
 import { DriversSection } from './DriversSection.tsx';
 import { VehiclePicker } from './VehiclePicker.tsx';
+import { VersionBar } from '../components/VersionBar.tsx';
+import { PageNav } from '../components/PageNav.tsx';
 import { CompareVehicles } from './CompareVehicles.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
@@ -259,13 +261,14 @@ export function SettingsApp() {
     <div class="portal-wrap portal">
       <div class="portal-head">
         <h1>{PROJECT.shortName} · <span class="nowrap">SETTINGS</span></h1>
-        <a class="btn" href="/">Back to cockpit</a>
+        <PageNav current="/settings" />
         <div class="portal-chips" role="status">
           <span class="pill" title={health ? `Brain v${health.version}, up ${Math.round(health.uptimeS / 60)} min` : 'The brain did not answer /api/health'}><span class={`dot ${health ? 'ok' : 'bad'}`} />{health ? `brain v${health.version}` : 'brain unreachable'}</span>
           {chips.map((c) => c.href
             ? <a class="pill" href={c.href} title={`${c.raw} (open its settings)`}><span class={`dot ${c.level}`} />{c.text}</a>
             : <span class="pill" title={c.raw}><span class={`dot ${c.level}`} />{c.text}</span>)}
         </div>
+        <VersionBar inline />
       </div>
 
       <div class="set-search" role="search">
