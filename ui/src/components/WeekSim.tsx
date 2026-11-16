@@ -90,7 +90,7 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
           <label class="f"><span>Charge to (night before)</span>
             <select value={chargeTo} onChange={(e) => setChargeTo((e.target as HTMLSelectElement).value)}>{['70', '80', '90', '100'].map((v) => <option value={v}>{v}%</option>)}</select>
           </label>
-          <label class="f" style="max-width:150px"><span>Fast charge $/kWh</span><input type="number" step="0.01" min="0" placeholder="what you've paid" value={dc} onInput={(e) => setDc((e.target as HTMLInputElement).value)} /></label>
+          <label class="f" style="max-width:150px"><span>Fast charge $/kWh</span><input type="number" step="0.01" min="0" placeholder="0.56 typical" value={dc} onInput={(e) => setDc((e.target as HTMLInputElement).value)} /></label>
           <button type="button" class="btn primary" disabled={busy || (source === 'ha' && !tracker)} onClick={() => void run()}>{busy ? 'Working…' : 'Simulate'}</button>
           <button type="button" class="btn" disabled={busy} onClick={() => void busiest()} title="Find the 7 days with the most driving in the last 6 months of stored trips">Busiest week</button>
           <label class="f"><span>Top 7 days by</span>

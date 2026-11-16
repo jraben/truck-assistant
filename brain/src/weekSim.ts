@@ -30,7 +30,13 @@ export type SimParams = {
   gasPrice: number | null;                  // $/gal
   /** $/kWh at public DC fast chargers (the driver's paid average), null = unknown. */
   dcPerKwh?: number | null;
+  /** True when dcPerKwh is the typical-price default, not the driver's own or one asked for. */
+  dcEstimated?: boolean;
 };
+
+/** Public DC fast charging when the truck has no paid session to go by: a typical Phoenix-area price
+ *  (Electrify America $0.56/kWh, Nov 2026; the metro runs about $0.43-0.75). */
+export const DEFAULT_DC_PER_KWH = 0.56;
 
 /** On the road, a fast charge when the level would drop below this, back up to FAST_TO. */
 export const FAST_RESERVE = 10;
@@ -151,7 +157,7 @@ export function simulateDrives(drives: DriveIn[], days: [Date, Date][], p: SimPa
   const fastCost = fastKnown ? r2(sum((d) => d.fastCost ?? 0)) : null;
   const all = [...notes];
   const stops = sum((d) => d.fastStops);
-  if (stops) all.push(`${stops} fast-charge stop${stops === 1 ? '' : 's'} on the road (below ${FAST_RESERVE}%, back to ${FAST_TO}%)${fastKnown ? ` at $${(p.dcPerKwh ?? 0).toFixed(2)}/kWh` : ': no public charging price yet (log a paid fast charge, or add ?dcPerKwh=), so their cost is unknown'}.`);
+  if (stops) all.push(`${stops} fast-charge stop${stops === 1 ? '' : 's'} on the road (below ${FAST_RESERVE}%, back to ${FAST_TO}%)${fastKnown ? ` at $${(p.dcPerKwh ?? 0).toFixed(2)}/kWh${p.dcEstimated ? ' (a typical Phoenix fast-charge price: log a paid fast charge, or enter your own, to use yours)' : ''}` : ': no public charging price yet (log a paid fast charge, or add ?dcPerKwh=), so their cost is unknown'}.`);
   if (!costKnown) all.push('No home electricity rate set (Settings, Charging): charging cost unknown.');
   if (p.gasPrice === null) all.push('No gas price: gas cost unknown.');
   const thin = out.filter((d) => d.coverage === 'thin' || d.coverage === 'none').length;
