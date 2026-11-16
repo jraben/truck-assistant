@@ -7,7 +7,9 @@ import { PROJECT } from '../project.ts';
 import { AuthError, bearerKey, checkNewPassword, hashPassword, isLocal, keyMayRead, needsAuth, parseCookies, SESSION_COOKIE, SESSION_DAYS, verifyPassword } from './auth.ts';
 import { RECEIPT_MAX, RECEIPT_TYPES } from './maintenance.ts';
 import { localDate, toCsv, toHtml, type MileageFilter } from './mileage.ts';
-import { loginPage, safeNext } from './loginPage.ts';
+import { loginPage, safeNext, type LoginLook } from './loginPage.ts';
+import { defaultThemeSettings, findTheme } from '../themes.ts';
+import { isDaytime } from '../sun.ts';
 import { OpsInputError, PURPOSES, type Purpose } from './config.ts';
 import { targetLabel } from './backup.ts';
 import { OpsService } from './service.ts';
@@ -68,7 +70,7 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
     r.addContentTypeParser(['application/gzip', 'application/x-gzip', 'application/octet-stream'], { parseAs: 'buffer', bodyLimit: 512 * 1024 * 1024 }, (_req, body, done) => done(null, body));
 
     // ---- login -------------------------------------------------------------------
-    r.get<{ Querystring: { next?: string } }>('/login', async (req, reply) => reply.type('text/html; charset=utf-8').header('cache-control', 'no-store').send(loginPage(safeNext(req.query.next), !!ops.store.get().auth.passwordHash)));
+    r.get<{ Querystring: { next?: string } }>('/login', async (req, reply) => reply.type('text/html; charset=utf-8').header('cache-control', 'no-store').send(loginPage(safeNext(req.query.next), !!ops.store.get().auth.passwordHash, loginLook(brain))));
     r.get('/api/auth/status', async (req) => ({ passwordSet: !!ops.store.get().auth.passwordHash, authed: authed(req), local: isLocal(req.ip), trustLocal: ops.store.get().auth.trustLocal }));
     r.post('/api/auth/login', async (req, reply) => {
       try {
@@ -255,3 +257,13 @@ export async function mountOps(app: FastifyInstance, brain: Brain): Promise<OpsS
 }
 
 const optTag = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+
+/** The active driver's theme, day or night as the cockpit would pick it, for /login. */
+function loginLook(brain: Brain): LoginLook | undefined {
+  try {
+    const ts = brain.activeDriver().theme ?? defaultThemeSettings();
+    const id = ts.auto.enabled ? (isDaytime(new Date(), null) ? ts.auto.day : ts.auto.night) : ts.active;
+    return findTheme(ts, id);
+  } catch { return undefined; }
+}
+

@@ -27,9 +27,10 @@ export function gpsMessage(c: { latitude: number; longitude: number; accuracy: n
   };
 }
 
-export function useTabletGps() {
+/** `enabled` false on pages other than the cockpit (a phone opening Settings is not the truck's GPS). */
+export function useTabletGps(enabled = true) {
   const settings = useStore(settingsStore);
-  const on = wantsTabletGps({ setting: settings?.tabletGps, ua: navigator.userAgent, deskTest: lsGet(DESK_TEST_KEY) === '1', hasGeo: 'geolocation' in navigator });
+  const on = enabled && wantsTabletGps({ setting: settings?.tabletGps, ua: navigator.userAgent, deskTest: lsGet(DESK_TEST_KEY) === '1', hasGeo: 'geolocation' in navigator });
   useEffect(() => {
     if (!on) { tabletGpsStore.set('off'); return; }
     // Browsers only share location with secure pages: http on the truck's Wi-Fi needs the Chrome flag.

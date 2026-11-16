@@ -691,3 +691,12 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 .truck .head h1 { flex: 1 1 auto; }
 .truck .head .versionbar.inline { flex-basis: 100%; }
 .truck .nowrap { white-space: nowrap; }
+
+/* Another page in the cockpit's stage (App page mode: Settings, Truck): it scrolls inside the
+   stage, and its own sticky or fixed bars stay within it, clear of the rail and top bar. */
+.stage.page-stage { overflow-y: auto; overscroll-behavior: contain; padding: 0; position: relative; }
+.stage.page-stage .portal-wrap { padding-top: var(--s2); }
+.stage.page-stage .truck { padding-top: var(--s2); }
+
+body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
+.stage.page-stage .savebar { position: sticky; bottom: 0; }

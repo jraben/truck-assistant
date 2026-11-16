@@ -8,7 +8,7 @@ import type { Layout } from './types.ts';
  */
 // Theme moved into the driver's panel and the logs onto Trips: '@theme' and '@logs' in an old
 // saved order are dropped. 'map' is the Map view the UI adds (map/MapView.tsx).
-export const RAIL_EXTRA_IDS = ['media', 'home', 'parked', 'map', '@wopr', '@driver', '@sim', '@settings'] as const;
+export const RAIL_EXTRA_IDS = ['media', 'home', 'parked', 'map', '@wopr', '@driver', '@sim', '@settings', '@truck'] as const;
 
 const MAX = 64;
 
