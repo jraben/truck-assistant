@@ -28,6 +28,8 @@ function Gears({ s }: { s: State | null }) {
   const why = gear === null ? (s?.truckbox ? 'P, N and D need the CAN bus; only R is wired (reverse lamp)' : whyTruck(s, 'reverse')) : '';
   return (
     <div class="gearstrip" role="group" aria-label={gear ? `Gear ${gear}` : `Gear unknown: ${why}`} title={why || undefined}>
+      {/* READY, as on the truck's own screen: the truck is on and can drive. */}
+      {s?.ignition === true && <span class="ready" title="The truck is on and ready to drive">READY</span>}
       {(['P', 'R', 'N', 'D'] as const).map((g) => <span class={gear === g ? 'on' : ''}>{g}</span>)}
     </div>
   );
