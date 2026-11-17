@@ -84,13 +84,21 @@ export class GithubSource {
     } catch { return null; }
   }
 
-  async list(repoUrl: string, channel: 'stable' | 'main', installedSha: string | null, lastDownloadBytes: number | null = null): Promise<Release[]> {
+  async list(repoUrl: string, channel: 'stable' | 'main', installedSha: string | null, lastDownloadBytes: number | null = null, opts: { builtOnly?: boolean } = {}): Promise<Release[]> {
     const r = parseRepo(repoUrl);
     if (!r) throw new OpsInputError('repo must look like https://github.com/owner/name');
     const base = `https://api.github.com/repos/${r.owner}/${r.repo}`;
     if (channel === 'main') {
-      const commits = await this.get<{ sha: string; commit: { message: string; committer?: { date?: string } } }[]>(`${base}/commits?sha=main&per_page=30`);
+      let commits = await this.get<{ sha: string; commit: { message: string; committer?: { date?: string } } }[]>(`${base}/commits?sha=main&per_page=30`);
       if (!commits.length) return [];
+      if (opts.builtOnly) {
+        // Docker copies install the image GitHub builds from main: a commit counts once its build succeeded.
+        const runs = await this.get<{ workflow_runs?: { head_sha: string }[] }>(`${base}/actions/workflows/build-image.yml/runs?branch=main&status=success&per_page=1`);
+        const built = runs.workflow_runs?.[0]?.head_sha;
+        const at = built ? commits.findIndex((c) => c.sha === built) : -1;
+        if (at < 0) return [];
+        commits = commits.slice(at);
+      }
       const since: string[] = [];
       for (const c of commits) { if (c.sha === installedSha) break; since.push(`- ${c.commit.message.split('\n')[0]} (${c.sha.slice(0, 7)})`); }
       const top = commits[0];
@@ -150,6 +158,31 @@ export class SystemdRunner implements Runner {
   hasPrevious() { return existsSync(path.join(this.releasesDir, 'previous')); }
 }
 
+/**
+ * Docker (the NAS): the `updater` container (deploy/nas/auto-update.sh) shares the
+ * data volume. It installs the newest image by itself every 10 minutes; a
+ * request.json here makes it do so now, and it writes status.json as it goes.
+ * It can only install the newest build of main, and keeps no previous one to go back to.
+ */
+export class DockerRunner implements Runner {
+  readonly dir: string;
+  constructor(dataDir: string) { this.dir = path.join(dataDir, 'update'); }
+  unavailable() { return null; }
+  async request(job: Job) {
+    mkdirSync(this.dir, { recursive: true });
+    const f = path.join(this.dir, 'request.json');
+    writeFileSync(f + '.tmp', JSON.stringify(job, null, 2));
+    renameSync(f + '.tmp', f);
+  }
+  async report(): Promise<Report | null> {
+    try { return JSON.parse(readFileSync(path.join(this.dir, 'status.json'), 'utf8')) as Report; } catch { return null; }
+  }
+  hasPrevious() { return false; }
+}
+
+/** This copy runs in Docker with the NAS updater (docker-compose.yml sets UPDATES_BY=docker). */
+export const updatesByDocker = () => process.env.UPDATES_BY === 'docker';
+
 // ---- Automatic updates --------------------------------------------------------
 // GitHub is checked every 12 hours (a small API read, allowed on any link but
 // offline). With automatic updates on, an available version installs by
@@ -159,6 +192,8 @@ export class SystemdRunner implements Runner {
 // tried (and that failed or was rolled back) is not tried again by itself.
 
 export const AUTO_CHECK_MS = 12 * 3_600_000;
+/** Docker: check every 10 minutes, so the footer's "Update available" shows soon after a build. */
+export const DOCKER_CHECK_MS = 10 * 60_000;
 
 export type AutoInputs = {
   now: number;
@@ -172,6 +207,8 @@ export type AutoInputs = {
   triedTag: string | null;
   /** null when installs can run here; otherwise why not. */
   installNote: string | null;
+  /** How often to check GitHub (default AUTO_CHECK_MS). */
+  checkEveryMs?: number;
 };
 
 /** What the automatic updater should do now, and why an available update is waiting. Pure. */
@@ -184,7 +221,7 @@ export function autoUpdateStep(cfg: AutoUpdate, i: AutoInputs): { act: 'check' |
     else if (cfg.when === 'home-wifi' && !i.homeWifi) waiting = 'Waiting for home Wi-Fi';
     else return { act: 'install', waiting: null };
   }
-  const due = i.lastCheckAt === null || i.now - i.lastCheckAt >= AUTO_CHECK_MS;
+  const due = i.lastCheckAt === null || i.now - i.lastCheckAt >= (i.checkEveryMs ?? AUTO_CHECK_MS);
   return { act: i.online && due ? 'check' : null, waiting };
 }
 
@@ -205,6 +242,7 @@ export class Updater {
   private save: (j: { job: Job | null; phase: Phase; message: string | null }) => void;
   private s: { phase: Phase; message: string | null; latest: Release | null; releases: Release[]; checkedAt: string | null; job: Job | null };
   private now: () => number;
+  private builtOnly: boolean;
 
   constructor(o: {
     runner: Runner; source: Pick<GithubSource, 'list'>;
@@ -214,7 +252,10 @@ export class Updater {
     saved?: { job: Job | null; phase: Phase; message: string | null } | null;
     save?: (j: { job: Job | null; phase: Phase; message: string | null }) => void;
     now?: () => number;
+    /** Only offer builds GitHub finished making an image for (Docker). */
+    builtOnly?: boolean;
   }) {
+    this.builtOnly = o.builtOnly ?? false;
     this.runner = o.runner; this.source = o.source; this.cfg = o.cfg; this.installed = o.installed;
     this.save = o.save ?? (() => {}); this.now = o.now ?? Date.now;
     this.autoInfo = o.autoInfo ?? (() => ({ waiting: null, nextCheckAt: null, skipped: null }));
@@ -248,7 +289,7 @@ export class Updater {
     this.set('checking');
     try {
       const inst = this.installed();
-      const rel = await this.source.list(c.repo, c.channel, inst.sha, inst.downloadBytes ?? null);
+      const rel = await this.source.list(c.repo, c.channel, inst.sha, inst.downloadBytes ?? null, { builtOnly: this.builtOnly });
       this.s.releases = rel; this.s.latest = rel[0] ?? null; this.s.checkedAt = new Date(this.now()).toISOString();
       if (!this.s.latest) this.set('up-to-date', c.channel === 'stable' ? 'No releases published yet: switch the channel to main to get the latest' : 'No commits on main');
       else if (isNewer(this.s.latest, inst, c.channel)) this.set('available', `${this.s.latest.tag} is available`);
@@ -290,7 +331,9 @@ export class Updater {
     const r = await this.runner.report();
     const age = this.now() - Date.parse(job.requestedAt);
     if (!r || r.id !== job.id) {
-      if (this.s.phase === 'requested' && age > PICKUP_TIMEOUT_MS) this.set('failed', 'The updater service never picked up the request (is slate-updater.path enabled on the Pi?)');
+      if (this.s.phase === 'requested' && age > PICKUP_TIMEOUT_MS) this.set('failed', updatesByDocker()
+        ? 'The NAS updater never picked up the request: it needs the newer deploy/nas files (README, NAS). It still installs new builds by itself every 10 minutes.'
+        : 'The updater service never picked up the request (is slate-updater.path enabled on the Pi?)');
       return this.s.phase;
     }
     if (r.phase !== this.s.phase || r.message !== this.s.message) this.set(r.phase, r.message);

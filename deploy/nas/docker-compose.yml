@@ -64,6 +64,9 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/stack:ro
+      # Shared with the cockpit: "Update available" in its footer leaves update/request.json here,
+      # and this answers in update/status.json (auto-update.sh).
+      - slate-data:/data
 
 volumes:
   slate-data:

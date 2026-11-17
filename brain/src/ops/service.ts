@@ -14,7 +14,7 @@ import { OpsInputError, OpsStore, type OpsConfig } from './config.ts';
 import { opsDiscovery, opsTopic, type OpsSummary } from './haOps.ts';
 import { MaintenanceService } from './maintenance.ts';
 import { MileageService } from './mileage.ts';
-import { AUTO_CHECK_MS, autoUpdateStep, GithubSource, isDriving, readInstalled, SystemdRunner, Updater, type Job, type Phase } from './updater.ts';
+import { AUTO_CHECK_MS, autoUpdateStep, DOCKER_CHECK_MS, DockerRunner, GithubSource, isDriving, readInstalled, SystemdRunner, Updater, updatesByDocker, type Job, type Phase } from './updater.ts';
 
 export const AP_PROFILE = 'slate-ap';
 
@@ -47,7 +47,8 @@ export class OpsService {
     this.backup = { ...EMPTY_STATUS, ...(kvGet<BackupStatus>(db, 'backupStatus') ?? {}), running: false };
     const appRoot = path.resolve(BRAIN_ROOT, '..');
     this.updater = new Updater({
-      runner: new SystemdRunner(dataDir),
+      runner: updatesByDocker() ? new DockerRunner(dataDir) : new SystemdRunner(dataDir),
+      builtOnly: updatesByDocker(),
       source: new GithubSource(`slate-cockpit/${config.version}`),
       cfg: () => this.store.get().updater,
       installed: () => readInstalled(appRoot, config.version),
@@ -87,7 +88,7 @@ export class OpsService {
     return {
       waiting: cfg.auto.enabled ? this.auto.waiting : null,
       // never checked: the next minute's tick does it
-      nextCheckAt: cfg.repo ? new Date(this.auto.lastCheckAt === null ? Date.now() + 60_000 : this.auto.lastCheckAt + AUTO_CHECK_MS).toISOString() : null,
+      nextCheckAt: cfg.repo ? new Date(this.auto.lastCheckAt === null ? Date.now() + 60_000 : this.auto.lastCheckAt + (updatesByDocker() ? DOCKER_CHECK_MS : AUTO_CHECK_MS)).toISOString() : null,
       skipped: cfg.auto.enabled && u.phase === 'available' && this.auto.triedTag && this.lastLatest === this.auto.triedTag ? `${this.auto.triedTag} didn't install by itself last time; install it by hand when you're ready` : null,
     };
   }
@@ -104,6 +105,7 @@ export class OpsService {
       now: Date.now(), lastCheckAt: this.auto.lastCheckAt, online: st.network.link !== 'offline',
       driving: isDriving(st), homeWifi: st.network.link === 'home',
       phase: u.phase, latestTag: this.lastLatest, triedTag: this.auto.triedTag, installNote: u.installNote,
+      checkEveryMs: updatesByDocker() ? DOCKER_CHECK_MS : AUTO_CHECK_MS,
     });
     this.auto.waiting = step.waiting;
     const save = () => { try { kvSet(this.db, 'autoUpdate', { lastCheckAt: this.auto.lastCheckAt, triedTag: this.auto.triedTag }); } catch { /* best effort */ } };
