@@ -9,13 +9,14 @@ import { Parked, ParkedError } from './parked.ts';
 import { PlexError, type PlexService } from './media/plex.ts';
 import { PlexVideo } from './media/plexVideo.ts';
 import type { RemoteService } from './remote/service.ts';
-import { sleepPlan, Tablet } from './tablet.ts';
+import { sleepPlan, Tablet, tabletNowPlaying } from './tablet.ts';
+import type { NowPlayingHub } from './media.ts';
 import { config } from './config.ts';
 
 /** DEMO=1 hides the owner's own sites from the app list. */
 const PERSONAL_APPS = new Set(['jeffgames']);
 
-export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remote: RemoteService, plex: PlexService) {
+export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remote: RemoteService, plex: PlexService, nowPlaying?: NowPlayingHub) {
   const parked = new Parked();
   const tablet = new Tablet(db);
   parked.onAndroidClose = () => { void tablet.front().then((r) => { if (!r.ok) console.warn('[tablet] front:', r.error); }); };
@@ -70,6 +71,22 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   app.post('/api/tablet/test', async () => tablet.front());
   // Read by Tasker's "Truck off" task (deploy/android/README.md step 6); open, since Tasker can't log in and it says nothing private.
   app.get('/api/tablet/sleep', async () => sleepPlan(brain.settings.get().tabletSleep));
+  // The tablet's music apps (Pandora, YouTube Music, Amazon Music, Spotify): the cockpit's buttons go to
+  // Tasker's Media Control; Tasker reports the song back (deploy/android/README.md, "Music apps").
+  app.post('/api/tablet/media', async (req, reply) => {
+    const r = await tablet.mediaCmd((req.body as { cmd?: unknown } | null)?.cmd);
+    return r.ok ? { ok: true, media: tablet.nowPlaying() } : reply.code(r.error?.startsWith('cmd is') ? 400 : 502).send({ error: r.error });
+  });
+  app.get('/api/tablet/media', async () => ({ media: tablet.nowPlaying() }));
+  // A report goes stale when Tasker stops sending (the app closed): take it off the dash then too.
+  const sweep = setInterval(() => nowPlaying?.report('tablet', tabletNowPlaying(tablet.nowPlaying())), 60_000);
+  app.addHook('onClose', async () => clearInterval(sweep));
+  app.post('/api/tablet/nowplaying', async (req, reply) => {
+    const r = tablet.report(req.ip, req.body);
+    if (!r.ok) return reply.code(403).send({ error: r.error });
+    nowPlaying?.report('tablet', tabletNowPlaying(r.media));
+    return { ok: true };
+  });
 
   // ---- Plex video ----------------------------------------------------------------
   const pv = <Q>(p: string, f: (q: Q) => Promise<unknown>) => app.get<{ Querystring: Q }>(p, async (req, reply) => { try { return await f(req.query as Q); } catch (e) { return fail(reply, e); } });

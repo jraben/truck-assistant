@@ -82,6 +82,38 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    a game is open. A different port goes on `PUT /api/tablet {taskerPort}`.
    Check it from the brain with `POST /api/tablet/test` (the cockpit should jump
    to the front).
+
+   **Music apps on the tablet** (Pandora, YouTube Music, Amazon Music, Spotify).
+   Media's *Play on the tablet* opens the app; these profiles let the cockpit
+   show what it plays and work its ⏮ ⏯ ⏭ buttons. Same port 1821.
+
+   | Profile | Trigger | Task |
+   |---|---|---|
+   | Music buttons | Event › Net › **HTTP Request**, port 1821, path `/slate/media` | see 1 below; then Net › HTTP Response 200 |
+   | Song to the cockpit | State › Variables › **Variable Value** `%MTRACK` *Set* | see 2 below |
+   | Playing or paused | State › Media › **Music Active** | Enter: see 3 (`"playing":"true"`); Exit task: the same with `"false"` |
+
+   1. **Music buttons**: three Media › **Media Control** actions, each with
+      *Use Notification If Available* ticked (so it reaches the app that is
+      playing): `If %http_request_query_cmd eq toggle` › Cmd **Toggle Pause**;
+      `eq next` › **Next**; `eq prev` › **Previous**.
+   2. **Song to the cockpit**: Net › **HTTP Request**, POST
+      `http://10.42.0.1:8080/api/tablet/nowplaying`, Content Type
+      `application/json`, Body `{"track":"%MTRACK","playing":"true"}`, timeout 5 s.
+   3. **Playing or paused**: the same HTTP Request with Body `{"playing":"true"}`
+      (Exit: `{"playing":"false"}`), so pausing keeps the song and a Play button.
+
+   The brain takes these only from the tablet's own address (no login), so the
+   cockpit must have been opened on it. `%MTRACK` ("Artist - Title") comes from
+   apps that announce their tracks. **If it stays empty** for an app, use the
+   **AutoNotification** plugin instead of profile 2: Event › Plugin ›
+   AutoNotification › **Intercept**, Apps: the four music apps, then the HTTP
+   Request with Body
+   `{"title":"%antitle","artist":"%antext","pkg":"%anpackage","playing":"true"}`.
+   Unset Tasker variables are ignored, so any field may be left out. Check the
+   buttons from the brain with `POST /api/tablet/media {"cmd":"toggle"}`, and
+   what it heard with `GET /api/tablet/media`.
+
 7. Developer options › **Stay awake** (screen stays on while charging), and
    Settings › Display › screen timeout as you like for when it's unplugged.
 8. **The tablet as the truck's GPS** (optional: skip it if a USB GPS puck is

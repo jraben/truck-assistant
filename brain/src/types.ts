@@ -80,7 +80,8 @@ export type WifiNet = { ssid: string; password?: string };
 export type DriverRef = { id: string; name: string; initials: string; color: string; photo: string | null };
 
 /** What is playing, reported by the cockpit UI (CarPlay, or the Media view's player) or the brain (Spotify). Text only; album art stays in the UI. */
-export type NowPlayingSource = 'carplay' | 'spotify' | 'radio' | 'fm' | 'plex' | 'local';
+/** tablet: an app on the dash tablet (Pandora, YouTube Music, …) as Tasker reports it (tablet.ts). */
+export type NowPlayingSource = 'carplay' | 'spotify' | 'radio' | 'fm' | 'plex' | 'local' | 'tablet';
 export type NowPlaying = { title: string | null; artist: string | null; album: string | null; source: NowPlayingSource };
 
 /** alertOnCharging: warn when the truck charges at home inside this period (default on for a period priced above the flat / off-peak rate). */

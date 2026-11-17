@@ -125,6 +125,8 @@ export function needsAuth(method: string, url: string): 'page' | 'api' | null {
     if (p === '/api/vehicle/photo' && (method === 'GET' || method === 'HEAD')) return null;
     // Tasker on the dash tablet reads its sleep timing here and has no login; changing it is a Settings save.
     if (p === '/api/tablet/sleep' && (method === 'GET' || method === 'HEAD')) return null;
+    // …and reports what its music app is playing; the route takes it only from the tablet's own address.
+    if (p === '/api/tablet/nowplaying' && method === 'POST') return null;
     return 'api';
   }
   return null;
