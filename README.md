@@ -264,6 +264,14 @@ image if the new one isn't healthy within 3 minutes. The version line at the bot
 the cockpit shows the build it runs (`TA_v0.1.0+<commit>`). Its log:
 `sudo docker logs slate-cockpit-updater`.
 
+**Or update now from the footer.** The cockpit checks GitHub every 10 minutes; once a
+new build's image is ready, the version line shows **Update available · tap to install**.
+A tap says what's new and how big it is, then asks the updater to install at once
+(it leaves `update/request.json` in the shared data volume; the updater answers in
+`update/status.json`, and the page reloads on the new build). This needs the
+`docker-compose.yml` and `auto-update.sh` from November 17, 2026 or later on the NAS:
+copy both again and run the command below once.
+
 One-time setup (and the way to update by hand): copy `deploy/nas/docker-compose.yml`
 **and** `deploy/nas/auto-update.sh` to `~/slate-cockpit/`, then
 
