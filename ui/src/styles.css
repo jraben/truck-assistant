@@ -717,3 +717,26 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 
 /* A closable banner that opens nothing (on-peak charging): no pointer on its text. */
 .closable > div.bn-main { cursor: default; }
+
+/* The update screen (VersionBar UpdateScreen): full screen, the steps, then the result. */
+.update-screen { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: var(--s2) max(var(--s2), env(safe-area-inset-left, 0px));
+  background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.update-screen .us-card { width: min(520px, 100%); display: grid; gap: var(--s15); justify-items: center; text-align: center; padding: var(--s4) var(--s3);
+  background: var(--panel); border: 1px solid var(--hairline); border-radius: calc(var(--radius) * 2); box-shadow: 0 20px 60px color-mix(in srgb, var(--bg) 50%, transparent); }
+.update-screen .us-mark { width: 64px; height: 64px; border-radius: var(--radius); }
+.update-screen h2 { margin: 0; font-family: var(--display); font-size: var(--fs-title); letter-spacing: .06em; text-transform: uppercase; }
+.update-screen .us-tag { color: var(--dim); font-size: var(--fs-body-sm); }
+.update-screen .us-bar { width: 100%; height: 6px; border-radius: 3px; overflow: hidden; background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.update-screen .us-bar i { display: block; width: 35%; height: 100%; border-radius: 3px; background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .update-screen .us-bar i { animation: us-slide 1.4s ease-in-out infinite; } }
+@keyframes us-slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+.update-screen .us-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s1); justify-self: stretch; text-align: left; }
+.update-screen .us-steps li { display: flex; align-items: center; gap: var(--s15); color: var(--dim); }
+.update-screen .us-steps li.now { color: var(--fg); font-weight: 600; }
+.update-screen .us-steps li.done { color: var(--fg); }
+.update-screen .us-dot { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-caption); font-weight: 700;
+  border: 2px solid var(--hairline); }
+.update-screen li.now .us-dot { border-color: var(--accent); color: var(--accent); }
+.update-screen li.done .us-dot { background: var(--ok); border-color: var(--ok); color: var(--bg); }
+.update-screen .us-msg { margin: 0; min-height: 1.4em; color: var(--fg); }
+.update-screen .us-note { margin: 0; color: var(--dim); font-size: var(--fs-caption); }

@@ -42,15 +42,19 @@ export function VersionBar({ inline = false, quiet = false }: { inline?: boolean
   const s = useStore(stateStore);
   const [u, setU] = useState<UpdateStatus | null>(null);
   const [first, setFirst] = useState<string | null>(null);
+  // The update screen: from the tap (or a running update seen) until it is done; `lost` while the cockpit restarts.
+  const [watching, setWatching] = useState(false);
+  const [lost, setLost] = useState(false);
   const busy = !!u && BUSY.includes(u.phase);
+  useEffect(() => { if (busy && !inline) setWatching(true); }, [busy]);
   useEffect(() => {
-    const load = () => void api<UpdateStatus>('/api/update').then(setU, () =>
-      api<UpdateStatus['installed']>('/api/update/version').then((installed) => setU({ phase: 'idle', installed, latest: null } as unknown as UpdateStatus), () => {}));
+    const load = () => void api<UpdateStatus>('/api/update').then((x) => { setU(x); setLost(false); }, () =>
+      api<UpdateStatus['installed']>('/api/update/version').then((installed) => { setU({ phase: 'idle', installed, latest: null } as unknown as UpdateStatus); setLost(false); }, () => setLost(true)));
     load();
     // Every minute normally (the brain checks GitHub itself); every 3 s while an update runs.
-    const t = setInterval(load, busy ? 3000 : 60_000);
+    const t = setInterval(load, busy || watching ? 3000 : 60_000);
     return () => clearInterval(t);
-  }, [busy]);
+  }, [busy, watching]);
   // A new version came up under this page: reload to run its screens too.
   const sha = u?.installed.sha ?? null;
   useEffect(() => { if (!sha) return; if (first === null) setFirst(sha); else if (sha !== first) location.reload(); }, [sha]);
@@ -67,7 +71,7 @@ export function VersionBar({ inline = false, quiet = false }: { inline?: boolean
     const ok = await ask(`Update to ${u.latest.tag}?\n\nDownload: ${d.size}. ${w.text}\n\nThe cockpit restarts on it, about a minute, and this page reloads.${notes ? `\n\nWhat's new:\n${notes}` : ''}`, { ok: 'Update now', danger: false });
     if (!ok) return;
     if (!u.canInstall) { toast(u.installNote ?? 'Updates can\'t be installed from here'); return; }
-    try { setU(await api<UpdateStatus>('/api/update/install', { method: 'POST', body: JSON.stringify({ tag: u.latest.tag }) })); toast('Updating…'); }
+    try { setU(await api<UpdateStatus>('/api/update/install', { method: 'POST', body: JSON.stringify({ tag: u.latest.tag }) })); setWatching(true); }
     catch (e) { toast(`Not updated: ${(e as Error).message}`); }
   };
   return (
@@ -78,6 +82,45 @@ export function VersionBar({ inline = false, quiet = false }: { inline?: boolean
         {busy && <span class="vb-chip busy">Updating: {u.message ?? u.phase}</span>}
         {u.phase === 'failed' && u.job && <span class="vb-chip busy" title={u.message ?? ''}>Update didn't finish</span>}
       </div>
+      {watching && !inline && <UpdateScreen u={u} lost={lost} onClose={() => setWatching(false)} />}
     </>
+  );
+}
+
+const STEPS = [
+  { label: 'Download the new version', phases: ['requested', 'downloading', 'building'] },
+  { label: 'Restart the cockpit on it', phases: ['restarting'] },
+  { label: 'Check it started properly', phases: ['verifying'] },
+] as const;
+
+/**
+ * Full screen while an update runs: which step it's on, then the result. While the
+ * cockpit restarts the brain doesn't answer (`lost`); the page reloads by itself
+ * once the new version is running (VersionBar), so "done" is rarely seen here.
+ */
+function UpdateScreen({ u, lost, onClose }: { u: UpdateStatus; lost: boolean; onClose: () => void }) {
+  const phase = lost ? 'restarting' : u.phase;
+  const at = STEPS.findIndex((s) => (s.phases as readonly string[]).includes(phase));
+  const finished = !lost && (u.phase === 'done' || u.phase === 'failed' || u.phase === 'rolled-back' || u.phase === 'up-to-date' || u.phase === 'idle' || u.phase === 'available');
+  const ok = u.phase === 'done';
+  const tag = u.job?.tag ?? u.latest?.tag ?? '';
+  return (
+    <div class="update-screen" role="dialog" aria-modal="true" aria-label="Updating Truck Assistant">
+      <div class="us-card">
+        <img class="us-mark" src="/icon.svg" alt="" />
+        <h2>{finished ? (ok ? 'Update finished' : "The update didn't finish") : 'Updating Truck Assistant'}</h2>
+        {tag && <div class="us-tag num">{versionLabel(u)} → {tag}</div>}
+        {!finished && <div class="us-bar" aria-hidden="true"><i /></div>}
+        <ol class="us-steps">
+          {STEPS.map((s, i) => {
+            const state = finished ? (ok ? 'done' : i < Math.max(at, 0) ? 'done' : '') : i < at ? 'done' : i === at ? 'now' : '';
+            return <li class={state}><span class="us-dot" aria-hidden="true">{state === 'done' ? '✓' : i + 1}</span>{s.label}</li>;
+          })}
+        </ol>
+        <p class="us-msg">{lost ? 'The cockpit is restarting. This screen comes back by itself in about a minute.' : (u.message ?? '')}</p>
+        {finished ? <button type="button" class="btn primary" onClick={onClose}>{ok ? 'Done' : 'Close'}</button>
+          : <p class="us-note">Keep the truck parked. It takes about a minute; nothing needs doing here.</p>}
+      </div>
+    </div>
   );
 }
