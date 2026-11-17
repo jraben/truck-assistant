@@ -37,7 +37,7 @@ export function WeekSim({ driverId, onClose }: { driverId: string | null; onClos
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState<'ha' | 'stored'>('ha');
   const [found, setFound] = useState<string | null>(null);
-  const [chargeTo, setChargeTo] = useState('80');
+  const [chargeTo, setChargeTo] = useState(String(settings?.vehicle?.chargeLimitPct ?? 80));
   const [dc, setDc] = useState('');
   const [last, setLast] = useState<{ src: 'ha' | 'stored'; start: string; dates?: string[] } | null>(null);
   const run = async (src = source, start = from, dates?: string[]) => {

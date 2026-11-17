@@ -27,6 +27,7 @@ import { Rail, type RailEntry } from './Rail.tsx';
 import { VersionBar } from './VersionBar.tsx';
 import { AskHost } from './Ask.tsx';
 import { AlertBanner } from './AlertBanner.tsx';
+import { lowTires } from '../../../brain/src/vehicle.ts';
 import { PickupBanner, PickupPill } from './PickupBanner.tsx';
 import { askPassengerThen, PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
 import { useStripFit } from '../lib/stripFit.ts';
@@ -279,9 +280,11 @@ export type { State };
 const LOW_TIRE_PSI = 30;
 /** A low tire on the dash itself, not only on the phone and the tire widget. */
 function TireBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
-  const low = s?.tpms ? (Object.entries(s.tpms) as [string, { psi: number | null }][]).filter(([, t]) => t.psi !== null && t.psi < LOW_TIRE_PSI) : [];
+  // Under the floor, or 25% under its pressure at the last Reset system (Settings, Vehicle settings).
+  const base = useStore(settingsStore)?.vehicle?.tpmsBaseline ?? null;
+  const low = lowTires(s?.tpms ?? null, base, LOW_TIRE_PSI);
   if (!low.length) return null;
-  return <AlertBanner id={`tire:${low.map(([w]) => w).join(',')}`} tone="bad" title="Tire low" onOpen={() => go('control')}>{low.map(([w, t]) => `${w.toUpperCase()} ${Math.round(t.psi!)} psi`).join(', ')}</AlertBanner>;
+  return <AlertBanner id={`tire:${low.join(',')}`} tone="bad" title="Tire low" onOpen={() => go('control')}>{low.map((w) => `${w.toUpperCase()} ${Math.round(s!.tpms![w].psi!)} psi`).join(', ')}</AlertBanner>;
 }
 
 /** A crash or closure close ahead, or an enforcement camera coming up. */

@@ -32,6 +32,8 @@ export type SimParams = {
   dcPerKwh?: number | null;
   /** True when dcPerKwh is the typical-price default, not the driver's own or one asked for. */
   dcEstimated?: boolean;
+  /** Home charging into the pack, kW (from Vehicle settings, charge current); default HOME_AC_KW. */
+  homeKw?: number;
 };
 
 /** Public DC fast charging when the truck has no paid session to go by: a typical Phoenix-area price
@@ -143,7 +145,7 @@ export function simulateDrives(drives: DriveIn[], days: [Date, Date][], p: SimPa
       socStart: r1(socStart), socLow: r1(socLow), socEnd: r1(socEnd), ranOut: fastStops > 0,
       fastStops, fastKwh: r1(fastKwh), fastCost,
       fastMinutes: Math.round(fastMinutes), homeMinutes: chargeKwh > 0 ? HOME_PLUG_MIN : 0,
-      homeChargeHours: r1((chargeKwh * CHARGE_EFFICIENCY) / HOME_AC_KW),
+      homeChargeHours: r1((chargeKwh * CHARGE_EFFICIENCY) / (p.homeKw ?? HOME_AC_KW)),
       chargeKwh: r1(chargeKwh), chargeCost: chargeCost === null ? null : r2(chargeCost),
       gallons: r2(gallons), gasCost: p.gasPrice === null ? null : r2(gallons * p.gasPrice),
       points: c.points, maxGapH: c.maxGapH, coverage: c.coverage,
