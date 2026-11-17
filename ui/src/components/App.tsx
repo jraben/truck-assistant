@@ -26,6 +26,7 @@ import { TestPanel, useSimAvailable } from '../sim/TestPanel.tsx';
 import { Rail, type RailEntry } from './Rail.tsx';
 import { VersionBar } from './VersionBar.tsx';
 import { AskHost } from './Ask.tsx';
+import { AlertBanner } from './AlertBanner.tsx';
 import { lowTires } from '../../../brain/src/vehicle.ts';
 import { PickupBanner, PickupPill } from './PickupBanner.tsx';
 import { askPassengerThen, PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
@@ -283,14 +284,14 @@ function TireBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
   const base = useStore(settingsStore)?.vehicle?.tpmsBaseline ?? null;
   const low = lowTires(s?.tpms ?? null, base, LOW_TIRE_PSI);
   if (!low.length) return null;
-  return <button type="button" class="banner bad peakbanner tripbanner" role="status" onClick={() => go('control')}><b>Tire low</b><span>{low.map((w) => `${w.toUpperCase()} ${Math.round(s!.tpms![w].psi!)} psi`).join(', ')}</span></button>;
+  return <AlertBanner id={`tire:${low.join(',')}`} tone="bad" title="Tire low" onOpen={() => go('control')}>{low.map((w) => `${w.toUpperCase()} ${Math.round(s!.tpms![w].psi!)} psi`).join(', ')}</AlertBanner>;
 }
 
 /** A crash or closure close ahead, or an enforcement camera coming up. */
 function TrafficBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
   const t = s?.traffic ?? (s?.hazard ? { kind: 'hazard' as const, text: s.hazard.text } : null);
   if (!t || s?.roadTrip?.alert || (s?.roadTrip?.coach && (s.roadTrip.coach.state === 'go' || s.roadTrip.coach.state === 'slow'))) return null;
-  return <button type="button" class={`banner ${t.kind === 'camera' ? '' : 'bad'} peakbanner tripbanner`} role="status" onClick={() => go('traffic')}><b>{t.kind === 'camera' ? 'Camera' : t.kind === 'hazard' ? 'Ahead' : 'Traffic'}</b><span>{t.text}</span></button>;
+  return <AlertBanner id={`traffic:${t.kind}:${t.text}`} tone={t.kind === 'camera' ? 'warn' : 'bad'} title={t.kind === 'camera' ? 'Camera' : t.kind === 'hazard' ? 'Ahead' : 'Traffic'} onOpen={() => go('traffic')}>{t.text}</AlertBanner>;
 }
 
 /**
@@ -302,16 +303,16 @@ function TripBanner({ s, go }: { s: State | null; go: (v: string) => void }) {
   if (!rt) return null;
   const c = rt.coach;
   if (c && (c.state === 'go' || c.state === 'slow')) {
-    return <button type="button" class={`banner ${c.state === 'slow' ? 'bad' : 'ok'} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>{c.state === 'go' ? 'GO' : 'Slow stall'}</b><span>{c.message.replace(/^GO:\s*/, '')}</span></button>;
+    return <AlertBanner id={`coach:${c.state}`} tone={c.state === 'slow' ? 'bad' : 'ok'} title={c.state === 'go' ? 'GO' : 'Slow stall'} onOpen={() => go('roadtrip')}>{c.message.replace(/^GO:\s*/, '')}</AlertBanner>;
   }
-  if (rt.alert) return <button type="button" class={`banner ${rt.alert.kind === 'full' ? 'bad' : ''} peakbanner tripbanner`} role="status" onClick={() => go('roadtrip')}><b>Road trip</b><span>{rt.alert.message}</span></button>;
+  if (rt.alert) return <AlertBanner id={`trip:${rt.alert.kind}:${rt.alert.message}`} tone={rt.alert.kind === 'full' ? 'bad' : 'warn'} title="Road trip" onOpen={() => go('roadtrip')}>{rt.alert.message}</AlertBanner>;
   return null;
 }
 
 /** Charging at home during on-peak (red), or plugged in just before it (amber). Every view. */
 function PeakBanner({ s }: { s: State | null }) {
   const cp = s?.chargePeak;
-  if (cp?.onPeak) return <div class="banner bad peakbanner" role="alert"><b>{cp.title}</b><span>{cp.message}</span></div>;
-  if (cp?.headsUp) return <div class="banner peakbanner" role="status"><b>{cp.headsUpTitle}</b><span>{cp.headsUp}</span></div>;
+  if (cp?.onPeak) return <AlertBanner id={`peak:${cp.title}`} tone="bad" title={cp.title} alert>{cp.message}</AlertBanner>;
+  if (cp?.headsUp) return <AlertBanner id={`peakSoon:${cp.headsUpTitle}`} tone="warn" title={cp.headsUpTitle}>{cp.headsUp}</AlertBanner>;
   return null;
 }

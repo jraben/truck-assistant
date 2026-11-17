@@ -676,14 +676,14 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
   box-shadow: 0 -8px 8px -6px color-mix(in srgb, var(--bg) 60%, transparent); }
 
 /* Pickup banner: the body opens Road trip, the × hides it (components/PickupBanner.tsx). */
-.pickupbanner { position: relative; padding: 0; }
-.pickupbanner > .bn-main { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: inherit; align-items: inherit; gap: inherit; width: 100%;
+.pickupbanner, .closable { position: relative; padding: 0; }
+.pickupbanner > .bn-main, .closable > .bn-main { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: inherit; align-items: inherit; gap: inherit; width: 100%;
   padding: var(--s15) calc(var(--s2) + 40px) var(--s15) var(--s2); }
-.banners > .peakbanner ~ .pickupbanner > .bn-main { flex-direction: row; align-items: center; padding: var(--s1) calc(var(--s2) + 40px) var(--s1) var(--s2); }
-.banners > .peakbanner ~ .pickupbanner > .bn-main span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pickupbanner > .bn-x { position: absolute; top: 50%; right: var(--s05); transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 50%;
+.banners > .peakbanner ~ .pickupbanner > .bn-main, .banners > .peakbanner ~ .closable > .bn-main { flex-direction: row; align-items: center; padding: var(--s1) calc(var(--s2) + 40px) var(--s1) var(--s2); }
+.banners > .peakbanner ~ .pickupbanner > .bn-main span, .banners > .peakbanner ~ .closable > .bn-main span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pickupbanner > .bn-x, .closable > .bn-x { position: absolute; top: 50%; right: var(--s05); transform: translateY(-50%); width: 40px; height: 40px; border: 0; border-radius: 50%;
   background: transparent; color: inherit; font-size: 24px; line-height: 1; cursor: pointer; }
-.pickupbanner > .bn-x:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.pickupbanner > .bn-x:hover, .closable > .bn-x:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 .pickup-pill { flex: none; }
 
 /* Pages off the cockpit (Settings, Truck) share one way between them (components/PageNav.tsx). */
@@ -714,3 +714,6 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
   .app > .stage { grid-column: 1; grid-row: 3; }
   .app > .versionbar:not(.inline) { grid-column: 1; grid-row: 4; }
 }
+
+/* A closable banner that opens nothing (on-peak charging): no pointer on its text. */
+.closable > div.bn-main { cursor: default; }
