@@ -762,3 +762,6 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 .startup-assembly .sa-skip { color: var(--dim); font-size: var(--fs-caption); }
 .startup-assembly .assembly { align-self: center; width: min(1100px, 100%); justify-self: center; }
 .update-screen .us-card { width: min(640px, 100%); }
+
+/* The header on a narrow (portrait) screen: weather shrinks first; the clock always shows. */
+.strip > .wxstrip { flex: 0 1 auto; min-width: 0; overflow: hidden; }

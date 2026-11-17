@@ -8,6 +8,12 @@ import { closeWeather, openWeather, weatherOpenStore } from './weatherStore.ts';
 
 const WeatherView = lazy(() => import('./WeatherView.tsx'));
 
+/** The header's few words when there's no weather; the full reason stays in the tooltip. Pure. */
+export function shortWhy(why: string): string {
+  if (/fetch failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|timed? ?out|aborted|offline|network/i.test(why)) return 'Weather offline';
+  return why.length > 28 ? 'No weather yet' : why;
+}
+
 export function WeatherStrip({ s }: { s: State | null }) {
   const w = s?.drive?.weather ?? null;
   const why = s?.drive?.weatherWhy ?? 'No weather yet';
@@ -24,7 +30,7 @@ export function WeatherStrip({ s }: { s: State | null }) {
           {w.stale && <span class="tag dim">{ago(w.fetchedAt)}</span>}
           {w.alerts.length > 0 && <span class="tag bad">{w.alerts[0].event}</span>}
         </>
-      ) : <span class="dimtxt">{why}</span>}
+      ) : <span class="dimtxt ellip">{shortWhy(why)}</span>}
     </button>
   );
 }
