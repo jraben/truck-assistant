@@ -44,3 +44,15 @@ export function AlertBanner({ id, tone, title, children, onOpen, alert = false }
     </div>
   );
 }
+
+/** A notice inside a screen (the Traffic tab's 511 message), with the same × and the same come-back rules. */
+export function ClosableNote({ id, tone = 'warn', children, style }: { id: string; tone?: 'bad' | 'ok' | 'warn'; children: ComponentChildren; style?: string }) {
+  const closed = useStore(closedStore);
+  if (closed[id] !== undefined && Date.now() - closed[id] < CLOSE_FOR_MS) return null;
+  return (
+    <div class={`banner ${tone === 'warn' ? '' : tone} closable note`} role="status" style={style}>
+      <div class="bn-main">{children}</div>
+      <button type="button" class="bn-x" aria-label="Close this notice" title="Close (comes back if it changes)" onClick={() => close(id)}>×</button>
+    </div>
+  );
+}

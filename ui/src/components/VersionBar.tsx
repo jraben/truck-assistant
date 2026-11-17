@@ -5,8 +5,10 @@
 // Settings, Logs & system, Updates (which won't install while driving).
 import { useEffect, useState } from 'preact/hooks';
 import type { Release, UpdateStatus } from '../../../brain/src/ops/types.ts';
-import { api, stateStore, toast, useStore } from '../lib/brain.ts';
+import { api, settingsStore, stateStore, toast, useStore } from '../lib/brain.ts';
 import { ask } from './Ask.tsx';
+import { truckOf } from '../drive/hooks.ts';
+import { Assembly } from '../drive/Assembly.tsx';
 
 const BUSY = ['requested', 'downloading', 'building', 'restarting', 'verifying'];
 const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null);
@@ -104,10 +106,12 @@ function UpdateScreen({ u, lost, onClose }: { u: UpdateStatus; lost: boolean; on
   const finished = !lost && (u.phase === 'done' || u.phase === 'failed' || u.phase === 'rolled-back' || u.phase === 'up-to-date' || u.phase === 'idle' || u.phase === 'available');
   const ok = u.phase === 'done';
   const tag = u.job?.tag ?? u.latest?.tag ?? '';
+  const settings = useStore(settingsStore);
   return (
     <div class="update-screen" role="dialog" aria-modal="true" aria-label="Updating Truck Assistant">
       <div class="us-card">
-        <img class="us-mark" src="/icon.svg" alt="" />
+        {/* The truck being built, on a loop while the update runs (drive/Assembly.tsx). */}
+        <Assembly t={truckOf(settings)} loop still={finished} id="update-asm" />
         <h2>{finished ? (ok ? 'Update finished' : "The update didn't finish") : 'Updating Truck Assistant'}</h2>
         {tag && <div class="us-tag num">{versionLabel(u)} → {tag}</div>}
         {!finished && <div class="us-bar" aria-hidden="true"><i /></div>}

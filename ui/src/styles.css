@@ -740,3 +740,25 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 .update-screen li.done .us-dot { background: var(--ok); border-color: var(--ok); color: var(--bg); }
 .update-screen .us-msg { margin: 0; min-height: 1.4em; color: var(--fg); }
 .update-screen .us-note { margin: 0; color: var(--dim); font-size: var(--fs-caption); }
+
+/* A closable notice inside a screen (ClosableNote): room on the right for the ×. */
+.closable.note > .bn-main { display: block; padding: var(--s1) calc(var(--s2) + 40px) var(--s1) var(--s2); }
+
+/* The truck being assembled (drive/Assembly.tsx): at startup, and on the update screen. */
+.assembly { display: grid; gap: var(--s1); width: 100%; }
+.assembly-art { width: 100%; height: auto; display: block; }
+.assembly .asm-cap { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s05) var(--s15); }
+.assembly .asm-cap b { font-family: var(--display); font-size: var(--fs-title); letter-spacing: .08em; text-transform: uppercase; min-width: 9.5em; }
+.assembly .asm-cap span { color: var(--dim); }
+.assembly .asm-bar { flex-basis: 100%; height: 4px; border-radius: 2px; overflow: hidden; background: var(--hairline); }
+.assembly .asm-bar i { display: block; height: 100%; background: var(--accent); }
+.startup-assembly { position: fixed; inset: 0; z-index: 250; display: grid; grid-template-rows: auto 1fr; align-content: stretch; cursor: pointer;
+  padding: max(var(--s3), env(safe-area-inset-top, 0px)) max(var(--s4), env(safe-area-inset-right, 0px)) max(var(--s3), env(safe-area-inset-bottom, 0px)) max(var(--s4), env(safe-area-inset-left, 0px));
+  background: var(--bg); color: var(--fg); transition: opacity .35s ease; }
+.startup-assembly.leaving { opacity: 0; }
+.startup-assembly .sa-top { display: flex; justify-content: space-between; align-items: center; }
+.startup-assembly .sa-brand { display: flex; align-items: center; gap: var(--s1); font-family: var(--display); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; font-size: var(--fs-title); }
+.startup-assembly .sa-brand img { width: 36px; height: 36px; border-radius: var(--radius); }
+.startup-assembly .sa-skip { color: var(--dim); font-size: var(--fs-caption); }
+.startup-assembly .assembly { align-self: center; width: min(1100px, 100%); justify-self: center; }
+.update-screen .us-card { width: min(640px, 100%); }
