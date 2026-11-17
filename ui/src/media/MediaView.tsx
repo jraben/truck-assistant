@@ -16,6 +16,7 @@ import { FmTab, fmNetTrack, fmTrack, presetTrack, type FmSourceNow } from './FmT
 import { ShortcutsTab } from './Shortcuts.tsx';
 import { fully, isSourceId, onAndroid, phonePlaying, SOURCES, sourceById, tabletAppLink, type HandOff, type Source, type SourceId } from './sources.ts';
 import type { NowPlaying } from '../carplay/media.ts';
+import { pollTabletMedia, tabletCmd, tabletMediaStore, tabletPlaying, type TabletMedia } from './tabletMedia.ts';
 import './media.css';
 export { fmTrack, fmNetTrack, presetTrack };
 
@@ -41,6 +42,7 @@ const STREAMS = new Set(['spotify', 'radio', 'plex', 'home']);
 export function MediaW({ go }: WP) {
   const [tab, setTab] = useState<SourceId | 'home'>(() => { const t = lsGet(LS_TAB); return isSourceId(t) ? t : 'home'; });
   useEffect(() => pollMediaStatus(true), []);
+  useEffect(() => pollTabletMedia(), []);
   const pick = (t: SourceId | 'home') => { setTab(t); lsSet(LS_TAB, t); };
   const ms = useStore(mediaStatusStore);
   // Whether AM/FM comes off a tuner (no data) or an internet stream: the banner must not promise "no data" for a stream.
@@ -69,9 +71,11 @@ export function MediaW({ go }: WP) {
 type PhoneNp = Pick<NowPlaying, 'app' | 'title' | 'artist'>;
 
 /** One line under a source tile's name: what it is doing or what it needs. Pure. */
-export function sourceLine(src: Source, ms: MediaStatus | null, phone: PhoneNp | null, playing: string | null): string {
+export function sourceLine(src: Source, ms: MediaStatus | null, phone: PhoneNp | null, playing: string | null, tablet: TabletMedia | null = null): string {
   const onPhone = phonePlaying(src.handOff, phone);
   const what = (t: { title: string | null; artist: string | null }) => [t.title, t.artist].filter(Boolean).join(' · ');
+  const onTablet = tabletPlaying(src.handOff, tablet);
+  if (onTablet && !(src.id === 'spotify' && ms?.spotify.connected && ms.spotify.playback?.playing)) return `${onTablet.playing ? 'On the tablet' : 'Paused'}: ${what(onTablet)}`;
   switch (src.id) {
     case 'spotify': {
       const sp = ms?.spotify;
@@ -92,15 +96,16 @@ function MediaHome({ pick }: { pick: (t: SourceId) => void }) {
   const ms = useStore(mediaStatusStore);
   const phone = useStore(nowPlayingStore);
   const p = useStore(playerStore);
+  const tablet = useStore(tabletMediaStore);
   const playing = p.current?.source ?? null;
-  const live = (s: Source) => playing === s.id || (s.id === 'spotify' && !!ms?.spotify.onTruck && !!ms.spotify.playback?.playing) || !!phonePlaying(s.handOff, phone);
+  const live = (s: Source) => playing === s.id || (s.id === 'spotify' && !!ms?.spotify.onTruck && !!ms.spotify.playback?.playing) || !!phonePlaying(s.handOff, phone) || !!tabletPlaying(s.handOff, tablet)?.playing;
   return (
     <div class="mpane">
       <div class="msrc" role="list" aria-label="Sources">
         {SOURCES.map((s) => (
           <button type="button" role="listitem" class={`msrc-tile ${live(s) ? 'sel' : ''}`} onClick={() => pick(s.id)}>
             <img src={s.art} alt="" />
-            <span class="msrc-txt"><b title={s.label}>{s.short ?? s.label}</b><span class="dimtxt">{sourceLine(s, ms, phone, playing)}</span></span>
+            <span class="msrc-txt"><b title={s.label}>{s.short ?? s.label}</b><span class="dimtxt">{sourceLine(s, ms, phone, playing, tablet)}</span></span>
           </button>
         ))}
       </div>
@@ -127,6 +132,7 @@ function HandOffPane({ src, go, note }: { src: Source; go: (v: string) => void; 
   const h = src.handOff as HandOff;
   const cp = useStore(carplayStore);
   const np = phonePlaying(h, useStore(nowPlayingStore));
+  const tab = tabletPlaying(h, useStore(tabletMediaStore));
   const f = fully();
   const android = onAndroid();
   const canOpen = android || !!f?.startApplication;
@@ -138,20 +144,40 @@ function HandOffPane({ src, go, note }: { src: Source; go: (v: string) => void; 
   return (
     <div class="mpane">
       <p class="handoff-why">{note ?? <>{h.why} Play it in the {src.label} app on the tablet, or on your phone through <b>CarPlay</b>; what the phone plays shows here.</>}</p>
-      {np ? (
+      {tab && <TabletCard m={tab} src={src} />}
+      {tab ? null : np ? (
         <div class="np">
           <img src={np.art ?? src.art} alt="" />
           <span class="grow npt"><b class="ellip">{np.title ?? '—'}</b><span class="ellip dimtxt">{[np.artist, np.album].filter(Boolean).join(' · ')}</span><span class="lbl">On the phone · {np.app}</span></span>
         </div>
       ) : <div class="dimtxt">{cp.status === 'connected' ? `Nothing from ${src.label} on the phone right now.` : `CarPlay isn't connected, so the cockpit can't see what the phone is playing.`}</div>}
       <div class="row wrap">
-        {canOpen && <button class="btn big primary" type="button" onClick={openApp}>Play on the tablet</button>}
+        {canOpen && <button class={`btn big ${tab ? '' : 'primary'}`} type="button" onClick={openApp}>{tab ? `Open ${src.label}` : 'Play on the tablet'}</button>}
         <button class={`btn big ${canOpen ? '' : 'primary'}`} type="button" onClick={() => { player.stop(); go('carplay'); }}>Open CarPlay</button>
         {!android && <a class="btn big" href={h.web} target="_blank" rel="noopener noreferrer">Web player</a>}
       </div>
       <div class="dimtxt" style="font-size:var(--fs-body-sm)">{canOpen
         ? `The ${src.label} app opens on the tablet, signed in with your account; it keeps playing when you come back here (Back, or swipe up and tap Chrome). If it isn't installed, the Play Store opens.`
         : `On the dash tablet this button opens the ${src.label} app. Here, the web player opens in a new tab.`}</div>
+    </div>
+  );
+}
+
+const Ico = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d={d} fill="currentColor" /></svg>;
+
+/** What the tablet's app plays, with play/pause, previous and next (Tasker's Media Control on the tablet). */
+function TabletCard({ m, src }: { m: TabletMedia; src: Source }) {
+  return (
+    <div class="tabnp">
+      <div class="np">
+        <img src={src.art} alt="" />
+        <span class="grow npt"><b class="ellip">{m.title ?? '—'}</b><span class="ellip dimtxt">{[m.artist, m.album].filter(Boolean).join(' · ')}</span><span class="lbl">{m.playing ? 'Playing' : 'Paused'} on the tablet · {m.app ?? src.label}</span></span>
+      </div>
+      <div class="tabnp-ctl" role="group" aria-label={`${src.label} on the tablet`}>
+        <button type="button" class="btn big" aria-label="Previous" onClick={() => void tabletCmd('prev')}><Ico d="M6 5h2v14H6zM20 5v14L9 12z" /></button>
+        <button type="button" class="btn big primary" aria-label={m.playing ? 'Pause' : 'Play'} onClick={() => void tabletCmd('toggle')}><Ico d={m.playing ? 'M6 5h4v14H6zM14 5h4v14h-4z' : 'M7 4v16l13-8z'} /></button>
+        <button type="button" class="btn big" aria-label="Next" onClick={() => void tabletCmd('next')}><Ico d="M16 5h2v14h-2zM4 5v14l11-7z" /></button>
+      </div>
     </div>
   );
 }

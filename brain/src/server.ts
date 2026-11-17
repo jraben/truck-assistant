@@ -540,6 +540,8 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
   // ---- Track B: media sources, WOPR, charging receipts (brain/src/trackb.ts) ----
   // Kept on the app for the Parked routes (Plex video shares Track B's Plex connection).
   (app as unknown as { trackb: Awaited<ReturnType<typeof registerTrackB>> }).trackb = await registerTrackB(app, brain, nowPlaying);
+  // …and the now-playing hub, for the dash tablet's own apps (parkedRoutes.ts, tablet.ts).
+  (app as unknown as { nowPlaying: NowPlayingHub }).nowPlaying = nowPlaying;
 
   // ---- UI --------------------------------------------------------------------
   const uiBuilt = existsSync(path.join(config.uiDir, 'index.html'));

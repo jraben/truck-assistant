@@ -5,13 +5,15 @@
 // its local "HTTP Request" event (deploy/android/README.md):
 //   GET http://<tablet>:<port>/slate/front          bring the cockpit back to the front
 //   GET http://<tablet>:<port>/slate/launch?pkg=…    open an installed app (Moonlight, RetroArch)
+//   GET http://<tablet>:<port>/slate/media?cmd=…     play/pause, next, previous in the music app playing
+// and Tasker tells the brain what that app is playing: POST /api/tablet/nowplaying.
 // The tablet's address is learned from the cockpit itself (it says hello every
 // minute), so nothing has to be typed in. Ignition wake/sleep is Tasker's own
 // "power connected / disconnected" profile; on power loss it asks the brain
 // how long to wait (GET /api/tablet/sleep, Settings > Truck > "When the truck
 // turns off"), and falls back to 2 minutes if the brain doesn't answer.
 import { kvGet, kvSet, type Db } from './db.ts';
-import type { TabletSleep } from './types.ts';
+import type { NowPlaying, TabletSleep } from './types.ts';
 
 /** What Tasker reads when the truck turns off. Flat fields, seconds included, so the task needs no arithmetic. Pure. */
 export function sleepPlan(t: TabletSleep) {
@@ -30,8 +32,60 @@ export function intentUrl(url: string, pkg: string): string {
 /** A private LAN or Tailscale address, the only places a tablet in the truck can be. Pure. */
 export const okTabletIp = (ip: string) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)\d{1,3}\.\d{1,3}(\.\d{1,3})?$/.test(ip.replace(/^::ffff:/, ''));
 
+export const MEDIA_CMDS = ['toggle', 'play', 'pause', 'next', 'prev'] as const;
+export type MediaCmd = (typeof MEDIA_CMDS)[number];
+
+/** What a music app on the tablet is playing, as Tasker last said. */
+export type TabletMedia = { title: string | null; artist: string | null; album: string | null; app: string | null; pkg: string | null; playing: boolean; at: string };
+/** A paused report is forgotten after this; a "playing" one after STALE_MS with no new song (the app was closed). */
+export const TABLET_MEDIA_TTL_MS = 30 * 60_000;
+export const TABLET_MEDIA_STALE_MS = 15 * 60_000;
+
+/** A Tasker value: unset variables arrive as their own name ("%mt_title"), which means nothing. Pure. */
+const val = (v: unknown, max = 200): string | null => {
+  if (typeof v !== 'string' && typeof v !== 'number') return null;
+  const s = String(v).trim();
+  return !s || /^%\w+$/.test(s) ? null : s.slice(0, max);
+};
+const yes = (v: unknown): boolean | null => {
+  if (typeof v === 'boolean') return v;
+  const s = val(v)?.toLowerCase();
+  if (s == null) return null;
+  if (['true', '1', 'yes', 'on', 'playing', 'play'].includes(s)) return true;
+  if (['false', '0', 'no', 'off', 'paused', 'pause', 'stopped', 'stop'].includes(s)) return false;
+  return null;
+};
+/** Common Android music apps by package, for a report that names only the package. */
+const APP_NAMES: Record<string, string> = {
+  'com.pandora.android': 'Pandora', 'com.google.android.apps.youtube.music': 'YouTube Music', 'com.amazon.mp3': 'Amazon Music',
+  'com.spotify.music': 'Spotify', 'com.plexapp.android': 'Plex', 'tv.plex.labs.plexamp': 'Plexamp', 'com.google.android.youtube': 'YouTube',
+};
+
+/**
+ * Tasker's report as TabletMedia. It sends title/artist/album/app/pkg/playing, or one
+ * "Artist - Title" line as `track`; null when there's no song at all. Pure.
+ */
+export function parseTabletMedia(body: unknown, now: Date): TabletMedia | null {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  let title = val(b.title), artist = val(b.artist);
+  const track = val(b.track);
+  if (!title && track) {
+    const m = /^(.+?)\s+[-–—]\s+(.+)$/.exec(track);
+    if (m && !artist) { artist = m[1]; title = m[2]; } else title = track;
+  }
+  if (!title && !artist) return null;
+  const pkg = val(b.pkg, 120);
+  const okPkg = pkg && /^[a-zA-Z][\w.]{2,119}$/.test(pkg) ? pkg : null;
+  return { title, artist, album: val(b.album), app: val(b.app, 60) ?? (okPkg ? APP_NAMES[okPkg] ?? null : null), pkg: okPkg, playing: yes(b.playing) ?? true, at: now.toISOString() };
+}
+
+/** For the now-playing hub: the song while it plays, nothing once paused. Pure. */
+export const tabletNowPlaying = (m: TabletMedia | null): NowPlaying | null =>
+  m && m.playing ? { title: m.title, artist: m.artist, album: m.album, source: 'tablet' } : null;
+
 export class Tablet {
   private db: Db;
+  private media: TabletMedia | null = null;
   constructor(db: Db) { this.db = db; }
 
   get(): TabletState { return { ip: null, seenAt: null, ua: null, taskerPort: 1821, ...(kvGet<TabletState>(this.db, KEY) ?? {}) }; }
@@ -63,6 +117,30 @@ export class Tablet {
 
   /** Bring the cockpit back over whatever app is open (the truck started moving). */
   front() { return this.tasker('/slate/front'); }
+  /** Play/pause, next, previous in whatever music app plays on the tablet (Tasker's Media Control). */
+  mediaCmd(cmd: unknown) {
+    if (!(MEDIA_CMDS as readonly unknown[]).includes(cmd)) return Promise.resolve({ ok: false, error: `cmd is one of ${MEDIA_CMDS.join(', ')}` });
+    return this.tasker(`/slate/media?cmd=${cmd}`);
+  }
+
+  /** Tasker's now-playing report; only from the tablet's own address (it has no login). */
+  report(ip: string, body: unknown, now = new Date()): { ok: true; media: TabletMedia | null } | { ok: false; error: string } {
+    const s = this.get();
+    if (!s.ip || ip.replace(/^::ffff:/, '') !== s.ip) return { ok: false, error: 'only the dash tablet reports here (open the cockpit on it first)' };
+    const m = parseTabletMedia(body, now);
+    // Just "playing"/"paused" (Tasker's Music Active profile): the last song keeps its card, with the new state.
+    const flag = yes((body as Record<string, unknown> | null)?.playing);
+    this.media = m ?? (this.media && flag !== null ? { ...this.media, playing: flag, at: now.toISOString() } : null);
+    return { ok: true, media: this.media };
+  }
+
+  /** What the tablet's music app plays now, or null (nothing, or an old paused report). */
+  nowPlaying(now = Date.now()): TabletMedia | null {
+    const m = this.media;
+    if (m && now - Date.parse(m.at) > (m.playing ? TABLET_MEDIA_STALE_MS : TABLET_MEDIA_TTL_MS)) this.media = null;
+    return this.media;
+  }
+
   /** Open an installed Android app by package name. */
   launch(pkg: string) {
     if (!/^[a-zA-Z][\w.]{2,100}$/.test(pkg)) return Promise.resolve({ ok: false, error: 'bad package' });

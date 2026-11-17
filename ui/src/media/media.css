@@ -119,3 +119,9 @@
 .mhead > .mh { flex: none; white-space: nowrap; margin: 0; }
 .mhead .mswitch { flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-end; }
 .mswitch button { flex: none; width: 52px; height: 52px; }
+/* The tablet's app playing (Tasker): its song, then big previous / play-pause / next. */
+.tabnp { display: grid; gap: var(--s15); padding: var(--s15); border-radius: var(--radius); background: var(--panel-2); }
+.tabnp-ctl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s1); }
+.tabnp-ctl .btn { font-size: 28px; min-height: calc(var(--hit) * 1.2); }
+.tabnp-ctl .btn:not(.primary) { background: var(--panel); }
+.tabnp-ctl .btn svg { display: block; margin: auto; }

@@ -3,6 +3,7 @@
 // the art each source keeps in the UI. The Drive card, the CarPlay strip and
 // the Media view all show this; Home Assistant gets the same words over MQTT.
 import { useEffect, useMemo, useState } from 'preact/hooks';
+import { tabletMediaStore } from './tabletMedia.ts';
 import { useStore, type State } from '../lib/brain.ts';
 import { carplayStore, nowPlayingStore } from '../carplay/controller.ts';
 import { Card } from '../components/common.tsx';
@@ -11,7 +12,7 @@ import { playerStore } from './player.ts';
 import { PlayerControls } from './MediaView.tsx';
 import { mediaStatusStore, pollMediaStatus } from './status.ts';
 
-export const SOURCE_LABEL: Record<string, string> = { carplay: 'CarPlay', spotify: 'Spotify', radio: 'Radio', fm: 'AM/FM', plex: 'Plex', local: 'Files' };
+export const SOURCE_LABEL: Record<string, string> = { carplay: 'CarPlay', spotify: 'Spotify', radio: 'Radio', fm: 'AM/FM', plex: 'Plex', local: 'Files', tablet: 'Tablet' };
 
 export type AnyNowPlaying = { title: string | null; artist: string | null; album: string | null; source: string; art: string | null; app: string | null };
 
@@ -20,11 +21,13 @@ export function useAnyNowPlaying(s: State | null): AnyNowPlaying | null {
   const cp = useStore(nowPlayingStore);
   const p = useStore(playerStore);
   const ms = useStore(mediaStatusStore);
+  const tm = useStore(tabletMediaStore);
   const np = s?.nowPlaying ?? null;
   if (!np) return cp ? { title: cp.title, artist: cp.artist, album: cp.album, source: 'carplay', art: cp.art, app: cp.app } : null;
   let art: string | null = null, app: string | null = null;
   if (np.source === 'carplay') { art = cp?.art ?? null; app = cp?.app ?? null; }
   else if (np.source === 'spotify') art = ms?.spotify.playback?.art ?? null;
+  else if (np.source === 'tablet') app = tm?.app ?? null;
   else if (p.current && p.current.source === np.source) art = p.current.art;
   return { ...np, art, app };
 }

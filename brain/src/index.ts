@@ -31,7 +31,8 @@ async function main() {
   const app = await buildServer(brain);
   const remote = new RemoteService(brain, db, config.dataDir, config.sim);   // Track C: cameras, dashcam, alerts, remote
   await registerRemote(app, remote);
-  registerParked(app, brain, db, remote, (app as unknown as { trackb: { plex: import('./media/plex.ts').PlexService } }).trackb.plex);   // video/games/karaoke, camp/pet, trailers, light show
+  registerParked(app, brain, db, remote, (app as unknown as { trackb: { plex: import('./media/plex.ts').PlexService } }).trackb.plex,
+    (app as unknown as { nowPlaying: import('./media.ts').NowPlayingHub }).nowPlaying);   // video/games/karaoke, camp/pet, trailers, light show
   registerSim(app, brain, remote);   // the test panel (SIM=1 only)
   registerContacts(app, brain.contacts, config.port, (o) => remote.notifier.send(o, brain.settings.get(), remote.store.get().alerts));
   brain.pushToPhone = async (title, message, clickUrl) => { const r = await remote.notifier.send({ kind: 'pickup', title, message, priority: 'high', clickUrl }, brain.settings.get(), remote.store.get().alerts); if (r.error && !r.delivered.length) throw new Error(r.error); };
