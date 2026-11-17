@@ -105,3 +105,17 @@
 .mgrid.saved .mtile img, .mgrid.saved .mtile .noart { grid-row: 1 / 3; width: 56px; height: 56px; aspect-ratio: auto; font-size: var(--fs-title); }
 .mgrid.saved .mtile b { font-family: var(--body); font-size: var(--fs-body-sm); align-self: end; }
 .mgrid.saved .mtile span { font-size: var(--fs-caption); align-self: start; }
+
+/* Media home, tidied: the sources on one row, Saved in groups (Radio, Spotify, Plex). */
+.msrc { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--s1); }
+.msrc-tile { padding: var(--s15) var(--s05); }
+.msrc-tile img { width: 64px; height: 64px; }
+.msrc-txt span { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.saved-group { display: grid; gap: var(--s1); }
+.saved-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s1); }
+.saved-head .lbl { margin: 0; }
+/* The source's name beside "← Sources" stays whole; the switcher takes the rest and scrolls if it must. */
+.mhead { flex-wrap: nowrap; }
+.mhead > .mh { flex: none; white-space: nowrap; margin: 0; }
+.mhead .mswitch { flex: 1; min-width: 0; flex-wrap: nowrap; overflow-x: auto; justify-content: flex-end; }
+.mswitch button { flex: none; width: 52px; height: 52px; }

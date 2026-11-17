@@ -9,6 +9,7 @@ import plexArt from './art/plex.svg';
 import radioArt from './art/radio.svg';
 import fmArt from './art/fm.svg';
 import filesArt from './art/files.svg';
+import { androidIntent } from '../lib/nav.ts';
 
 export type SourceId = 'spotify' | 'pandora' | 'ytmusic' | 'amazon' | 'plex' | 'radio' | 'fm' | 'local';
 
@@ -22,7 +23,8 @@ export type HandOff = {
   why: string;
 };
 
-export type Source = { id: SourceId; label: string; art: string; handOff?: HandOff };
+/** `short`: the name under a small tile, where the full one won't fit. */
+export type Source = { id: SourceId; label: string; short?: string; art: string; handOff?: HandOff };
 
 export const SOURCES: Source[] = [
   {
@@ -34,11 +36,11 @@ export const SOURCES: Source[] = [
     handOff: { androidPackage: 'com.pandora.android', web: 'https://www.pandora.com', app: /pandora/i, why: 'Pandora has no public playback API that a web page can use.' },
   },
   {
-    id: 'ytmusic', label: 'YouTube Music', art: ytmusicArt,
+    id: 'ytmusic', label: 'YouTube Music', short: 'YT Music', art: ytmusicArt,
     handOff: { androidPackage: 'com.google.android.apps.youtube.music', web: 'https://music.youtube.com', app: /youtube\s*music|yt\s*music/i, why: 'YouTube Music has no public playback API that a web page can use.' },
   },
   {
-    id: 'amazon', label: 'Amazon Music', art: amazonArt,
+    id: 'amazon', label: 'Amazon Music', short: 'Amazon', art: amazonArt,
     handOff: { androidPackage: 'com.amazon.mp3', web: 'https://music.amazon.com', app: /amazon\s*music/i, why: 'Amazon Music has no public playback API that a web page can use.' },
   },
   { id: 'plex', label: 'Plex', art: plexArt },
@@ -62,3 +64,11 @@ export function phonePlaying<T extends { app: string | null; title: string | nul
 type Fully = { startApplication?: (pkg: string) => void };
 /** Fully Kiosk's JavaScript interface (tablet), when it is switched on. */
 export const fully = (): Fully | null => ((globalThis as { fully?: Fully }).fully ?? null);
+
+/**
+ * The link that opens the service's own app on the dash tablet (Chrome on Android):
+ * its web address handed to that app by package, and the Play Store if it isn't installed. Pure.
+ */
+export const tabletAppLink = (h: HandOff): string => androidIntent(h.web, { package: h.androidPackage, fallbackPackage: h.androidPackage });
+/** This page is on an Android tablet or phone (the dash tablet), where tabletAppLink opens the app. */
+export const onAndroid = (): boolean => { try { return /Android/i.test(navigator.userAgent); } catch { return false; } };
