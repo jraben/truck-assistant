@@ -14,7 +14,7 @@ import { mbPerHour, player, playerStore, type Track } from './player.ts';
 import { mediaStatusStore, pollMediaStatus, refreshMediaStatus, type LocalListing, type LocalTrack, type MediaStatus, type PlexItem, type PlexSection, type RadioStation, type SpotifyPlaylist } from './status.ts';
 import { FmTab, fmNetTrack, fmTrack, presetTrack, type FmSourceNow } from './FmTab.tsx';
 import { ShortcutsTab } from './Shortcuts.tsx';
-import { fully, isSourceId, phonePlaying, SOURCES, sourceById, type HandOff, type Source, type SourceId } from './sources.ts';
+import { fully, isSourceId, onAndroid, phonePlaying, SOURCES, sourceById, tabletAppLink, type HandOff, type Source, type SourceId } from './sources.ts';
 import type { NowPlaying } from '../carplay/media.ts';
 import './media.css';
 export { fmTrack, fmNetTrack, presetTrack };
@@ -77,13 +77,13 @@ export function sourceLine(src: Source, ms: MediaStatus | null, phone: PhoneNp |
       const sp = ms?.spotify;
       if (sp?.clientId && sp.connected) return sp.playback?.title ? `${sp.playback.playing ? 'Playing' : 'Paused'}: ${what(sp.playback)}` : `Connected${sp.user ? ` as ${sp.user}` : ''}`;
       if (onPhone) return `On the phone: ${what(onPhone)}`;
-      return sp?.clientId ? 'Sign in on the settings page' : 'Plays from the phone';
+      return sp?.clientId ? 'Sign in on Settings' : 'Opens its app';
     }
     case 'pandora': case 'ytmusic': case 'amazon':
-      return onPhone ? `On the phone: ${what(onPhone)}` : 'Plays from the phone';
-    case 'plex': return !ms ? '' : ms.plex.configured ? (playing === 'plex' ? 'Playing from your library' : 'Your music library') : 'Not set up yet';
-    case 'radio': return ms?.radio.now ? `Playing ${ms.radio.now.name}` : 'Stations and favourites';
-    case 'fm': return ms?.fm.tuner.state === 'present' ? 'Tuner and presets' : 'Presets (internet streams)';
+      return onPhone ? `On the phone: ${what(onPhone)}` : 'Opens its app';
+    case 'plex': return !ms ? '' : ms.plex.configured ? (playing === 'plex' ? 'Playing' : 'Your library') : 'Not set up yet';
+    case 'radio': return ms?.radio.now ? `Playing ${ms.radio.now.name}` : 'Internet stations';
+    case 'fm': return ms?.fm.tuner.state === 'present' ? 'Tuner' : 'Station streams';
     case 'local': return 'Music on the truck';
   }
 }
@@ -100,12 +100,11 @@ function MediaHome({ pick }: { pick: (t: SourceId) => void }) {
         {SOURCES.map((s) => (
           <button type="button" role="listitem" class={`msrc-tile ${live(s) ? 'sel' : ''}`} onClick={() => pick(s.id)}>
             <img src={s.art} alt="" />
-            <span class="msrc-txt"><b>{s.label}</b><span class="dimtxt">{sourceLine(s, ms, phone, playing)}</span></span>
+            <span class="msrc-txt"><b title={s.label}>{s.short ?? s.label}</b><span class="dimtxt">{sourceLine(s, ms, phone, playing)}</span></span>
           </button>
         ))}
       </div>
-      <div class="lbl">Saved</div>
-      <ShortcutsTab stationTrack={stationTrack} plexTrack={plexTrack} />
+      <ShortcutsTab stationTrack={stationTrack} plexTrack={plexTrack} onAllPlex={() => pick('plex')} />
     </div>
   );
 }
@@ -114,8 +113,7 @@ function SourceHeader({ src, pick }: { src: Source; pick: (t: SourceId | 'home')
   return (
     <div class="mhead">
       <button type="button" class="btn big" onClick={() => pick('home')}>← Sources</button>
-      <img class="mhead-art" src={src.art} alt="" />
-      <h3 class="mh grow ellip">{src.label}</h3>
+      <h3 class="mh">{src.label}</h3>
       <div class="mswitch" role="tablist" aria-label="Switch source">
         {SOURCES.map((s) => <button type="button" role="tab" aria-selected={s.id === src.id} aria-label={s.label} title={s.label} onClick={() => pick(s.id)}><img src={s.art} alt="" /></button>)}
       </div>
@@ -130,10 +128,16 @@ function HandOffPane({ src, go, note }: { src: Source; go: (v: string) => void; 
   const cp = useStore(carplayStore);
   const np = phonePlaying(h, useStore(nowPlayingStore));
   const f = fully();
-  const openApp = () => { try { player.stop(); f!.startApplication!(h.androidPackage); } catch (e) { toast((e as Error).message); } };
+  const android = onAndroid();
+  const canOpen = android || !!f?.startApplication;
+  // On the dash tablet: the service's own app opens and plays there (out of the tablet's speaker or Bluetooth).
+  const openApp = () => {
+    player.stop();
+    try { if (f?.startApplication) f.startApplication(h.androidPackage); else location.href = tabletAppLink(h); } catch (e) { toast((e as Error).message); }
+  };
   return (
     <div class="mpane">
-      <p class="handoff-why">{note ?? <>{h.why} So there are no buttons here pretending to control it: play {src.label} on your phone through <b>CarPlay</b> (or Bluetooth), and what's playing shows here when the phone reports it.</>}</p>
+      <p class="handoff-why">{note ?? <>{h.why} Play it in the {src.label} app on the tablet, or on your phone through <b>CarPlay</b>; what the phone plays shows here.</>}</p>
       {np ? (
         <div class="np">
           <img src={np.art ?? src.art} alt="" />
@@ -141,11 +145,13 @@ function HandOffPane({ src, go, note }: { src: Source; go: (v: string) => void; 
         </div>
       ) : <div class="dimtxt">{cp.status === 'connected' ? `Nothing from ${src.label} on the phone right now.` : `CarPlay isn't connected, so the cockpit can't see what the phone is playing.`}</div>}
       <div class="row wrap">
-        <button class="btn big primary" type="button" onClick={() => { player.stop(); go('carplay'); }}>Open CarPlay</button>
-        {f?.startApplication && <button class="btn big" type="button" onClick={openApp}>Open the {src.label} app</button>}
-        <a class="btn big" href={h.web} target="_blank" rel="noopener noreferrer">Web player</a>
+        {canOpen && <button class="btn big primary" type="button" onClick={openApp}>Play on the tablet</button>}
+        <button class={`btn big ${canOpen ? '' : 'primary'}`} type="button" onClick={() => { player.stop(); go('carplay'); }}>Open CarPlay</button>
+        {!android && <a class="btn big" href={h.web} target="_blank" rel="noopener noreferrer">Web player</a>}
       </div>
-      <div class="dimtxt" style="font-size:var(--fs-body-sm)">The web player opens in a new tab and plays from this screen, signed in with your own account; its controls stay in that tab.{f?.startApplication ? '' : ' On the tablet, turn on Fully Kiosk\'s JavaScript interface to get an "Open the app" button.'}</div>
+      <div class="dimtxt" style="font-size:var(--fs-body-sm)">{canOpen
+        ? `The ${src.label} app opens on the tablet, signed in with your account; it keeps playing when you come back here (Back, or swipe up and tap Chrome). If it isn't installed, the Play Store opens.`
+        : `On the dash tablet this button opens the ${src.label} app. Here, the web player opens in a new tab.`}</div>
     </div>
   );
 }
@@ -198,7 +204,7 @@ function SpotifyTab({ go }: { go: (v: string) => void }) {
     // No Client ID: a hand-off tile like the other services, with the one-line way to full control.
     return (
       <>
-        <HandOffPane src={sourceById('spotify')!} go={go} note={<>Spotify plays from the app on your phone through <b>CarPlay</b>, and what's playing shows here. <span class="dimtxt">Full control here (play, skip, playlists, the truck as a speaker) needs Spotify Premium and your own Client ID pasted on the settings page.</span></>} />
+        <HandOffPane src={sourceById('spotify')!} go={go} note={<>Play Spotify in its app on the tablet, or on your phone through <b>CarPlay</b>. <span class="dimtxt">Full control here (play, skip, playlists, the truck as a speaker) needs Spotify Premium and your own Client ID pasted on the settings page.</span></>} />
         <details class="mmore"><summary>Set up full control</summary><QrLink url={settingsUrl('spotify')} label="Open the settings page on the phone (truck Wi-Fi or Tailscale)" /></details>
       </>
     );
