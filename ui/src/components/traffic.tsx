@@ -7,6 +7,7 @@ import type { TrafficView } from '../../../brain/src/types.ts';
 import type { HazardView } from '../../../brain/src/hazards/service.ts';
 import { fmtTime } from '../lib/fmt.ts';
 import { Card } from './common.tsx';
+import { ClosableNote } from './AlertBanner.tsx';
 import { askPassenger } from '../drive/Passenger.tsx';
 import type { WP } from './drive.tsx';
 
@@ -45,7 +46,7 @@ export function TrafficAhead({ s }: WP) {
   return (
     <div class={`tfgrid ${v.cameras.length ? '' : 'nocams'}`}>
       <Card label="Cameras ahead" right={<span class="dimtxt" style="font-size:var(--fs-caption)">{FOLLOW[v.following]}</span>}>
-        {(err || v.message) && <div class="banner" style="font-size:var(--fs-body-sm)">{err ?? v.message}{v.message?.includes('settings page') && <> <a href="/settings#traffic">Open settings</a></>}</div>}
+        {(err || v.message) && <ClosableNote id={`traffic-note:${err ?? v.message}`} style="font-size:var(--fs-body-sm)"><span>{err ?? v.message}{v.message?.includes('settings page') && <> <a href="/settings#traffic">Open settings</a></>}</span></ClosableNote>}
         {!v.cameras.length && !v.message && <div class="dimtxt">No 511 cameras ahead.</div>}
         <div class="tfcams">
           {v.cameras.map((c) => {

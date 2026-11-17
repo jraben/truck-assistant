@@ -27,6 +27,7 @@ import { Rail, type RailEntry } from './Rail.tsx';
 import { VersionBar } from './VersionBar.tsx';
 import { AskHost } from './Ask.tsx';
 import { AlertBanner } from './AlertBanner.tsx';
+import { StartupAssembly } from '../drive/StartupAssembly.tsx';
 import { lowTires } from '../../../brain/src/vehicle.ts';
 import { PickupBanner, PickupPill } from './PickupBanner.tsx';
 import { askPassengerThen, PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
@@ -241,6 +242,7 @@ export function App({ page }: { page?: AppPage } = {}) {
       {simAvailable && <TestPanel open={simOpen} onClose={() => setSimOpen(false)} go={go} />}
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
       <AskHost />
+      {!page && <StartupAssembly />}
     </div>
   );
 }
