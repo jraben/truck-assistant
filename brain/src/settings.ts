@@ -1,4 +1,5 @@
 import { DEFAULT_ENERGY_MODEL, type EnergyModel } from './drive/energy.ts';
+import { defaultVehicle, validateVehicle as validateVehicleSettings } from './vehicle.ts';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { validateRailOrder } from './rail.ts';
@@ -98,6 +99,7 @@ export function defaultSettings(): Settings {
     truck: defaultTruck(),
     drive: defaultDrive(),
     payoffGoal: defaultPayoffGoal(),
+    vehicle: defaultVehicle(),
     drivers: seedDrivers(),
   };
 }
@@ -223,6 +225,9 @@ export function mergeSettings(base: Settings, patch: unknown): Settings {
   if (typeof p.compareMpg === 'number') p.compareVehicle = customVehicle(p.compareMpg);
   delete p.compareMpg;
   delete p.drivers;
+  // The tire-pressure baseline is set only by Reset system (/api/vehicle/tpms-reset): a Settings save
+  // carries the page's copy, which may be older than a reset made since.
+  if (isObj(p.vehicle)) { const v = { ...p.vehicle }; delete v.tpmsBaseline; p.vehicle = v; }
   // The truck photo is set only by /api/vehicle/photo (it names a file in DATA_DIR).
   if (isObj(p.truck)) { const t = { ...p.truck }; delete t.photo; p.truck = t; }
   let keys = base.keys;
@@ -397,6 +402,7 @@ export function validate(s: Settings): Settings {
     s.relayWatts[id] = Math.round(w);
   }
   for (const k of Object.keys(s.relayWatts)) if (!(RELAY_IDS as readonly string[]).includes(k)) delete s.relayWatts[k];
+  try { s.vehicle = validateVehicleSettings(s.vehicle); } catch (e) { throw new SettingsError((e as Error).message); }
   if (s.tabletWatts === undefined || s.tabletWatts === null) s.tabletWatts = defaultSettings().tabletWatts;
   num(s.tabletWatts, 'tabletWatts', 0, 100);
   s.tabletWatts = Math.round(s.tabletWatts);
@@ -539,6 +545,11 @@ export class SettingsStore {
 
   update(patch: unknown): Settings {
     return this.commit(mergeSettings(structuredClone(this.s), patch));
+  }
+
+  /** Tire pressure, Reset system: the only way the baseline changes. */
+  setTpmsBaseline(base: Settings['vehicle']['tpmsBaseline']): Settings {
+    return this.commit({ ...structuredClone(this.s), vehicle: { ...this.s.vehicle, tpmsBaseline: base } });
   }
 
   driver(id: string | null | undefined): Driver | undefined { return id ? this.s.drivers.find((d) => d.id === id) : undefined; }

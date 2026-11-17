@@ -31,6 +31,7 @@ import { DEFAULT_DC_PER_KWH, busiestWeek, compareCars, roadMiles, simulateStored
 import type { Trip } from './types.ts';
 import type { CompareVehicle } from './types.ts';
 import { kvGet, kvSet } from './db.ts';
+import { batteryHealth, homeKw, hoursToLimit, lowTires, tpmsReset } from './vehicle.ts';
 import { parseTimeline, storeTimeline, TimelineError } from './import/timeline.ts';
 import { dayRanges } from './import/phone.ts';
 import { trackerPoints, type TrackerPoint } from './ha/client.ts';
@@ -158,7 +159,8 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     const dcEstimated = !asked && dcAvg === null;
     return {
       packKwh: st.packKwh, eff: { city: brain.drive.range.eff('city'), highway: brain.drive.range.eff('highway') }, highwayMph: st.drive.highwayMph,
-      startSoc: pct(q.startSoc, 80), chargeTo: pct(q.chargeTo, 80), homeRate: st.homeRate, compare: v,
+      // Night charge: as asked, else the truck's charge limit (Vehicle settings), as the truck itself would stop.
+      startSoc: pct(q.startSoc, st.vehicle.chargeLimitPct), chargeTo: pct(q.chargeTo, st.vehicle.chargeLimitPct), homeRate: st.homeRate, compare: v, homeKw: homeKw(st.vehicle.chargeAmps),
       gasPrice: g.today?.price ?? (g.manualPrice > 0 ? g.manualPrice : null), dcPerKwh, dcEstimated,
     };
   };
@@ -197,6 +199,25 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
       kvSet(brain.db, 'weekSim.vehicles', list);
       return list;
     } catch (e) { return reply.code(400).send({ error: (e as Error).message }); }
+  });
+  // The truck's Vehicle settings menu, as TA follows it (vehicle.ts).
+  app.get('/api/vehicle/status', async () => {
+    const st = brain.settings.get();
+    const tpms = brain.getState().tpms;
+    return {
+      ...st.vehicle,
+      homeKw: homeKw(st.vehicle.chargeAmps),
+      hoursFrom10: hoursToLimit(st.packKwh, st.vehicle, 10),
+      battery: batteryHealth(brain.charges.store.list(null, null, null), st.packKwh),
+      tpms, low: lowTires(tpms, st.vehicle.tpmsBaseline, 30),
+    };
+  });
+  // Tire pressure, Reset system: after checking and filling all four tires.
+  app.post('/api/vehicle/tpms-reset', async (_req, reply) => {
+    const base = tpmsReset(brain.getState().tpms);
+    if (!base) return reply.code(409).send({ error: 'Not every tire has a pressure reading right now: check the tire sensors, then try again.' });
+    brain.settings.setTpmsBaseline(base);
+    return base;
   });
   // A stored phone trip: Home Assistant imports link their stops (straight-line miles); Timeline drives don't.
   const storedDrive = (t: Trip): StoredDrive => ({ startedAt: Date.parse(t.startedAt), endedAt: Date.parse(t.endedAt ?? t.startedAt), miles: t.miles, straight: t.from !== null || t.to !== null });

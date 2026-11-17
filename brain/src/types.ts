@@ -159,6 +159,8 @@ export type Settings = {
   truck: TruckLook;                 // Track A: what the truck looks like (tilt drawing)
   drive: DriveSettings;             // Track A
   payoffGoal: PayoffGoal;           // "pay off the truck with gas savings"
+  /** The truck's own Vehicle settings menu, followed (vehicle.ts): charge limit and current, tire-pressure reset. */
+  vehicle: import('./vehicle.ts').VehicleSettings;
   drivers: Driver[];
 };
 

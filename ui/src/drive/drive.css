@@ -20,6 +20,7 @@
 .speedfoot { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--s1) var(--s3); min-height: 60px; padding-bottom: var(--s05); }
 .gearstrip { display: flex; gap: 2px; padding: 0; font-family: var(--display); font-weight: 700; font-size: var(--fs-display-sm); letter-spacing: .04em; }
 .gearstrip span { min-width: 52px; min-height: 48px; display: grid; place-items: center; color: var(--dim); opacity: .45; border-radius: var(--radius); }
+.gearstrip span.ready { min-width: 0; padding: 0 var(--s1); opacity: 1; color: var(--ok); font-size: var(--fs-title); letter-spacing: .08em; }
 .gearstrip span.on { opacity: 1; background: var(--accent); color: var(--accent-ink); box-shadow: 0 0 calc(14px * var(--glow)) var(--accent); }
 .stylepick { position: absolute; left: 8px; bottom: 76px; z-index: 5; display: flex; gap: var(--s1); padding: var(--s1); border-radius: var(--radius);
   background: var(--panel); border: 1px solid var(--hairline); box-shadow: 0 10px 40px color-mix(in srgb, var(--bg) 60%, transparent); }

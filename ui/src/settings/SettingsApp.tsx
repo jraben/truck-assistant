@@ -10,6 +10,7 @@ import { VehiclePicker } from './VehiclePicker.tsx';
 import { VersionBar } from '../components/VersionBar.tsx';
 import { PageNav } from '../components/PageNav.tsx';
 import { CompareVehicles } from './CompareVehicles.tsx';
+import { VehicleSection } from './VehicleSection.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
 import { MapsSection } from './MapsSection.tsx';
@@ -368,6 +369,10 @@ export function SettingsApp({ embedded = false }: { embedded?: boolean } = {}) {
       </div>
 
       <div data-tab="truck" hidden={tab !== 'truck'}>
+      <Section id="vehicle" keywords="vehicle settings charge limit 80% 100% max charge current amps tire pressure tpms reset parking brake diagnostic battery health state of health distance since last update ready" title="Vehicle settings" help="The truck's own menu (Charging, Tire pressure, Parking brake, Diagnostic mode), followed here so TA's numbers match. Set the same choices on the truck's screen: TA can't change the truck itself yet.">
+        <VehicleSection value={draft.vehicle} packKwh={draft.packKwh} onChange={(v) => set('vehicle', v)} />
+      </Section>
+
       <Section id="truck-basics" keywords="battery pack range efficiency home location gps tablet sleep screen who's driving" title="Truck" help="These settings are the truck's, whoever is driving.">
         <div class="fields form">
           <label class="f"><span>Truck id (MQTT prefix)</span><input type="text" value={draft.truckId} onInput={(e) => set('truckId', (e.target as HTMLInputElement).value)} /></label>
