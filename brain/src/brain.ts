@@ -153,6 +153,8 @@ export class Brain extends EventEmitter {
     const st = settings.get();
     this.trips = new TripStore(db, { sim: config.sim });
     const orphans = this.trips.closeOrphans();
+    const impossible = this.trips.dropImpossible();
+    if (impossible) console.log(`[trips] removed ${impossible} empty trip(s) that ended before they started`);
     if (orphans) console.log(`[trips] closed ${orphans} trip(s) left open by a restart`);
     this.finder = new ChargerFinder(db);
     this.charges = new ChargeService(new ChargeStore(db, { sim: config.sim }));
