@@ -66,6 +66,13 @@ dash tablet counts only while it charges (the browser's Battery API says so).
   default `{2, false, 30}`): what Tasker on the dash tablet does when the
   truck's power drops (`deploy/android/README.md` step 6). Open (no login):
   Tasker can't log in, and only GET/HEAD of this one path is exempt.
+- `POST /api/tablet/play {pkg}` → `{ok}`: a music app plays behind the cockpit on
+  the dash tablet (Tasker: `/slate/launch?pkg`, then `/slate/media?cmd=play`
+  after 3 s, then `/slate/front`). 400 `bad package`; 502 `{error}` names the
+  step that failed ("The app opened, but Play didn't reach it…", "It's playing,
+  but the cockpit didn't come back…", or Tasker not answering, when nothing
+  opened). Media's *Play on the tablet* falls back to opening the app in front
+  only in that last case.
 - `GET  /ws` WebSocket. Server sends `{"type":"state","data":State}` on connect
   and on every change (at most 10/s). Client sends
   `{"type":"relay","id":"relay_1","on":true}` or

@@ -9,6 +9,8 @@ export type { TabletMedia };
 export const tabletMediaStore = store<TabletMedia | null>(null);
 
 const load = () => api<{ media: TabletMedia | null }>('/api/tablet/media').then((r) => tabletMediaStore.set(r.media), () => {});
+/** Look once now (after "Play on the tablet"). */
+export const refreshTabletMedia = load;
 
 /** Poll while a media screen is open; returns the stop function (for useEffect). */
 export function pollTabletMedia(ms = 5000): () => void {

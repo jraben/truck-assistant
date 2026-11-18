@@ -84,8 +84,12 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    to the front).
 
    **Music apps on the tablet** (Pandora, YouTube Music, Amazon Music, Spotify).
-   Media's *Play on the tablet* opens the app; these profiles let the cockpit
-   show what it plays and work its ⏮ ⏯ ⏭ buttons. Same port 1821.
+   Media's *Play on the tablet* plays the app **behind the cockpit**: the brain
+   asks Tasker to open it (*Open an app*, above), press Play (*Music buttons*,
+   below) and bring the cockpit back (*Cockpit to front*), so the driver never
+   leaves the cockpit. These profiles also let the cockpit show what it plays
+   and work its ⏮ ⏯ ⏭ buttons. Same port 1821. Check it from the brain with
+   `POST /api/tablet/play {"pkg":"com.pandora.android"}`.
 
    | Profile | Trigger | Task |
    |---|---|---|
@@ -93,10 +97,11 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    | Song to the cockpit | State › Variables › **Variable Value** `%MTRACK` *Set* | see 2 below |
    | Playing or paused | State › Media › **Music Active** | Enter: see 3 (`"playing":"true"`); Exit task: the same with `"false"` |
 
-   1. **Music buttons**: three Media › **Media Control** actions, each with
+   1. **Music buttons**: four Media › **Media Control** actions, each with
       *Use Notification If Available* ticked (so it reaches the app that is
       playing): `If %http_request_query_cmd eq toggle` › Cmd **Toggle Pause**;
-      `eq next` › **Next**; `eq prev` › **Previous**.
+      `eq play` › **Play**; `eq next` › **Next**; `eq prev` › **Previous**.
+      (*Play* is what starts an app after *Play on the tablet* opens it.)
    2. **Song to the cockpit**: Net › **HTTP Request**, POST
       `http://10.42.0.1:8080/api/tablet/nowplaying`, Content Type
       `application/json`, Body `{"track":"%MTRACK","playing":"true"}`, timeout 5 s.

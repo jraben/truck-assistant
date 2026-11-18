@@ -78,6 +78,12 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
     return r.ok ? { ok: true, media: tablet.nowPlaying() } : reply.code(r.error?.startsWith('cmd is') ? 400 : 502).send({ error: r.error });
   });
   app.get('/api/tablet/media', async () => ({ media: tablet.nowPlaying() }));
+  // "Play on the tablet": the app plays behind the cockpit (open it, Play, cockpit back to the front).
+  app.post('/api/tablet/play', async (req, reply) => {
+    const pkg = String((req.body as { pkg?: unknown } | null)?.pkg ?? '');
+    const r = await tablet.playInBackground(pkg);
+    return r.ok ? { ok: true } : reply.code(r.error === 'bad package' ? 400 : 502).send({ error: r.error });
+  });
   // A report goes stale when Tasker stops sending (the app closed): take it off the dash then too.
   const sweep = setInterval(() => nowPlaying?.report('tablet', tabletNowPlaying(tablet.nowPlaying())), 60_000);
   app.addHook('onClose', async () => clearInterval(sweep));

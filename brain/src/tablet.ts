@@ -146,4 +146,22 @@ export class Tablet {
     if (!/^[a-zA-Z][\w.]{2,100}$/.test(pkg)) return Promise.resolve({ ok: false, error: 'bad package' });
     return this.tasker(`/slate/launch?pkg=${encodeURIComponent(pkg)}`);
   }
+
+  /**
+   * A music app plays behind the cockpit: Tasker opens it, presses Play, and brings
+   * the cockpit straight back, so the driver never has to leave it. The app needs a
+   * moment to start before Play reaches it (`settleMs`). If Play or the return
+   * fails, the cockpit is still asked to come back, and the error says which step.
+   */
+  async playInBackground(pkg: string, wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)), settleMs = 3000): Promise<{ ok: boolean; error?: string }> {
+    const opened = await this.launch(pkg);
+    if (!opened.ok) return opened;
+    await wait(settleMs);
+    const played = await this.mediaCmd('play');
+    await wait(800);
+    const back = await this.front();
+    if (!played.ok) return { ok: false, error: `The app opened, but Play didn't reach it: ${played.error}` };
+    if (!back.ok) return { ok: false, error: `It's playing, but the cockpit didn't come back: ${back.error}` };
+    return { ok: true };
+  }
 }
