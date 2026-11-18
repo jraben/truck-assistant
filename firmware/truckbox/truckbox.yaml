@@ -49,6 +49,11 @@ substitutions:
   pin_ignition: GPIO34
   pin_reverse: GPIO35
   ign_rev_pin_mode: INPUT
+  # Turn signals (the cockpit shows that side's camera): left on PC817 ch 8 to GPIO39
+  # (input-only, no pull-up: same as ignition/reverse), right on a small extra PC817
+  # module to GPIO5 (internal pull-up; a strapping pin, but only for SDIO timing).
+  pin_turn_left: GPIO39
+  pin_turn_right: GPIO5
   opto_inverted: "true"
   input_debounce: 50ms
 
@@ -361,6 +366,23 @@ binary_sensor:
     filters:
       - delayed_on: ${input_debounce}
       - delayed_off: 300ms         # LED lamps / bulb-check pulses
+
+  # Turn signals: the lamp feed blinks about 1.5 times a second, so hold ON through
+  # the dark half of each blink; 1 s after the last blink it reads OFF.
+  - platform: gpio
+    name: Turn Left
+    id: turn_left
+    pin: { number: "${pin_turn_left}", mode: "${ign_rev_pin_mode}", inverted: "${opto_inverted}" }
+    filters:
+      - delayed_on: ${input_debounce}
+      - delayed_off: 1s
+  - platform: gpio
+    name: Turn Right
+    id: turn_right
+    pin: { number: "${pin_turn_right}", mode: "${five_switch_pin_mode}", inverted: "${opto_inverted}" }
+    filters:
+      - delayed_on: ${input_debounce}
+      - delayed_off: 1s
 
   - platform: template
     name: Low Voltage Lockout

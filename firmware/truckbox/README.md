@@ -70,7 +70,7 @@ Prices are approximate (Nov 2026). Links are searches, not endorsed listings.
 | # | Part | Why | ~USD | Where |
 |---|---|---|---|---|
 | 1 | ESP32 Relay Board x8 (ESP32-WROOM-32E, direct-GPIO, *not* Modbus/LCTech) | The truck box | 20 | [Amazon](https://www.amazon.com/s?k=ESP32+8+channel+relay+board+ESP32-WROOM) / [AliExpress](https://www.aliexpress.us/w/wholesale-esp32-relay-x8.html) |
-| 2 | 8-channel PC817 optocoupler module, 12V input / 3.3V output (or 2× 4-channel) | 12V sense isolation, 7 used | 8 | [Amazon](https://www.amazon.com/s?k=PC817+8+channel+optocoupler+module+12V+3.3V) |
+| 2 | 8-channel PC817 optocoupler module, 12V input / 3.3V output (or 2× 4-channel) | 12V sense isolation, all 8 used (ch 8: left turn signal) | 8 | [Amazon](https://www.amazon.com/s?k=PC817+8+channel+optocoupler+module+12V+3.3V) |
 | 3 | Pololu D36V28F5 5V 2.8A buck (4.5–50 V in) | Clean 5V that survives 12V transients | 16 | [Pololu](https://www.pololu.com/product/3782) |
 | 4 | SMBJ24A TVS diode (24V standoff, ~39V clamp), plus a 1N5822 / SS54 Schottky or a P-FET for reverse polarity | Transient + reverse-battery protection | 2 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SMBJ24A) |
 | 5 | SHT31 breakout (GY-SHT31-D), **or** BME280 (not BMP280) | Cabin temp/humidity | 6 | [Amazon](https://www.amazon.com/s?k=SHT31+breakout) |
@@ -123,6 +123,8 @@ Nothing in this build back-feeds Slate's own wiring.
 | five_switch_1..5 | GPIO4, 16, 17, 18, 19 | header | PC817 ch 1–5 | internal pull-up, active-low |
 | ignition | GPIO34 | header | PC817 ch 6 | input-only: **module needs its own pull-up** (or add 10k to 3V3) |
 | reverse | GPIO35 | header | PC817 ch 7 | input-only, same as ignition |
+| turn_left | GPIO39 (VN) | header | PC817 ch 8 | input-only, same as ignition; the cockpit shows the left camera |
+| turn_right | GPIO5 | header | extra 1–2 ch PC817 module | internal pull-up; the right camera |
 | I2C SDA / SCL | GPIO21 / GPIO22 | header | SHT31 0x44, MPU-6050 0x68 | 3V3 power; keep the leads under 30 cm |
 | 12V battery sense | GPIO36 (VP) | header | 47k/10k divider | ADC1 |
 | status LED | GPIO23 | onboard | — | blinks on errors |
@@ -374,16 +376,20 @@ No delivered truck has been probed. All of this is from `docs/forum-findings.md`
 2. **Reverse signal:** no reverse wire has been identified.
    - Candidates are the reverse-lamp feed and the tailgate camera's power.
    - If the lamps are PWM-dimmed or pulsed, the 300 ms off-delay may need tuning.
-3. **Ignition sense:** the dash 12V socket is believed to be ignition-switched,
+3. **Turn signals** (side cameras): tap the left and right turn-lamp feeds (or
+   the mirror repeaters) through the optos. Unconfirmed on the Slate, like
+   reverse; LED signals with a load-sensing flasher may need the tap after the
+   lamp, not before. The 1 s off-delay holds through the blinks.
+4. **Ignition sense:** the dash 12V socket is believed to be ignition-switched,
    and a switched 12V there would serve. This is unconfirmed.
-4. **12V battery behaviour while parked:** we don't know whether the truck
+5. **12V battery behaviour while parked:** we don't know whether the truck
    recharges its lead-acid 12V battery from the pack when parked.
    - If it doesn't, the truck box's ~3 Ah a day matters over a long park.
    - Options: power the box from ignition plus a keep-alive, or add deep sleep.
      Neither is built.
-5. **Fuse box, current limits, Slate Access Point connectors:** not
+6. **Fuse box, current limits, Slate Access Point connectors:** not
    documented. Tap only circuits you've measured.
-6. **Cab heat:** a parked Phoenix cab can pass 70 °C.
+7. **Cab heat:** a parked Phoenix cab can pass 70 °C.
    - The ESP32 module is rated to 85 °C. The relay board's relays and
      capacitors are commodity parts, and their ratings are unknown.
    - Mount the box low and out of the sun (under a seat), not on the dash.

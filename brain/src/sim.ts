@@ -64,6 +64,7 @@ export type SimControl = {
   auxV: number | null;
   lowTire: Wheel | null;      // that tire reads 22 psi
   switches: boolean[];        // the Five Switch, 1–5
+  signal: 'left' | 'right' | 'hazard' | null; // the turn-signal stalk
 };
 /** Plugged in: what kind of charger, its power, where to stop, and how much faster than real time. */
 export type SimCharge = { kind: ChargeKind; kw: number; targetPct: number; timeScale: number; auto?: boolean };
@@ -102,6 +103,7 @@ export function mergeControl(cur: SimControl, patch: Partial<SimControl>): SimCo
   if (patch.cabinF !== undefined) c.cabinF = patch.cabinF === null ? null : num(patch.cabinF, -20, 180, 'cabinF');
   if (patch.auxV !== undefined) c.auxV = patch.auxV === null ? null : num(patch.auxV, 9, 15.5, 'auxV');
   if (patch.lowTire !== undefined) { if (patch.lowTire !== null && !WHEELS.includes(patch.lowTire)) throw new SimError('lowTire: fl, fr, rl, rr or null'); c.lowTire = patch.lowTire; }
+  if (patch.signal !== undefined) { if (patch.signal !== null && !['left', 'right', 'hazard'].includes(patch.signal)) throw new SimError('signal: left, right, hazard or null'); c.signal = patch.signal; }
   if (patch.switches !== undefined) {
     if (!Array.isArray(patch.switches) || patch.switches.length !== 5) throw new SimError('switches: five booleans');
     c.switches = patch.switches.map(Boolean);
@@ -123,7 +125,7 @@ export class SimTruck {
   private heading = 180;
   private relays: Record<string, boolean> = {};
   private timer: NodeJS.Timeout | null = null;
-  private ctl: SimControl = { mode: 'auto', gear: 'park', ignition: false, targetMph: 35, loop: true, cabinF: null, auxV: null, lowTire: null, switches: [true, false, false, true, false] };
+  private ctl: SimControl = { mode: 'auto', gear: 'park', ignition: false, targetMph: 35, loop: true, cabinF: null, auxV: null, lowTire: null, switches: [true, false, false, true, false], signal: null };
   private ign = false;
   private rev = false;
   private towLeft = 0;          // simulated seconds of being towed still to go
@@ -152,11 +154,19 @@ export class SimTruck {
     this.ctl.switches.forEach((on, i) => this.emit(`binary_sensor/five_switch_${i + 1}/state`, on ? 'ON' : 'OFF'));
     this.emit('binary_sensor/ignition/state', 'OFF');
     this.emit('binary_sensor/reverse/state', 'OFF');
+    this.emitSignal();
     this.tick();
     this.timer = setInterval(() => this.tick(), 1000);
   }
 
   stop() { if (this.timer) clearInterval(this.timer); }
+
+  /** The turn-signal lamp feeds, steady while on (the truck box's filter holds through the blinks). */
+  private emitSignal() {
+    const s = this.ctl.signal;
+    this.emit('binary_sensor/turn_left/state', s === 'left' || s === 'hazard' ? 'ON' : 'OFF');
+    this.emit('binary_sensor/turn_right/state', s === 'right' || s === 'hazard' ? 'ON' : 'OFF');
+  }
 
   /** Relay command: the "truck box" echoes the new state a moment later, like the real one. */
   command(id: string, on: boolean) {
@@ -185,6 +195,7 @@ export class SimTruck {
       c = mergeControl(c, keep);
     }
     this.ctl = c;
+    if (c.signal !== prev.signal) this.emitSignal();
     if (c.switches.some((on, i) => on !== prev.switches[i])) c.switches.forEach((on, i) => this.emit(`binary_sensor/five_switch_${i + 1}/state`, on ? 'ON' : 'OFF'));
     if (prev.mode === 'manual' && c.mode === 'auto') { this.towLeft = 0; this.arrived = false; this.setPhase(this.speed > 1 ? 'drive' : 'parked'); }
     if (c.mode === 'manual') {

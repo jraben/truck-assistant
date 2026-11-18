@@ -213,7 +213,7 @@ export class CamManager {
         return { ...c, live: this.backend === 'go2rtc' ? c.enabled && (this.opt.external || !!this.go2rtc?.running) : !!l?.job.running, error: c.enabled ? err : null };
       }),
       recording: { enabled: this.s.dashcam.enabled && this.backend !== 'off', cameras: rec.filter((id) => this.isRecording(id)), bytes: stats.bytes, capBytes: this.s.dashcam.capGb * 1024 ** 3, segments: stats.segments, locked: stats.locked, error: recError },
-      guides: this.s.cams.guides, autoRear: this.s.cams.autoRear, defaultLayout: this.s.cams.defaultLayout,
+      guides: this.s.cams.guides, autoRear: this.s.cams.autoRear, autoSide: this.s.cams.autoSide, trailMph: this.s.cams.trailMph, defaultLayout: this.s.cams.defaultLayout,
     };
   }
 }

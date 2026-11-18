@@ -21,6 +21,8 @@ export type State = {
   gps: { lat: number; lon: number; headingDeg: number | null; fix: boolean } | null;
   ignition: boolean | null;
   reverse: boolean | null;
+  /** The turn-signal lamp feeds (truck box inputs); both on = hazards. null = not wired / unknown. */
+  turnSignals: { left: boolean | null; right: boolean | null };
   cabinTempF: number | null;
   aux12v: number | null;
   tilt: { pitch: number; roll: number } | null;

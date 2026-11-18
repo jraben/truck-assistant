@@ -30,6 +30,8 @@ ESPHome's own topic layout, so it works with HA discovery unchanged.
 | `slate/truckbox/binary_sensor/five_switch_1/state` … `_5` | `ON` / `OFF` | read-only sense of the Five Switch circuits |
 | `slate/truckbox/binary_sensor/ignition/state` | `ON` / `OFF` | switched 12V sense |
 | `slate/truckbox/binary_sensor/reverse/state` | `ON` / `OFF` | reverse lamp sense |
+| `slate/truckbox/binary_sensor/turn_left/state` | `ON` / `OFF` | left turn-lamp sense, held ON through the blinks; both ON = hazards (`State.turnSignals`) |
+| `slate/truckbox/binary_sensor/turn_right/state` | `ON` / `OFF` | right turn-lamp sense |
 | `slate/truckbox/sensor/cabin_temp/state` | °F, float | |
 | `slate/truckbox/sensor/cabin_humidity/state` | %, float | |
 | `slate/truckbox/sensor/aux_battery_v/state` | volts, float | 12V battery |

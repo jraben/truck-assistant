@@ -176,6 +176,12 @@ Step by step, with pictures, for a first-time installer:
   `/truck`, and the always-on LTE-M watch that wakes the Pi
   (`firmware/watch`). On a desk `SIM=1` shows five moving test cameras (MJPEG
   from ffmpeg when go2rtc isn't installed). Design: `docs/remote.md`.
+- **Multi-angle cameras (2026-11-19):** left/right camera roles; the side camera
+  pops up on its side of the screen while that turn signal is on (two new truck
+  box inputs, `turn_left` / `turn_right`; never for hazards or in reverse); split
+  layouts on Cams (Front + rear, Sides + rear, Towing); and a Trail view switch
+  that puts the front camera and the sides on screen at 10 mph and under
+  (Settings › Cameras). The Test panel has a turn-signal stalk.
 
 - **Logs, ops, publishing (Track D, 2026-11-05):** business mileage log
   with auto-tagging and IRS export (CSV + printable), maintenance log and

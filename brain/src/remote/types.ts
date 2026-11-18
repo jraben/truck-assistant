@@ -1,7 +1,8 @@
 // Track C: cameras, dashcam, the always-on watch, alerts, the Truck page.
 // Shapes for docs/contract.md "Track C: Cameras and remote". Pure types.
 
-export type CamRole = 'rear' | 'front' | 'bed' | 'hitch' | '360' | 'cabin' | 'other';
+/** left / right: side cameras (mirror or fender), shown while that turn signal is on. */
+export type CamRole = 'rear' | 'front' | 'left' | 'right' | 'bed' | 'hitch' | '360' | 'cabin' | 'other';
 
 /**
  * One camera. `source` says how go2rtc (or the desk fallback) reads it:
@@ -39,6 +40,8 @@ export type RemoteSettings = {
     cameras: CameraConfig[];
     guides: GuideSettings;
     autoRear: boolean;              // switch to the rear camera on reverse
+    autoSide: boolean;              // show the left/right camera while that turn signal is on
+    trailMph: number;               // trail view: the front camera shows at or under this speed (3-25)
     defaultLayout: 'grid' | 'single';
   };
   dashcam: {
@@ -111,6 +114,8 @@ export type CamStatus = {
   recording: { enabled: boolean; cameras: string[]; bytes: number; capBytes: number; segments: number; locked: number; error: string | null };
   guides: GuideSettings;
   autoRear: boolean;
+  autoSide: boolean;
+  trailMph: number;
   defaultLayout: 'grid' | 'single';
 };
 
