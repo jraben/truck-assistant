@@ -58,6 +58,12 @@ export function keepPoint(last: (LatLon & { t: number; headingDeg: number | null
   return false;
 }
 
+/** A "trip" under both of these never went anywhere (into Drive and back to Park): it isn't kept. */
+export const EMPTY_TRIP_MI = 0.05;
+export const EMPTY_TRIP_S = 120;
+/** Whether a closed trip is one that never went anywhere. Pure. */
+export const isEmptyTrip = (miles: number, durationS: number) => miles < EMPTY_TRIP_MI && durationS < EMPTY_TRIP_S;
+
 export class TripStore {
   private lastKept: (LatLon & { t: number; headingDeg: number | null }) | null = null;
 
@@ -77,6 +83,26 @@ export class TripStore {
         .run(endedAt, Math.max(0, Math.round((Date.parse(endedAt) - Date.parse(r.started_at)) / 1000)), last?.lat ?? null, last?.lon ?? null, 'restart', r.id);
     }
     return open.length;
+  }
+
+  /**
+   * Trips that can't have happened: no miles, and ending at or before they started
+   * (a stop backdated to before the trip began). Left by older versions; removed at startup.
+   */
+  dropImpossible(): number {
+    const ids = (this.db.prepare("SELECT id FROM trips WHERE miles = 0 AND ended_at IS NOT NULL AND ended_at <= started_at AND (source IS NULL OR source = 'truck')").all() as { id: number }[]).map((r) => r.id);
+    for (const id of ids) this.remove(id);
+    return ids.length;
+  }
+
+  private remove(id: number) {
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('DELETE FROM trip_points WHERE trip_id = ?').run(id);
+      this.db.prepare('DELETE FROM trip_samples WHERE trip_id = ?').run(id);
+      this.db.prepare('DELETE FROM trips WHERE id = ?').run(id);
+      this.db.exec('COMMIT');
+    } catch (e) { this.db.exec('ROLLBACK'); throw e; }
   }
 
   start(at: Date, soc: number | null, pos: LatLon | null, driverId: string | null = null, startStopId: number | null = null): Trip {
@@ -133,6 +159,10 @@ export class TripStore {
     const r = this.db.prepare('SELECT * FROM trips WHERE id = ?').get(id) as Row | undefined;
     if (!r) return null;
     const durationS = Math.max(0, Math.round((at.getTime() - Date.parse(r.started_at)) / 1000));
+    // Never went anywhere (into Drive and back, or a stop backdated to before it began): not a trip.
+    if (isEmptyTrip(r.miles, durationS)) { this.remove(id); this.lastKept = null; return null; }
+    // A stop dated before the trip began can't end it before it started.
+    if (at.getTime() < Date.parse(r.started_at)) at = new Date(r.started_at);
     const kwhEst = r.miles > 0 && effMiPerKwh > 0 ? Math.round((r.miles / effMiPerKwh) * 100) / 100 : r.miles === 0 ? 0 : null;
     const pts = this.points(id);
     const end = pos ?? (pts.length ? pts[pts.length - 1] : null);
