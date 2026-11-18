@@ -16,7 +16,7 @@ import { FmTab, fmNetTrack, fmTrack, presetTrack, type FmSourceNow } from './FmT
 import { ShortcutsTab } from './Shortcuts.tsx';
 import { fully, isSourceId, onAndroid, phonePlaying, SOURCES, sourceById, tabletAppLink, type HandOff, type Source, type SourceId } from './sources.ts';
 import type { NowPlaying } from '../carplay/media.ts';
-import { pollTabletMedia, tabletCmd, tabletMediaStore, tabletPlaying, type TabletMedia } from './tabletMedia.ts';
+import { pollTabletMedia, refreshTabletMedia, tabletCmd, tabletMediaStore, tabletPlaying, type TabletMedia } from './tabletMedia.ts';
 import './media.css';
 export { fmTrack, fmNetTrack, presetTrack };
 
@@ -141,6 +141,22 @@ function HandOffPane({ src, go, note }: { src: Source; go: (v: string) => void; 
     player.stop();
     try { if (f?.startApplication) f.startApplication(h.androidPackage); else location.href = tabletAppLink(h); } catch (e) { toast((e as Error).message); }
   };
+  // "Play on the tablet": the app plays BEHIND the cockpit (Tasker opens it, presses Play, brings
+  // the cockpit back), so the driver stays here. Without Tasker, the app opens in front as before.
+  const [starting, setStarting] = useState(false);
+  const playHere = async () => {
+    player.stop();
+    setStarting(true);
+    toast(`Starting ${src.label}…`);
+    try {
+      await api('/api/tablet/play', { method: 'POST', body: JSON.stringify({ pkg: h.androidPackage }) });
+      setTimeout(() => void refreshTabletMedia(), 1500);
+    } catch (e) {
+      const msg = (e as Error).message;
+      // Tasker never opened the app: open it the old way. Otherwise it's open; just say what went wrong.
+      if (/^(The app opened|It's playing)/.test(msg)) toast(msg); else openApp();
+    } finally { setStarting(false); }
+  };
   return (
     <div class="mpane">
       <p class="handoff-why">{note ?? <>{h.why} Play it in the {src.label} app on the tablet, or on your phone through <b>CarPlay</b>; what the phone plays shows here.</>}</p>
@@ -152,12 +168,14 @@ function HandOffPane({ src, go, note }: { src: Source; go: (v: string) => void; 
         </div>
       ) : <div class="dimtxt">{cp.status === 'connected' ? `Nothing from ${src.label} on the phone right now.` : `CarPlay isn't connected, so the cockpit can't see what the phone is playing.`}</div>}
       <div class="row wrap">
-        {canOpen && <button class={`btn big ${tab ? '' : 'primary'}`} type="button" onClick={openApp}>{tab ? `Open ${src.label}` : 'Play on the tablet'}</button>}
+        {canOpen && (tab
+          ? <button class="btn big" type="button" onClick={openApp}>Open {src.label}</button>
+          : <button class="btn big primary" type="button" disabled={starting} onClick={() => void playHere()}>{starting ? 'Starting…' : 'Play on the tablet'}</button>)}
         <button class={`btn big ${canOpen ? '' : 'primary'}`} type="button" onClick={() => { player.stop(); go('carplay'); }}>Open CarPlay</button>
         {!android && <a class="btn big" href={h.web} target="_blank" rel="noopener noreferrer">Web player</a>}
       </div>
       <div class="dimtxt" style="font-size:var(--fs-body-sm)">{canOpen
-        ? `The ${src.label} app opens on the tablet, signed in with your account; it keeps playing when you come back here (Back, or swipe up and tap Chrome). If it isn't installed, the Play Store opens.`
+        ? `${src.label} plays from its own app on the tablet, behind this screen, signed in with your account; the buttons here play, pause and skip it. If it isn't installed, the Play Store opens.`
         : `On the dash tablet this button opens the ${src.label} app. Here, the web player opens in a new tab.`}</div>
     </div>
   );

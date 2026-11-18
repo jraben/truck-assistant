@@ -66,6 +66,35 @@ describe('media buttons', () => {
     expect((await t.mediaCmd('rm -rf')).ok).toBe(false);
     expect(calls.length).toBe(2);
   });
+  it('play an app behind the cockpit: open it, Play, cockpit back to the front', async () => {
+    const calls: string[] = [];
+    const waits: number[] = [];
+    vi.stubGlobal('fetch', async (u: string) => { calls.push(u); return new Response('ok'); });
+    const r = await tablet().playInBackground('com.pandora.android', async (ms) => { waits.push(ms); });
+    expect(r).toEqual({ ok: true });
+    expect(calls).toEqual([
+      'http://10.42.0.20:1821/slate/launch?pkg=com.pandora.android',
+      'http://10.42.0.20:1821/slate/media?cmd=play',
+      'http://10.42.0.20:1821/slate/front',
+    ]);
+    expect(waits).toEqual([3000, 800]);
+  });
+  it('still bring the cockpit back when Play fails, and say which step failed', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', async (u: string) => { calls.push(u); return new Response('no', { status: u.includes('/slate/media') ? 404 : 200 }); });
+    const r = await tablet().playInBackground('com.pandora.android', async () => {});
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/^The app opened, but Play didn't reach it/);
+    expect(calls.at(-1)).toBe('http://10.42.0.20:1821/slate/front');
+  });
+  it("don't go on when the app couldn't be opened", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', async (u: string) => { calls.push(u); throw new Error('connect ECONNREFUSED'); });
+    const r = await tablet().playInBackground('com.pandora.android', async () => {});
+    expect(r.error).toMatch(/didn't answer/);
+    expect(calls.length).toBe(1);
+    expect((await tablet().playInBackground('rm -rf /', async () => {})).error).toBe('bad package');
+  });
   it('say so when Tasker does not answer', async () => {
     vi.stubGlobal('fetch', async () => { throw new Error('connect ECONNREFUSED'); });
     const r = await tablet().mediaCmd('prev');
