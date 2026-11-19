@@ -1,8 +1,35 @@
 // System health in the top strip: one button, a four-segment gauge and four icons
 // (brain, truck box, GPS, network), each green when fine and red when not. Tap for
 // the plain-words panel; the network row opens the network picker.
+// After the icons, the tablet's own battery as a percent (red when low, a bolt while
+// charging), where the browser reports it.
 import type { State } from '../lib/brain.ts';
+import { useTabletPower, type TabletPower } from '../lib/power.ts';
 import { fmtBytes } from './network.tsx';
+
+/** Below this the tablet's battery shows red, charging or not. */
+export const TABLET_LOW_PCT = 20;
+
+/** The tablet battery chip: null when the browser won't say (it is then left out). */
+export function tabletBattery(t: TabletPower): { pct: number; tone: 'ok' | 'bad'; charging: boolean; say: string } | null {
+  if (t.level === null) return null;
+  const low = t.level < TABLET_LOW_PCT;
+  const how = t.charging ? 'Charging' : t.charging === false ? 'On battery' : 'Battery';
+  return { pct: t.level, tone: low ? 'bad' : 'ok', charging: !!t.charging, say: `${how} · ${t.level}%${low ? ' (low)' : ''}` };
+}
+
+/** A battery outline filled to the level, with a bolt while charging. */
+function BattIcon({ pct, charging }: { pct: number; charging: boolean }) {
+  const w = Math.max(1, Math.round((Math.min(100, Math.max(0, pct)) / 100) * 15));
+  return (
+    <svg class="hbatt-ico" viewBox="0 0 24 24" aria-hidden="true">
+      <rect class="shell" x="2.5" y="7" width="17.5" height="10" rx="2" />
+      <path class="shell" d="M22 10.5v3" />
+      <rect class="fill" x="3.75" y="8.25" width={w} height="7.5" rx="1" />
+      {charging && <path class="bolt" d="M12.2 7.6 9 12.4h2.6l-.8 4 3.2-4.8h-2.6z" />}
+    </svg>
+  );
+}
 
 type Tone = 'ok' | 'bad' | 'unknown';
 type Check = { id: string; name: string; icon: string; tone: Tone; say: string };
@@ -46,18 +73,22 @@ function Gauge({ checks }: { checks: Check[] }) {
 
 export function HealthButton({ s, connected, open, onClick }: { s: State | null; connected: boolean; open: boolean; onClick: () => void }) {
   const checks = healthChecks(s, connected);
+  const batt = tabletBattery(useTabletPower());
   const bad = checks.filter((c) => c.tone === 'bad').length;
-  const label = bad ? `${bad} of ${checks.length} systems have a problem` : 'All systems fine';
+  const label = (bad ? `${bad} of ${checks.length} systems have a problem` : 'All systems fine') + (batt ? `. Tablet battery ${batt.pct}%${batt.charging ? ', charging' : ''}` : '');
+  const title = [...checks.map((c) => `${c.name}: ${c.say}`), ...(batt ? [`Tablet: ${batt.say}`] : [])].join('\n');
   return (
-    <button type="button" class={`pill health ${bad ? 'has-bad' : ''}`} aria-expanded={open} onClick={onClick} aria-label={label} title={checks.map((c) => `${c.name}: ${c.say}`).join('\n')}>
+    <button type="button" class={`pill health ${bad ? 'has-bad' : ''}`} aria-expanded={open} onClick={onClick} aria-label={label} title={title}>
       <Gauge checks={checks} />
       {checks.map((c) => <span class={`hico ${c.tone}`}><Svg d={c.icon} /></span>)}
+      {batt && <span class={`hbatt ${batt.tone}`}><BattIcon pct={batt.pct} charging={batt.charging} /><span class="num">{batt.pct}%</span></span>}
     </button>
   );
 }
 
 export function HealthPanel({ s, connected, onClose, onNetwork }: { s: State | null; connected: boolean; onClose: () => void; onNetwork: () => void }) {
   const checks = healthChecks(s, connected);
+  const batt = tabletBattery(useTabletPower());
   return (
     <div class="card netpanel healthpanel" role="dialog" aria-label="System health">
       <div class="row between"><span class="lbl">System health</span><button class="btn sm" type="button" onClick={onClose}>Close</button></div>
@@ -69,6 +100,12 @@ export function HealthPanel({ s, connected, onClose, onNetwork }: { s: State | n
             {c.id === 'net' && <button class="btn sm" type="button" onClick={onNetwork}>Networks</button>}
           </div>
         ))}
+        {batt && (
+          <div class="item row between">
+            <span class={`hico ${batt.tone}`}><BattIcon pct={batt.pct} charging={batt.charging} /></span>
+            <div class="grow"><b>Tablet battery</b><div class="dimtxt" style="font-size:var(--fs-caption)">{batt.say}</div></div>
+          </div>
+        )}
       </div>
     </div>
   );

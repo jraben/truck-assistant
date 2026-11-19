@@ -658,6 +658,13 @@ button.tag::after { content: ""; position: absolute; inset: -12px -6px; }
 .healthpanel .hico svg { width: 22px; height: 22px; }
 @media (prefers-reduced-motion: no-preference) { .pill.health.has-bad .hgauge path.bad { animation: hpulse 1.6s ease-in-out infinite; } }
 @keyframes hpulse { 50% { opacity: .45; } }
+/* The tablet's own battery, after the icons: outline filled to the level, bolt while charging. */
+.hbatt { display: inline-flex; align-items: center; gap: 2px; margin-left: var(--s05); padding: 0 var(--s05) 0 2px; height: 28px; border-radius: var(--radius); flex: none; color: var(--ok); font-size: var(--fs-caption); font-weight: 600; }
+.hbatt.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.hbatt-ico { width: 22px; height: 22px; flex: none; }
+.hbatt-ico .shell { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.hico svg.hbatt-ico .fill, .hbatt-ico .fill { fill: currentColor; stroke: none; opacity: .85; }
+.hico svg.hbatt-ico .bolt, .hbatt-ico .bolt { fill: var(--fg); stroke: var(--bg); stroke-width: 1; stroke-linejoin: round; paint-order: stroke; }
 .dprompt .dnever { min-height: var(--tap); margin-top: var(--s1); }
 
 /* The version line at the bottom (components/VersionBar.tsx): out of the way, but readable on a
