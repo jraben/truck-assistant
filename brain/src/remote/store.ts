@@ -38,6 +38,8 @@ export function defaultCameras(sim: boolean): CameraConfig[] {
       camera('hitch', 'Hitch', 'hitch', 'test', { width: 640, height: 360, fps: 15, guides: true }),
       camera('bed', 'Bed', 'bed', 'test', { width: 640, height: 360, fps: 15 }),
       camera('surround', '360°', '360', 'test', { width: 640, height: 360, fps: 15 }),
+      camera('left', 'Left', 'left', 'test', { width: 640, height: 360, fps: 15 }),
+      camera('right', 'Right', 'right', 'test', { width: 640, height: 360, fps: 15 }),
     ];
     // With demo footage, show only the cameras that have a clip (no test patterns on a recording).
     const withClip = process.env.DEMO_FOOTAGE ? cams.filter((c) => demoFootage(c)) : [];
@@ -52,7 +54,7 @@ export function defaultCameras(sim: boolean): CameraConfig[] {
 
 export function defaultRemote(sim: boolean): RemoteSettings {
   return {
-    cams: { cameras: defaultCameras(sim), guides: structuredClone(DEFAULT_GUIDES), autoRear: true, defaultLayout: 'grid' },
+    cams: { cameras: defaultCameras(sim), guides: structuredClone(DEFAULT_GUIDES), autoRear: true, autoSide: true, trailMph: 10, defaultLayout: 'grid' },
     dashcam: { enabled: true, segmentSec: 60, capGb: sim ? 1 : 64, preSec: 60, postSec: 30, parkedMotion: true, sceneThreshold: 0.12 },
     alerts: {
       rules: Object.fromEntries(ALERT_KINDS.map((k) => [k, defaultRule(k)])) as Record<AlertKind, AlertRule>,
@@ -93,7 +95,7 @@ function num(v: unknown, name: string, min: number, max: number): number {
 }
 const bool = (v: unknown, name: string) => { if (typeof v !== 'boolean') throw new RemoteSettingsError(`${name} must be true or false`); return v; };
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-const ROLES = ['rear', 'front', 'bed', 'hitch', '360', 'cabin', 'other'];
+const ROLES = ['rear', 'front', 'left', 'right', 'bed', 'hitch', '360', 'cabin', 'other'];
 
 export function validateCamera(c: unknown, i: number): CameraConfig {
   if (!isObj(c)) throw new RemoteSettingsError(`camera ${i + 1} must be an object`);
@@ -129,7 +131,8 @@ export function validateRemote(s: RemoteSettings): RemoteSettings {
   num(g.bottomWidth, 'guides.bottomWidth', 0.1, 1); num(g.topWidth, 'guides.topWidth', 0, 1); num(g.top, 'guides.top', 0.05, 0.95); num(g.offsetX, 'guides.offsetX', -0.5, 0.5);
   if (!Array.isArray(g.bands) || g.bands.length !== 3) throw new RemoteSettingsError('guides.bands must be three numbers');
   g.bands.forEach((b, i) => num(b, `guides.bands[${i}]`, 0, 1));
-  bool(c.autoRear, 'cams.autoRear');
+  bool(c.autoRear, 'cams.autoRear'); bool(c.autoSide, 'cams.autoSide');
+  c.trailMph = Math.round(num(c.trailMph, 'cams.trailMph', 3, 25));
   if (c.defaultLayout !== 'grid' && c.defaultLayout !== 'single') throw new RemoteSettingsError('cams.defaultLayout must be grid or single');
   const d = s.dashcam;
   bool(d.enabled, 'dashcam.enabled'); bool(d.parkedMotion, 'dashcam.parkedMotion');

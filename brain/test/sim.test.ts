@@ -3,7 +3,7 @@ import { cornerMph, mergeControl, roadMph, SimError, SimTruck, SIM_ROUTE, type S
 import { metersBetween } from '../src/geo.ts';
 import type { GpsFix } from '../src/gps.ts';
 
-const base: SimControl = { mode: 'auto', gear: 'park', ignition: false, targetMph: 35, loop: true, cabinF: null, auxV: null, lowTire: null, switches: [true, false, false, true, false] };
+const base: SimControl = { mode: 'auto', gear: 'park', ignition: false, targetMph: 35, loop: true, cabinF: null, auxV: null, lowTire: null, switches: [true, false, false, true, false], signal: null };
 
 describe('test panel controls', () => {
   it('takes the wheel from the loop when anything but the mode changes', () => {

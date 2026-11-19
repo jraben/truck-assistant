@@ -10,7 +10,7 @@ import '../cams.css';
 import { ask, askText } from '../components/Ask.tsx';
 
 type Secrets = { lte: string; ntfy: string };
-const ROLES: CameraConfig['role'][] = ['rear', 'front', 'bed', 'hitch', '360', 'cabin', 'other'];
+const ROLES: CameraConfig['role'][] = ['rear', 'front', 'left', 'right', 'bed', 'hitch', '360', 'cabin', 'other'];
 
 const newCam = (n: number): CameraConfig => ({ id: `cam${n}`, name: `Camera ${n}`, role: 'other', source: 'uvc', device: '/dev/video0', url: null, width: 1280, height: 720, fps: 30, inputFormat: 'mjpeg', enabled: true, record: false, guides: false, mirror: false });
 
@@ -132,6 +132,8 @@ export function RemoteSection() {
         <div class="row wrap">
           <button class="btn sm" type="button" disabled={d.cams.cameras.length >= 8} onClick={() => up((x) => { x.cams.cameras.push(newCam(x.cams.cameras.length + 1)); })}>+ Add camera</button>
           <label class="check"><input type="checkbox" checked={d.cams.autoRear} onChange={(e) => up((x) => { x.cams.autoRear = (e.target as HTMLInputElement).checked; })} /> Rear camera on reverse</label>
+          <label class="check" title="The camera with the left or right role shows on that side of the screen while that turn signal is on (the truck box reads the signals)."><input type="checkbox" checked={d.cams.autoSide} onChange={(e) => up((x) => { x.cams.autoSide = (e.target as HTMLInputElement).checked; })} /> Side camera on turn signal</label>
+          <label class="f" style="min-width:150px" title="With Trail view on (Cams), the front camera takes the screen at this speed and under."><span>Trail view up to (mph)</span><input type="number" inputMode="numeric" min={3} max={25} value={d.cams.trailMph} onChange={(e) => up((x) => { const n = Number((e.target as HTMLInputElement).value); if (n >= 3 && n <= 25) x.cams.trailMph = Math.round(n); })} /></label>
           <label class="f" style="min-width:160px"><span>Cams view opens as</span><select value={d.cams.defaultLayout} onChange={(e) => up((x) => { x.cams.defaultLayout = (e.target as HTMLSelectElement).value as 'grid' | 'single'; })}><option value="grid">Grid</option><option value="single">One camera</option></select></label>
         </div>
         <h3 class="sub">Parking guides</h3>

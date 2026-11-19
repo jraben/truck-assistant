@@ -7,6 +7,7 @@ export type TruckboxPatch = {
   fiveSwitch?: { index: number; on: boolean | null };
   ignition?: boolean | null;
   reverse?: boolean | null;
+  turn?: { side: 'left' | 'right'; on: boolean | null };
   cabinTempF?: number | null;
   cabinHumidity?: number | null;
   aux12v?: number | null;
@@ -29,6 +30,13 @@ const float = (p: string): number | null => {
 /** A watts reading: a number from 0 to 5 kW, else null (unavailable, NaN, nonsense). Pure. */
 const watts = (p: string) => { const v = Number(p); return Number.isFinite(v) && v >= 0 && v < 5000 ? Math.round(v * 10) / 10 : null; };
 
+/** Which way the driver is signalling: one side, both (hazards: no camera), or none. Pure. */
+export function signalSide(t: { left: boolean | null; right: boolean | null } | null | undefined): 'left' | 'right' | 'hazard' | null {
+  if (!t) return null;
+  if (t.left && t.right) return 'hazard';
+  return t.left ? 'left' : t.right ? 'right' : null;
+}
+
 export function parseTruckbox(sub: string, payload: string): TruckboxPatch | null {
   const p = payload.trim();
   if (sub === 'status') return { truckbox: p === 'online' };
@@ -38,6 +46,8 @@ export function parseTruckbox(sub: string, payload: string): TruckboxPatch | nul
   if (m) return { fiveSwitch: { index: Number(m[1]) - 1, on: onOff(p) } };
   if (sub === 'binary_sensor/ignition/state') return { ignition: onOff(p) };
   if (sub === 'binary_sensor/reverse/state') return { reverse: onOff(p) };
+  m = /^binary_sensor\/turn_(left|right)\/state$/.exec(sub);
+  if (m) return { turn: { side: m[1] as 'left' | 'right', on: onOff(p) } };
   if (sub === 'sensor/cabin_temp/state') return { cabinTempF: float(p) };
   if (sub === 'sensor/cabin_humidity/state') return { cabinHumidity: float(p) };
   if (sub === 'sensor/aux_battery_v/state') return { aux12v: float(p) };
@@ -61,6 +71,7 @@ export function applyTruckbox(s: State, p: TruckboxPatch, tilt: { pitch: number 
   if (p.fiveSwitch) s.fiveSwitch[p.fiveSwitch.index] = p.fiveSwitch.on;
   if (p.ignition !== undefined) s.ignition = p.ignition;
   if (p.reverse !== undefined) { s.reverse = p.reverse; }
+  if (p.turn) s.turnSignals = { ...s.turnSignals, [p.turn.side]: p.turn.on };
   if (p.cabinTempF !== undefined) s.cabinTempF = p.cabinTempF;
   if (p.aux12v !== undefined) s.aux12v = p.aux12v;
   if (p.pitch !== undefined) tilt.pitch = p.pitch;
@@ -81,6 +92,6 @@ export function clearTruckbox(s: State, tilt: { pitch: number | null; roll: numb
   for (const r of Object.values(s.relays)) { r.on = null; r.measuredW = null; }
   s.dashW = null;
   s.fiveSwitch = s.fiveSwitch.map(() => null);
-  s.ignition = null; s.reverse = null; s.cabinTempF = null; s.aux12v = null; s.tilt = null; s.tpms = null; s.gear = null;
+  s.ignition = null; s.reverse = null; s.turnSignals = { left: null, right: null }; s.cabinTempF = null; s.aux12v = null; s.tilt = null; s.tpms = null; s.gear = null;
   tilt.pitch = null; tilt.roll = null;
 }

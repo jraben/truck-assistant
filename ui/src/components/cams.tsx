@@ -1,16 +1,18 @@
-// The Cams view: every camera in a grid, or one big; the rear camera by itself
-// (with guides) while in reverse; the dashcam's Save clip button and the clips.
+// The Cams view: every camera in a grid, one big, or a split (front + rear, sides +
+// rear, towing, trail); the rear camera by itself (with guides) while in reverse; the
+// trail view at low speed when switched on; the dashcam's Save clip button and the clips.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import '../cams.css';
-import { toast } from '../lib/brain.ts';
-import { deleteClip, fmtBytes, listClips, rearCamera, saveClip, useCamStatus, useViewerHeartbeat, withToken, type CamInfo, type Clip } from '../lib/cams.ts';
+import { toast, useStore } from '../lib/brain.ts';
+import { deleteClip, fmtBytes, listClips, rearCamera, saveClip, setTrail, splitLayouts, trailShowingStore, trailStore, useCamStatus, useViewerHeartbeat, withToken, type CamInfo, type CamLayout, type Clip } from '../lib/cams.ts';
 import { Modal } from './common.tsx';
 import { CamPlayer } from './camplayer.tsx';
 import type { WP } from './drive.tsx';
 import { ask, askText } from './Ask.tsx';
 
 const LAYOUT_KEY = 'slate.cams.layout';
-const readPref = () => { try { return JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? 'null') as { mode: 'grid' | 'single'; cam: string | null } | null; } catch { return null; } };
+type Pref = { mode: CamLayout; cam: string | null };
+const readPref = () => { try { return JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? 'null') as Pref | null; } catch { return null; } };
 
 export function CamsView({ s }: WP) {
   const { status, error } = useCamStatus();
@@ -18,13 +20,20 @@ export function CamsView({ s }: WP) {
   const [clipsOpen, setClipsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   useViewerHeartbeat();
-  const remember = (p: { mode: 'grid' | 'single'; cam: string | null }) => { setPref(p); try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(p)); } catch { /* private mode */ } };
+  const trailOn = useStore(trailStore);
+  const trailShowing = useStore(trailShowingStore);
+  const remember = (p: Pref) => { setPref(p); try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(p)); } catch { /* private mode */ } };
 
   if (!status) return <div class="card cams-wrap"><span class="lbl">Cameras</span><div class="dimtxt">{error ? `Cameras unavailable: ${error}` : 'Loading cameras…'}</div></div>;
   const cams = status.cameras.filter((c) => c.enabled);
   const reverse = s?.reverse === true && status.autoRear;
   const rear = rearCamera(status.cameras);
-  const mode = reverse ? 'single' : pref?.mode ?? status.defaultLayout;
+  const splits = splitLayouts(status.cameras);
+  const trail = !reverse && trailShowing ? splits.find((x) => x.id === 'trail') ?? null : null;
+  const want: CamLayout = reverse ? 'single' : trail ? 'trail' : pref?.mode ?? status.defaultLayout;
+  const split = splits.find((x) => x.id === want) ?? null;
+  // A saved split whose cameras are gone falls back to the grid.
+  const mode: CamLayout = want === 'grid' || want === 'single' || split ? want : 'grid';
   const one = reverse ? rear : cams.find((c) => c.id === pref?.cam) ?? cams[0] ?? null;
   const rec = status.recording;
 
@@ -38,11 +47,16 @@ export function CamsView({ s }: WP) {
   return (
     <div class="cams-wrap">
       <div class="cams-bar">
-        {reverse ? <span class="tag warn">REVERSE · REAR CAMERA</span> : (
+        {reverse ? <span class="tag warn">REVERSE · REAR CAMERA</span> : trail ? <span class="tag accent">TRAIL VIEW · {status.trailMph} MPH AND UNDER</span> : (
           <>
             <button type="button" class={`btn sm ${mode === 'grid' ? 'primary' : ''}`} onClick={() => remember({ mode: 'grid', cam: pref?.cam ?? null })}>Grid</button>
+            {splits.filter((x) => x.id !== 'trail').map((x) => <button type="button" class={`btn sm ${mode === x.id ? 'primary' : ''}`} onClick={() => remember({ mode: x.id, cam: pref?.cam ?? null })}>{x.label}</button>)}
             {cams.map((c) => <button type="button" class={`btn sm ${mode === 'single' && one?.id === c.id ? 'primary' : ''}`} onClick={() => remember({ mode: 'single', cam: c.id })}>{c.name}</button>)}
           </>
+        )}
+        {!reverse && splits.some((x) => x.id === 'trail') && (
+          <button type="button" class={`btn sm ${trailOn ? 'primary' : ''}`} aria-pressed={trailOn} onClick={() => setTrail(!trailOn)}
+            title={`Trail view: the front camera${splits.find((x) => x.id === 'trail')!.cams.length > 1 ? ' and the sides' : ''} at ${status.trailMph} mph and under`}>Trail view {trailOn ? 'on' : 'off'}</button>
         )}
         <span class="sp" />
         {status.backend === 'fallback' && <span class="tag dim" title={status.why ?? ''}>DESK MJPEG</span>}
@@ -52,6 +66,11 @@ export function CamsView({ s }: WP) {
       </div>
       {!cams.length ? <div class="card"><span class="lbl">No cameras</span><div class="dimtxt">Add cameras in Settings &gt; Cameras.</div></div>
         : mode === 'single' && one ? <div class="cams-single"><CamPlayer cam={one} backend={status.backend} guides={status.guides} big /></div>
+        : split ? (
+          <div class={`cams-split ${split.id} n${split.cams.length}`}>
+            {split.cams.map((c, i) => <div class={`cams-cell c${i}`} onClick={() => remember({ mode: 'single', cam: c.id })}><CamPlayer cam={c} backend={status.backend} guides={status.guides} big={split.id === 'trail' && i === 0} /></div>)}
+          </div>
+        )
         : (
           <div class={`cams-grid n${Math.min(cams.length, 6)}`}>
             {cams.map((c) => <div class="cams-cell" onClick={() => remember({ mode: 'single', cam: c.id })}><CamPlayer cam={c} backend={status.backend} guides={status.guides} /></div>)}

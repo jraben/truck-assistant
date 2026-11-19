@@ -225,6 +225,11 @@ function TruckTab({ st, set, post }: TabProps) {
           {([null, 'fl', 'fr', 'rl', 'rr'] as const).map((w) => <button type="button" class={st.lowTire === w ? 'sel' : ''} onClick={() => void set({ lowTire: w })}>{w ? w.toUpperCase() : 'None'}</button>)}
         </div>
       </div>
+      <div class="simrow"><span class="lbl">Turn signal</span>
+        <div class="simseg">
+          {([['left', '◀ Left'], [null, 'Off'], ['right', 'Right ▶'], ['hazard', 'Hazards']] as const).map(([v, label]) => <button type="button" class={(st.signal ?? null) === v ? 'sel' : ''} onClick={() => void set({ signal: v })}>{label}</button>)}
+        </div>
+      </div>
       <div class="simrow"><span class="lbl">Five Switch</span>
         <div class="simseg">
           {st.switches.map((on, i) => <button type="button" class={on ? 'sel' : ''} onClick={() => void set({ switches: st.switches.map((v, j) => (j === i ? !v : v)) })}>{i + 1}</button>)}

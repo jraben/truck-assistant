@@ -28,6 +28,8 @@ import { VersionBar } from './VersionBar.tsx';
 import { AskHost } from './Ask.tsx';
 import { AlertBanner } from './AlertBanner.tsx';
 import { StartupAssembly } from '../drive/StartupAssembly.tsx';
+import { SideCam } from './SideCam.tsx';
+import { camStatusStore, nextTrail, trailShowingStore, trailStore } from '../lib/cams.ts';
 import { lowTires } from '../../../brain/src/vehicle.ts';
 import { PickupBanner, PickupPill } from './PickupBanner.tsx';
 import { askPassengerThen, PassengerAsk, PassengerPill } from '../drive/Passenger.tsx';
@@ -133,6 +135,22 @@ export function App({ page }: { page?: AppPage } = {}) {
       backTimer.current = window.setTimeout(() => { before.current = null; go(back); }, REVERSE_RETURN_MS);
     }
   }, [reverse]);
+
+  // Trail view (Cams › Trail view on): the front camera takes the screen at low speed, then
+  // back to where we were, like reverse. Speed limit from Settings › Cameras (default 10 mph).
+  const trailOn = useStore(trailStore);
+  const trailMph = useStore(camStatusStore)?.trailMph ?? 10;
+  const trailShowing = useStore(trailShowingStore);
+  const beforeTrail = useRef<string | null>(null);
+  useEffect(() => {
+    const next = nextTrail(trailShowing, trailOn, s, trailMph);
+    if (next !== trailShowing) trailShowingStore.set(next);
+  }, [trailOn, s?.speedMph, s?.ignition, s?.reverse, trailMph]);
+  useEffect(() => {
+    if (page || !layout.views.some((v) => v.id === 'cams')) return;
+    if (trailShowing) { if (beforeTrail.current === null) beforeTrail.current = view === 'cams' ? null : view; if (view !== 'cams') setView('cams'); }
+    else if (beforeTrail.current !== null && !reverse) { const back = beforeTrail.current; beforeTrail.current = null; go(back); }
+  }, [trailShowing]);
 
   // Theme: auto or chosen; frozen while reversing so the camera view never flips mid-manoeuvre.
   const gpsPos = s?.gps?.fix ? { lat: s.gps.lat, lon: s.gps.lon } : null;
@@ -242,6 +260,7 @@ export function App({ page }: { page?: AppPage } = {}) {
       {simAvailable && <TestPanel open={simOpen} onClose={() => setSimOpen(false)} go={go} />}
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
       <AskHost />
+      {!page && <SideCam s={s} />}
       {!page && <StartupAssembly />}
     </div>
   );

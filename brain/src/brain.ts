@@ -173,7 +173,7 @@ export class Brain extends EventEmitter {
     this.s = {
       ts: new Date().toISOString(),
       speedMph: null, soc: null, socSource: null, rangeMi: null, gear: null, gps: null,
-      ignition: null, reverse: null, cabinTempF: null, aux12v: null, tilt: null, tpms: null,
+      ignition: null, reverse: null, turnSignals: { left: null, right: null }, cabinTempF: null, aux12v: null, tilt: null, tpms: null,
       relays: Object.fromEntries(RELAY_IDS.map((id) => [id, { name: st.relays[id], on: null, watts: st.relayWatts[id], measuredW: null }])),
       dashW: null,
       fiveSwitch: [null, null, null, null, null],

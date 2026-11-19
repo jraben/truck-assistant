@@ -1,5 +1,6 @@
 // Track C client side: camera status, clips, the remote token, viewer heartbeats.
 import { useEffect, useState } from 'preact/hooks';
+import { store } from './brain.ts';
 import type { Alert, CamStatus, Clip, PowerStatus, RemoteSettings, TruckSnapshot } from '../../../brain/src/remote/types.ts';
 
 export type { Alert, CamStatus, Clip, PowerStatus, RemoteSettings, TruckSnapshot };
@@ -41,6 +42,7 @@ export function useCamStatus(ms = 8000): { status: (CamStatus & { serverTime: nu
         const s = await rapi<CamStatus & { serverTime: number }>('/api/cams');
         clockOffset = s.serverTime - (t0 + Date.now()) / 2;
         if (alive) { setStatus(s); setError(null); }
+        camStatusStore.set(s);
       } catch (e) { if (alive) setError((e as Error).message); }
     };
     void f();
@@ -130,3 +132,43 @@ export function tileView(lat: number, lon: number, z = 15) {
   for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) tiles.push(`https://tile.openstreetmap.org/${z}/${(tx + dx + n) % n}/${ty + dy}.png`);
   return { tiles, offX: px - (tx - 1) * 256, offY: py - (ty - 1) * 256 };
 }
+
+// ---- side cameras, split layouts, trail view (FlexPilot-style multi-angle) -----------------
+
+/** The enabled camera with this role, if any. Pure. */
+export const camByRole = (cams: CamInfo[], role: CamInfo['role']): CamInfo | null => cams.find((c) => c.enabled && c.role === role) ?? null;
+
+export type SplitId = 'front-rear' | 'sides' | 'tow' | 'trail';
+export type CamLayout = 'grid' | 'single' | SplitId;
+export type Split = { id: SplitId; label: string; cams: CamInfo[] };
+
+/** The split layouts these cameras allow, each with its cameras in screen order. Pure. */
+export function splitLayouts(cams: CamInfo[]): Split[] {
+  const [front, rear, left, right, hitch] = (['front', 'rear', 'left', 'right', 'hitch'] as const).map((r) => camByRole(cams, r));
+  const out: Split[] = [];
+  if (front && rear) out.push({ id: 'front-rear', label: 'Front + rear', cams: [front, rear] });
+  if (left && right) out.push({ id: 'sides', label: rear ? 'Sides + rear' : 'Sides', cams: [left, ...(rear ? [rear] : []), right] });
+  if (rear && hitch) out.push({ id: 'tow', label: 'Towing', cams: [rear, hitch] });
+  if (front) out.push({ id: 'trail', label: 'Trail', cams: [front, ...(left ? [left] : []), ...(right ? [right] : [])] });
+  return out;
+}
+
+/**
+ * Trail view: with it switched on, the front camera (and the sides) take the screen at
+ * or under `limitMph`; it goes back above limitMph + 3 (so it doesn't flicker at the
+ * limit). Never in reverse (the rear camera has it) or with the truck off. Pure.
+ */
+export function nextTrail(showing: boolean, on: boolean, s: { speedMph: number | null; ignition: boolean | null; reverse: boolean | null } | null, limitMph: number): boolean {
+  if (!on || !s || s.reverse === true || s.ignition === false) return false;
+  const v = s.speedMph ?? 0;
+  return showing ? v <= limitMph + 3 : v <= limitMph;
+}
+
+const TRAIL_KEY = 'slate.cams.trail';
+/** The Trail view switch (this screen's; off after a restart of the page is fine). */
+export const trailStore = store<boolean>((() => { try { return localStorage.getItem(TRAIL_KEY) === '1'; } catch { return false; } })());
+export function setTrail(on: boolean) { trailStore.set(on); try { if (on) localStorage.setItem(TRAIL_KEY, '1'); else localStorage.removeItem(TRAIL_KEY); } catch { /* private mode */ } }
+/** Whether the trail view has the screen now (set by App). */
+export const trailShowingStore = store<boolean>(false);
+/** The last camera status any screen loaded (App reads the trail speed from it). */
+export const camStatusStore = store<CamStatus | null>(null);
