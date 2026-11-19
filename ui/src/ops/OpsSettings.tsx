@@ -154,9 +154,31 @@ export function SecuritySection() {
         {msg && <span class={msg.ok ? 'okmsg' : 'err'}>{msg.text}</span>}
       </div>
       <label class="check"><input type="checkbox" checked={a.trustLocal} onChange={(e) => void go(() => put('/api/security/config', { trustLocal: (e.target as HTMLInputElement).checked }), 'Saved.')} /> The dash screen (this Pi) needs no password</label>
+      <SecureAddress />
       <p class="help">Forgot it? On the Pi: set "passwordHash" to null in /var/lib/slate-cockpit/ops.json and restart slate-brain, then set a new one.</p>
       <AccessKeysPanel />
     </Section>
+  );
+}
+
+/** The truck's secure address for the dash tablet (brain/src/https.ts, deploy/pi/https/README.md). */
+type HttpsStatus = { on: boolean; port: number; names: string[]; validTo: string | null; daysLeft: number | null; error: string | null };
+function SecureAddress() {
+  const [h, setH] = useState<HttpsStatus | null>(null);
+  useEffect(() => { void api<HttpsStatus>('/api/https').then(setH, () => setH(null)); }, []);
+  if (!h) return null;
+  const name = h.names[0];
+  const when = h.validTo ? new Date(h.validTo).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  return (
+    <div class="fields" style="gap:var(--s05)">
+      <b>Secure address for the dash tablet</b>
+      {h.on && name ? (
+        <span class={h.daysLeft !== null && h.daysLeft < 14 ? 'err' : 'okmsg'}>
+          https://{name.replace(/^\*\./, 'truck.')} · certificate good until {when}{h.daysLeft !== null ? ` (${h.daysLeft} days)` : ''}{h.daysLeft !== null && h.daysLeft < 14 ? ': the NAS should send a new one when the truck is home or on Tailscale' : ''}
+        </span>
+      ) : <span class="dimtxt">Off: no certificate yet. The tablet needs it for a full-screen app and CarPlay without Chrome flags (deploy/pi/https/README.md).</span>}
+      {h.error && <span class="err">{h.error}</span>}
+    </div>
   );
 }
 

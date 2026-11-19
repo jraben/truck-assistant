@@ -18,6 +18,8 @@ const demo = flag(process.env.DEMO);
 
 export const config = {
   port: Number(process.env.PORT ?? 8080),
+  /** The cockpit over HTTPS for the dash tablet, once <DATA_DIR>/tls has a certificate (src/https.ts). 0 = off. */
+  httpsPort: Number(process.env.HTTPS_PORT ?? 443),
   host: process.env.HOST ?? '0.0.0.0',
   dataDir: path.resolve(process.env.DATA_DIR ?? './data'),
   /** DEMO=1: a screen-recording truck. Implies SIM; every real integration is

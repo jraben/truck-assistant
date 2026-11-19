@@ -10,6 +10,7 @@ import { registerRemote } from './remote/routes.ts';
 import { registerContacts } from './contacts/routes.ts';
 import { registerPickup } from './pickup/routes.ts';
 import { applyPendingRestore } from './ops/backup.ts';
+import { HttpsServer, tlsPaths } from './https.ts';
 import { registerParked } from './parkedRoutes.ts';
 import { registerSim } from './simRoutes.ts';
 import { registerGlobe } from './globe.ts';
@@ -41,8 +42,12 @@ async function main() {
   registerPickup(app, brain.pickup);
   registerGlobe(app, () => brain.getState(), { enabled: config.globeFeed, callsign: config.globeCallsign, plane: () => brain.pickup.plane() });   // the truck on a God's Eye View globe
   const stopTraccar = config.traccarUrl ? startTraccar(() => brain.getState(), { url: config.traccarUrl, id: config.traccarId }) : () => {};   // the truck on the home Traccar map
+  // HTTPS on :443 when the NAS has pushed the truck's certificate (deploy/pi/https/README.md).
+  const https = new HttpsServer(app, tlsPaths(config.dataDir), config.httpsPort, config.host);
+  app.get('/api/https', async () => https.status());
   brain.start();
   await app.listen({ port: config.port, host: config.host });
+  https.start();
   await remote.start();
   console.log(`[brain] listening on http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`);
 
@@ -51,7 +56,7 @@ async function main() {
     if (stopping) return; stopping = true;
     console.log(`[brain] ${sig}, shutting down`);
     const force = setTimeout(() => process.exit(1), 5000);
-    try { stopTraccar(); await app.close(); remote.stop(); await brain.stop(); db.close(); } catch (e) { console.error(e); }
+    try { stopTraccar(); https.stop(); await app.close(); remote.stop(); await brain.stop(); db.close(); } catch (e) { console.error(e); }
     clearTimeout(force);
     process.exit(0);
   };
