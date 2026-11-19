@@ -124,6 +124,14 @@ nmcli device wifi list ifname wlan1                               # what the cli
 journalctl -u slate-brain | grep '\[net\]'                        # switches the brain made
 ```
 
+### The tablet's secure address (HTTPS)
+
+The dash tablet should open the cockpit at the truck's own `https://` name
+(e.g. `https://truck.jeffraben.com`): a real full-screen app, CarPlay over USB
+and location with no Chrome flags, offline. The brain serves it on :443 once
+the NAS has pushed the certificate. Setup: [https/README.md](https/README.md)
+(`https/setup-https.sh`, `../nas/push-truck-cert.sh`).
+
 ## Media (Track B): AM/FM, Spotify Connect, music files
 
 `install.sh` runs `deploy/pi/media/install-media.sh`: rtl-sdr + ffmpeg, the

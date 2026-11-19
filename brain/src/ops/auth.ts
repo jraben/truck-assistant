@@ -120,7 +120,7 @@ export function needsAuth(method: string, url: string): 'page' | 'api' | null {
   if (p === '/settings' || p.startsWith('/settings/') || p === '/settings.html' || p === '/truck' || p.startsWith('/truck/') || p === '/truck.html') return 'page';
   if (p === '/ws') return 'api';
   if (p.startsWith('/api/')) {
-    if (p === '/api/health' || p === '/api/about' || p === '/api/update/version' || p.startsWith('/api/auth/')) return null;
+    if (p === '/api/health' || p === '/api/about' || p === '/api/https' || p === '/api/update/version' || p.startsWith('/api/auth/')) return null;
     // The truck photo is shown on the dash and the Truck page; only changing it needs the login.
     if (p === '/api/vehicle/photo' && (method === 'GET' || method === 'HEAD')) return null;
     // Tasker on the dash tablet reads its sleep timing here and has no login; changing it is a Settings save.

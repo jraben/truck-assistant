@@ -33,7 +33,10 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
 2. **Join the brain's Wi-Fi.** At home on the desk that's the NAS copy
    (`http://192.168.1.20:3950`) over home Wi-Fi; in the truck it's the Pi's
    access point (`http://10.42.0.1:8080`).
-3. **Let Chrome treat the brain's address as secure.** CarPlay over USB and the
+3. **Use a secure address.** Best: the truck's own `https://truck.jeffraben.com`
+   (deploy/pi/https/README.md); at home, the NAS copy's `https://ta.jeffraben.com`.
+   Then there's nothing to set here, and step 4 makes a real full-screen app.
+   **Fallback without one:** let Chrome treat the brain's address as secure. CarPlay over USB and the
    WOPR microphone only work on secure pages, and the brain is plain `http` on
    the local network. In Chrome open `chrome://flags`, find
    **"Insecure origins treated as secure"**, enable it, and enter the brain's
@@ -45,8 +48,11 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    runs on Android System WebView, which has no WebUSB at all, so CarPlay
    needs Chrome.
 4. **Open the cockpit** at that address, sign in once if asked, then Chrome
-   menu › **Add to Home screen › Install**. It runs full screen from its own
-   icon, with no address bar. Use that icon from now on.
+   menu › **Install app** (or **Add to Home screen › Install**). On an `https`
+   address it runs full screen from its own icon, with no address bar; on a
+   plain `http` address Chrome may only make a shortcut that opens a tab. Use
+   that icon from now on, and point Tasker's power-on task at it with **App ›
+   Launch App** (step 6). Fully Kiosk isn't needed, and it can't run CarPlay.
 5. **Streaming and game apps**: install the ones you want from the Play Store
    (Netflix, YouTube TV, Disney+, Max, Hulu, Peacock, Paramount+, Prime Video,
    Moonlight, RetroArch) and sign in to each once. On the Parked screen their

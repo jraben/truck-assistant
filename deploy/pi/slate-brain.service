@@ -23,6 +23,11 @@ Environment=GO2RTC_BIN=/usr/local/bin/go2rtc
 Environment=DASHCAM_DIR=/var/lib/slate-cockpit/dashcam
 # USB cameras and capture sticks (/dev/video*).
 SupplementaryGroups=video
+# HTTPS on :443 for the dash tablet once the NAS has pushed the truck's certificate
+# into /var/lib/slate-cockpit/tls (deploy/pi/https/README.md). 0 = off.
+Environment=HTTPS_PORT=443
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 # Environment=SIM=1   # simulated truck, for bench testing
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning /opt/slate-cockpit/brain/dist/index.js
 Restart=always

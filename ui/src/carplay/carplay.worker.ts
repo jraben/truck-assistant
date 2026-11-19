@@ -120,7 +120,7 @@ async function start() {
     } catch (e) {
       const err = e as Error;
       const why = err?.name === 'SecurityError' || /access denied/i.test(err?.message ?? '')
-        ? `access to the dongle was refused (${err.message}). On the Pi: the udev rule and Chromium policy from deploy/pi/install.sh`
+        ? `the dongle is busy or not allowed (${err.message}). On the tablet: close any other cockpit tab or app that has it (Recents), unplug the dongle for 5 s and Connect again. On the Pi: the udev rule and Chromium policy from deploy/pi/install.sh`
         : `could not open the dongle: ${err?.message ?? String(e)}`;
       await fail(why);
       return;
