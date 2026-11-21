@@ -772,3 +772,19 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 
 /* The header on a narrow (portrait) screen: weather shrinks first; the clock always shows. */
 .strip > .wxstrip { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+
+/* The dash tablet's battery log (settings/TabletBattery.tsx). */
+.tbat { display: grid; gap: var(--s1); }
+.tbat-chart { width: 100%; max-width: 720px; height: auto; display: block; background: var(--panel-2); border-radius: var(--radius); }
+.tbat-chart .grid { stroke: var(--hairline); stroke-width: 1; }
+.tbat-chart .ax { fill: var(--dim); font-size: 10px; font-family: var(--mono, monospace); }
+.tbat-chart .band.charging { fill: color-mix(in srgb, var(--ok) 18%, transparent); }
+.tbat-chart .band.screen { fill: var(--warn); }
+.tbat-chart .lvl { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.tbat-chart .gap { fill: none; stroke: var(--dim); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.tbat-key { display: flex; flex-wrap: wrap; gap: var(--s15); font-size: var(--fs-caption); color: var(--dim); }
+.tbat-key .k::before { content: ''; display: inline-block; width: 12px; height: 10px; margin-right: 6px; vertical-align: -1px; border-radius: 2px; }
+.tbat-key .charging::before { background: color-mix(in srgb, var(--ok) 35%, transparent); }
+.tbat-key .screen::before { background: var(--warn); height: 4px; vertical-align: 2px; }
+.tbat-key .gap::before { border-top: 2px dashed var(--dim); height: 0; vertical-align: 3px; }
+.tbat-rates { margin: 0; padding-left: 1.2em; display: grid; gap: 2px; }

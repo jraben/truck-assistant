@@ -10,6 +10,7 @@ import { PlexError, type PlexService } from './media/plex.ts';
 import { PlexVideo } from './media/plexVideo.ts';
 import type { RemoteService } from './remote/service.ts';
 import { sleepPlan, Tablet, tabletNowPlaying } from './tablet.ts';
+import { BatteryLog, parseBattery, summarize } from './tabletBattery.ts';
 import { clientIp } from './clientIp.ts';
 import type { NowPlayingHub } from './media.ts';
 import { config } from './config.ts';
@@ -66,7 +67,27 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   });
 
   // ---- the dash tablet (tablet.ts) ----------------------------------------------
-  app.post('/api/tablet/hello', async (req) => tablet.hello(clientIp(req), String(req.headers['user-agent'] ?? '')));
+  const battery = new BatteryLog(db);
+  app.post('/api/tablet/hello', async (req) => {
+    const ua = String(req.headers['user-agent'] ?? '');
+    const s = tablet.hello(clientIp(req), ua);
+    // The cockpit's check-in carries the tablet's battery (tabletBattery.ts).
+    if (/Android/i.test(ua)) battery.record(parseBattery((req.body as { battery?: unknown } | null)?.battery, 'page', new Date()));
+    return s;
+  });
+  // Tasker's battery reports while the screen sleeps (the page doesn't run then): no login, the tablet's own address only.
+  app.post('/api/tablet/battery', async (req, reply) => {
+    const t = tablet.get();
+    if (!t.ip || clientIp(req).replace(/^::ffff:/, '') !== t.ip) return reply.code(403).send({ error: 'only the dash tablet reports here (open the cockpit on it first)' });
+    const s = parseBattery(req.body, 'tasker', new Date());
+    if (!s) return reply.code(400).send({ error: 'send {"level": %BATT, "charging": …, "screen": %SCREEN}' });
+    return { ok: true, kept: battery.record(s) };
+  });
+  app.get<{ Querystring: { hours?: string } }>('/api/tablet/battery', async (req) => {
+    const hours = Math.min(24 * 30, Math.max(1, Number(req.query.hours ?? 48) || 48));
+    const samples = battery.list(hours);
+    return { hours, samples, summary: summarize(samples) };
+  });
   app.get('/api/tablet', async () => tablet.get());
   app.put('/api/tablet', async (req, reply) => { try { return tablet.setPort((req.body as { taskerPort?: unknown } | null)?.taskerPort); } catch (e) { return reply.code(400).send({ error: (e as Error).message }); } });
   app.post('/api/tablet/test', async () => tablet.front());

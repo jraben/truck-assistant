@@ -34,14 +34,28 @@ type Modes = {
 /** The cockpit is on the dash tablet (Android Chrome). */
 export const IS_ANDROID = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 
-/** On the tablet: tell the brain where it is every minute, so it can bring the cockpit back to the front (Tasker). */
+type BatteryLike = EventTarget & { level: number; charging: boolean };
+
+/**
+ * On the tablet: tell the brain where it is every minute, so it can bring the cockpit back
+ * to the front (Tasker), with the tablet's battery for its log (Settings › Truck): the
+ * level, whether it charges, and whether this page is in front ("screen on"). Also at once
+ * when the charger goes in or out or the screen changes, so the log has the moment.
+ */
 export function TabletHello() {
   useEffect(() => {
     if (!IS_ANDROID) return;
-    const hi = () => void api('/api/tablet/hello', { method: 'POST', body: '{}' }).catch(() => {});
+    let bat: BatteryLike | null = null;
+    const hi = () => {
+      const battery = bat ? { level: Math.round(bat.level * 100), charging: bat.charging, screen: document.visibilityState === 'visible' } : undefined;
+      void api('/api/tablet/hello', { method: 'POST', body: JSON.stringify(battery ? { battery } : {}) }).catch(() => {});
+    };
+    const nav = navigator as Navigator & { getBattery?: () => Promise<BatteryLike> };
+    nav.getBattery?.().then((b) => { bat = b; b.addEventListener('chargingchange', hi); b.addEventListener('levelchange', hi); hi(); }, () => {});
+    document.addEventListener('visibilitychange', hi);
     hi();
     const t = window.setInterval(hi, 60_000);
-    return () => clearInterval(t);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', hi); bat?.removeEventListener('chargingchange', hi); bat?.removeEventListener('levelchange', hi); };
   }, []);
   return null;
 }

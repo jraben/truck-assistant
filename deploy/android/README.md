@@ -133,6 +133,16 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    buttons from the brain with `POST /api/tablet/media {"cmd":"toggle"}`, and
    what it heard with `GET /api/tablet/media`.
 
+   **Battery log (optional).** The cockpit reports the tablet's battery with its
+   minute check-in, so Settings › Truck can graph it and show the charge and
+   drain rates (does the charger keep up with CarPlay? did the screen stay on?).
+   A page can't report while the screen sleeps; to fill that in, add a profile:
+   Event › Power › **Battery Changed** → Net › HTTP Request, POST the brain's
+   `/api/tablet/battery` (desk: `https://ta.jeffraben.com/api/tablet/battery`),
+   Content Type `application/json`, Body
+   `{"level":"%BATT","screen":"%SCREEN","charging":"%charging"}`, where
+   `%charging` is set from Power › **Power** state (or leave it out).
+
 7. Developer options › **Stay awake** (screen stays on while charging), and
    Settings › Display › screen timeout as you like for when it's unplugged.
 8. **The tablet as the truck's GPS** (optional: skip it if a USB GPS puck is

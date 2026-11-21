@@ -1,4 +1,5 @@
 // The settings portal at /settings. Phone-first; also reachable from the cockpit rail.
+import { TabletBattery } from './TabletBattery.tsx';
 import { useEffect, useState } from 'preact/hooks';
 import type { TouPeriod } from '../../../brain/src/types.ts';
 import { activeDriver, api, settingsStore, stateStore, useStore, type Health, type Settings } from '../lib/brain.ts';
@@ -409,6 +410,7 @@ export function SettingsApp({ embedded = false }: { embedded?: boolean } = {}) {
             <p class="help">With the truck off the tablet runs on its own battery. Tasker on the tablet reads this when the power drops, so a change applies from the next time you turn the truck off; it waits 2 minutes if the truck’s computer doesn’t answer. Setup: deploy/android/README.md, step 6.</p>
           </>;
         })()}
+        <TabletBattery />
       </Section>
 
       <Section id="relays" keywords="upfit relay watts power loads switches" title="Relay names & power" help="The six upfit relays in the truck box, and what each load draws when on (from its label or manual). Nothing measures current, so the Control screen's watts are these numbers.">

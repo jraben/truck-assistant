@@ -127,6 +127,7 @@ export function needsAuth(method: string, url: string): 'page' | 'api' | null {
     if (p === '/api/tablet/sleep' && (method === 'GET' || method === 'HEAD')) return null;
     // …and reports what its music app is playing; the route takes it only from the tablet's own address.
     if (p === '/api/tablet/nowplaying' && method === 'POST') return null;
+    if (p === '/api/tablet/battery' && method === 'POST') return null;
     return 'api';
   }
   return null;
