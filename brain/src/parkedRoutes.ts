@@ -10,6 +10,7 @@ import { PlexError, type PlexService } from './media/plex.ts';
 import { PlexVideo } from './media/plexVideo.ts';
 import type { RemoteService } from './remote/service.ts';
 import { sleepPlan, Tablet, tabletNowPlaying } from './tablet.ts';
+import { clientIp } from './clientIp.ts';
 import type { NowPlayingHub } from './media.ts';
 import { config } from './config.ts';
 
@@ -65,7 +66,7 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   });
 
   // ---- the dash tablet (tablet.ts) ----------------------------------------------
-  app.post('/api/tablet/hello', async (req) => tablet.hello(req.ip, String(req.headers['user-agent'] ?? '')));
+  app.post('/api/tablet/hello', async (req) => tablet.hello(clientIp(req), String(req.headers['user-agent'] ?? '')));
   app.get('/api/tablet', async () => tablet.get());
   app.put('/api/tablet', async (req, reply) => { try { return tablet.setPort((req.body as { taskerPort?: unknown } | null)?.taskerPort); } catch (e) { return reply.code(400).send({ error: (e as Error).message }); } });
   app.post('/api/tablet/test', async () => tablet.front());
@@ -88,7 +89,7 @@ export function registerParked(app: FastifyInstance, brain: Brain, db: Db, remot
   const sweep = setInterval(() => nowPlaying?.report('tablet', tabletNowPlaying(tablet.nowPlaying())), 60_000);
   app.addHook('onClose', async () => clearInterval(sweep));
   app.post('/api/tablet/nowplaying', async (req, reply) => {
-    const r = tablet.report(req.ip, req.body);
+    const r = tablet.report(clientIp(req), req.body);
     if (!r.ok) return reply.code(403).send({ error: r.error });
     nowPlaying?.report('tablet', tabletNowPlaying(r.media));
     return { ok: true };

@@ -36,6 +36,7 @@ import { parseTimeline, storeTimeline, TimelineError } from './import/timeline.t
 import { dayRanges } from './import/phone.ts';
 import { trackerPoints, type TrackerPoint } from './ha/client.ts';
 import { registerMapsRoutes } from './maps/routes.ts';
+import { clientIp } from './clientIp.ts';
 import { registerVehiclePhoto } from './drive/photo.ts';
 import { registerDriverPhotos } from './drive/driverPhoto.ts';
 import { mountOps } from './ops/routes.ts';
@@ -99,7 +100,7 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
         if (np === undefined || src === undefined) return;
         nowPlaying.report(`ws${socketIds.get(socket)}:${src}`, np); // a screen with nothing playing doesn't clear another's
       } else if (m.type === 'gps') {
-        brain.onTabletFix(m, req.ip, String(req.headers['user-agent'] ?? '')); // the dash tablet's own GPS (tabletGps.ts)
+        brain.onTabletFix(m, clientIp(req), String(req.headers['user-agent'] ?? '')); // the dash tablet's own GPS (tabletGps.ts)
       }
     });
     const gone = () => {

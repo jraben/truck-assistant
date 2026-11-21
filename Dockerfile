@@ -28,6 +28,7 @@ ENV NODE_ENV=production \
     DASHCAM_DIR=/data/dashcam \
     UI_DIR=/app/ui/dist \
     HEAT_SHUTDOWN=0 \
+    TRUSTED_PROXIES=172.17.0.1 \
     POWEROFF_CMD=
 RUN mkdir -p /data && chown node:node /data
 # Which commit this image is (the version line and Settings, Updates show it).
