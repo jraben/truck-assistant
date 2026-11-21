@@ -30,6 +30,10 @@ services:
       # SIM alerts are logged, not pushed to the phone. SLATE_SIM_ALERTS=1 sends them.
       SIM_ALERTS: ${SLATE_SIM_ALERTS:-0}
       TZ: America/Phoenix
+      # https://ta.jeffraben.com reaches this through nginx on the host, so every
+      # request arrives from Docker's gateway. Its X-Forwarded-For is believed for
+      # the dash tablet's address only (brain/src/clientIp.ts), never for logins.
+      TRUSTED_PROXIES: ${SLATE_TRUSTED_PROXIES:-172.17.0.1}
       # The NAS has a real wired network: don't simulate the truck's Wi-Fi/hotspot
       # (that would read OFFLINE and stop WOPR, weather and radar).
       NET_WIRED: "1"
