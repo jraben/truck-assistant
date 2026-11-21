@@ -64,8 +64,8 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    |---|---|---|
    | Truck on (on the tablet: **Power Any**) | Event › Power › **Power Connected** | Task › Stop: **Truck off**; Display › Turn On; App › Launch App: the cockpit app installed from the `https://` address. In the profile's settings untick **Enforce Task Order**, or the cockpit can take 2 minutes to appear. |
    | Truck off | Event › Power › **Power Disconnected** | the **Truck off** task below |
-   | Cockpit to front | Event › Net › **HTTP Request**, port **1821**, path `/slate/front` | App › Launch App: **Slate Cockpit**; HTTP Response 200 |
-   | Open an app | Event › Net › **HTTP Request**, port 1821, path `/slate/launch` | App › Launch App, package `%http_request_query_pkg`; HTTP Response 200 |
+   | Cockpit to front | Event › Net › **HTTP Request**, port **1821**, path `/slate/front` | App › Launch App: the cockpit app installed from the `https://` address (not an older `http://` shortcut); Net › HTTP Response, status 200 |
+   | Open an app | Event › Net › **HTTP Request**, port 1821, path `/slate/launch*` (the `*` matters: Tasker matches the path *with* its `?pkg=…` query) | Variables › **Variable Split** `%http_request_path`, splitter `pkg=`; App › Launch App, package `%http_request_path2` (tap the variable icon to type it); Net › HTTP Response, status 200 (body `pkg=%http_request_path2` echoes what it opened). There is no `%http_request_query_pkg`. |
 
    The **Truck off** task follows Settings › Truck › *Dash tablet when the
    truck turns off* (sleep after N minutes, or stay on until the battery is
