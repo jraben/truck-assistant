@@ -62,7 +62,7 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
 
    | Profile | Trigger | Task |
    |---|---|---|
-   | Truck on | Event › Power › **Power Connected** | Task › Stop: **Truck off**; Display › Turn On; App › Launch App: **Slate Cockpit** |
+   | Truck on (on the tablet: **Power Any**) | Event › Power › **Power Connected** | Task › Stop: **Truck off**; Display › Turn On; App › Launch App: the cockpit app installed from the `https://` address. In the profile's settings untick **Enforce Task Order**, or the cockpit can take 2 minutes to appear. |
    | Truck off | Event › Power › **Power Disconnected** | the **Truck off** task below |
    | Cockpit to front | Event › Net › **HTTP Request**, port **1821**, path `/slate/front` | App › Launch App: **Slate Cockpit**; HTTP Response 200 |
    | Open an app | Event › Net › **HTTP Request**, port 1821, path `/slate/launch` | App › Launch App, package `%http_request_query_pkg`; HTTP Response 200 |
@@ -71,13 +71,15 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    truck turns off* (sleep after N minutes, or stay on until the battery is
    down to N %), read from the brain each time the power drops:
 
-   1. Net › **HTTP Request**: GET `http://10.42.0.1:8080/api/tablet/sleep`,
+   1. Net › **HTTP Request**: GET `http://10.42.0.1:8080/api/tablet/sleep` (on the desk: `https://ta.jeffraben.com/api/tablet/sleep`; an old address here means the blind 2-minute fallback),
       timeout 5 s, Structure Output on. (No login needed for this one address.)
    2. Variables › Variable Set `%wait` to `120`; then, If `%http_data.waitSec`
       is set, Variable Set `%wait` to `%http_data.waitSec`.
    3. If `%http_data.keepOn` eq `1`: Task › **Wait Until** `%BATT` < `%http_data.minBattery`
       (check every 5 minutes); Else: Task › **Wait** `%wait` seconds; End If.
-   4. Display › **System Lock** (or Turn Off).
+   4. Display › **System Lock** (or Turn Off). **Needs Tasker as a device admin**
+      (Settings › Security › Device admin apps › Tasker › Activate); without it the
+      lock silently does nothing and the screen can stay on until the battery is flat.
 
    It answers `{minutes, waitSec, never, keepOn, minBattery}`. Plugging back
    in (truck on) stops the task, so a short stop never locks the screen. If
@@ -99,24 +101,30 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
 
    | Profile | Trigger | Task |
    |---|---|---|
-   | Music buttons | Event › Net › **HTTP Request**, port 1821, path `/slate/media` | see 1 below; then Net › HTTP Response 200 |
-   | Song to the cockpit | State › Variables › **Variable Value** `%MTRACK` *Set* | see 2 below |
-   | Playing or paused | State › Media › **Music Active** | Enter: see 3 (`"playing":"true"`); Exit task: the same with `"false"` |
+   | Music buttons | Event › Net › **HTTP Request**, port 1821, path **`/slate/media*`** (with the `*`: the brain adds `?cmd=…`) | see 1 below; then Net › HTTP Response 200 |
+   | Music to the cockpit | Event › Media › **Music Track Changed** | see 2 below |
 
    1. **Music buttons**: four Media › **Media Control** actions, each with
       *Use Notification If Available* ticked (so it reaches the app that is
-      playing): `If %http_request_query_cmd eq toggle` › Cmd **Toggle Pause**;
-      `eq play` › **Play**; `eq next` › **Next**; `eq prev` › **Previous**.
+      playing), each under an If on **`%http_request_path`** (this Tasker has no
+      `%http_request_query_cmd`): `~ *toggle*` › Cmd **Toggle Pause**;
+      `~ *play*` › **Play**; `~ *next*` › **Next**; `~ *prev*` › **Previous**.
       (*Play* is what starts an app after *Play on the tablet* opens it.)
-   2. **Song to the cockpit**: Net › **HTTP Request**, POST
-      `http://10.42.0.1:8080/api/tablet/nowplaying`, Content Type
-      `application/json`, Body `{"track":"%MTRACK","playing":"true"}`, timeout 5 s.
-   3. **Playing or paused**: the same HTTP Request with Body `{"playing":"true"}`
-      (Exit: `{"playing":"false"}`), so pausing keeps the song and a Play button.
+   2. **Music to the cockpit**: Net › **HTTP Request**, POST to the brain's
+      `/api/tablet/nowplaying` (in the truck `http://10.42.0.1:8080/api/tablet/nowplaying`;
+      on the desk the NAS copy, `https://ta.jeffraben.com/api/tablet/nowplaying`),
+      Content Type `application/json`, timeout 5 s. Body: the event's title,
+      artist, app and playing/paused, picked from its variables in the HTTP
+      Request's variable list, as `{"title":"…","artist":"…","app":"…","playing":"…"}`.
+      It fires on every new song and on play/pause, so pausing keeps the song
+      and a Play button.
+
+   (Tested on the tablet 2026-11-20. The older `%MTRACK` State and "Music
+   Active" don't fire on every song, or don't exist in current Tasker; a
+   second profile posting `%MTRACK` can overwrite the artist, so leave it off.)
 
    The brain takes these only from the tablet's own address (no login), so the
-   cockpit must have been opened on it. `%MTRACK` ("Artist - Title") comes from
-   apps that announce their tracks. **If it stays empty** for an app, use the
+   cockpit must have been opened on it. **If an app never shows a song**, use the
    **AutoNotification** plugin instead of profile 2: Event › Plugin ›
    AutoNotification › **Intercept**, Apps: the four music apps, then the HTTP
    Request with Body
