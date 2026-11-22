@@ -1,0 +1,111 @@
+// The Glass Drive layout (ideas from GlassDash, an iPad car display): the truck and
+// its speed on the left third, the live map on the right two thirds, a dock along the
+// bottom with what's playing and the apps. Parked, the truck is shown side-on with
+// its pack; moving, from behind on a road whose lane marks run with the speed, the
+// speed-limit sign beside it. One huge number (the speed) with a thin bar under it
+// against the limit, instead of a dial. Calm at speed: the dock's apps that lock
+// while moving are dimmed, the map never asks for anything.
+import type { ComponentChildren } from 'preact';
+import type { State } from '../../../brain/src/types.ts';
+import { V, whyGps, whySoc } from '../components/common.tsx';
+import type { WP } from '../components/drive.tsx';
+import { SOURCE_LABEL, useAnyNowPlaying } from '../media/nowplaying.tsx';
+import { MapPane } from '../map/MapView.tsx';
+import { driverDrive, truckOf, useActiveDriver } from './hooks.ts';
+import { overLimit } from './logic.ts';
+import { TruckRear, TruckSide } from './TruckArt.tsx';
+import { laneSeconds, speedBar } from './glassLogic.ts';
+
+/** The truck from behind on a road: lanes that run with the speed, and the limit sign at the side. */
+function ChaseView({ s, limit }: { s: State | null; limit: number | null }) {
+  const { settings } = useActiveDriver();
+  const t = truckOf(settings);
+  const sec = laneSeconds(s?.speedMph ?? null);
+  return (
+    <div class="g-chase" aria-hidden="true">
+      <svg viewBox="0 0 300 220" class="g-road" preserveAspectRatio="xMidYMax meet">
+        <path d="M120 40 L180 40 L300 220 L0 220 Z" class="road" />
+        <path d="M124 40 L60 220 M176 40 L240 220" class="edge" />
+        <path d="M150 40 L150 220" class={`lane ${sec ? 'run' : ''}`} style={sec ? { animationDuration: `${sec}s` } : undefined} />
+        {limit !== null && (
+          <g class="sign" transform="translate(236 46)">
+            <line x1="14" y1="40" x2="14" y2="78" />
+            <rect width="28" height="40" rx="3" />
+            <text x="14" y="11" class="s1">SPEED</text><text x="14" y="17" class="s1">LIMIT</text>
+            <text x="14" y="34" class="s2">{limit}</text>
+          </g>
+        )}
+      </svg>
+      <div class="g-chase-truck"><TruckRear t={t} id="glass-rear" /></div>
+    </div>
+  );
+}
+
+const Icon = ({ d }: { d: string }) => <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>;
+const DOCK: { view: string; label: string; d: string; lockedWhileMoving?: boolean }[] = [
+  { view: 'media', label: 'Media', d: 'M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zm12-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0z' },
+  { view: 'carplay', label: 'CarPlay', d: 'M4 5h16v12H4zM8 21h8M12 17v4M9 11h6M12 8v6' },
+  { view: 'charge', label: 'Charge', d: 'M13 2 4 14h7l-1 8 9-12h-7z' },
+  { view: 'cams', label: 'Cams', d: 'M3 7h12v10H3zM15 10l6-3v10l-6-3' },
+  { view: 'roadtrip', label: 'Trip', d: 'M4 19c4-1 4-6 8-7s4-6 8-7M4 19h.01M20 5h.01' },
+  { view: 'parked', label: 'Parked', d: 'M4 4h16v12H4zM9 20h6M12 16v4', lockedWhileMoving: true },
+];
+
+function Dock({ s, go }: { s: State | null; go: WP['go'] }) {
+  const np = useAnyNowPlaying(s);
+  const moving = !!s?.drive?.lockout.locked && !s.drive.lockout.passenger;
+  return (
+    <nav class="g-dock" aria-label="Apps">
+      <button type="button" class="g-np" onClick={() => go(np?.source === 'carplay' ? 'carplay' : 'media')} aria-label={np ? `Now playing: ${[np.title, np.artist].filter(Boolean).join(' by ')}` : 'Media'}>
+        <span class="g-np-art">{np?.art ? <img src={np.art} alt="" /> : <span aria-hidden="true">♪</span>}</span>
+        <span class="g-np-txt"><b class="ellip">{np?.title ?? np?.artist ?? 'Nothing playing'}</b><span class="ellip dimtxt">{np ? [np.artist, SOURCE_LABEL[np.source] ?? np.app].filter(Boolean).join(' · ') : 'Tap for music'}</span></span>
+      </button>
+      <span class="g-dock-apps">
+        {DOCK.map((a) => (
+          <button type="button" class={`g-app ${moving && a.lockedWhileMoving ? 'locked' : ''}`} onClick={() => go(a.view)} aria-label={a.label} title={moving && a.lockedWhileMoving ? 'Parked only' : a.label}>
+            <Icon d={a.d} /><span>{a.label}</span>
+          </button>
+        ))}
+      </span>
+    </nav>
+  );
+}
+
+export function GlassDrive({ s, go, toggle }: WP & { toggle: ComponentChildren }) {
+  const { driver, settings } = useActiveDriver();
+  const dd = driverDrive(driver);
+  const t = truckOf(settings);
+  const mph = s?.speedMph ?? null;
+  const limit = s?.drive?.speedLimit?.mph ?? null;
+  const over = overLimit(mph, limit, dd);
+  const bar = speedBar(mph, limit, over);
+  const moving = (mph ?? 0) >= 3 || !!s?.drive?.lockout.locked;
+  const soc = s?.soc ?? null;
+  const range = s?.drive?.range.current ?? s?.rangeMi ?? null;
+  const gear = s?.gear ?? null;
+  return (
+    <div class={`glass ${moving ? 'moving' : 'parked'}`}>
+      <section class="g-car" aria-label="Speed and truck">
+        <div class="g-speed">
+          <b class={`num ${over ? 'over' : ''}`}><V v={mph === null ? null : String(Math.round(mph))} why={whyGps(s)} /></b>
+          <span class="g-unit">mph</span>
+        </div>
+        <div class={`g-bar ${bar.tone}`} role="img" aria-label={limit ? `Speed against the ${limit} mph limit` : 'Speed'}><i style={{ width: `${Math.round(bar.fill * 100)}%` }} />{limit !== null && <em style={{ left: `${100 / 1.25}%` }} />}</div>
+        <div class="g-gears" aria-label={gear ? `Gear ${gear}` : 'Gear unknown'}>
+          {s?.ignition === true && <span class="ready">READY</span>}
+          {(['P', 'R', 'N', 'D'] as const).map((g) => <span class={gear === g ? 'on' : ''}>{g}</span>)}
+        </div>
+        <div class="g-truck">
+          {moving ? <ChaseView s={s} limit={limit} /> : <div class="g-side"><TruckSide t={t} id="glass-side" /></div>}
+        </div>
+        <button type="button" class="g-range" onClick={() => go('charge')}>
+          <b class="num"><V v={range === null ? null : String(range)} why={whySoc(s)} /></b><span>mi</span>
+          <span class="g-soc num"><V v={soc === null ? null : `${Math.round(soc)}%`} why={whySoc(s)} /></span>
+        </button>
+        {!moving && <div class="g-toggle">{toggle}</div>}
+      </section>
+      <section class="g-map" aria-label="Map"><MapPane s={s} go={go} props={{ type: 'map' }} /></section>
+      <Dock s={s} go={go} />
+    </div>
+  );
+}

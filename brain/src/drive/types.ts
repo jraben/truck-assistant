@@ -46,6 +46,8 @@ export type DriverDrive = {
   speedo: 'auto' | SpeedoStyle;           // auto = the theme's pairing, else digital
   overLimitWarn: boolean;
   overLimitMph: number;                   // tolerance before the warning (default 5)
+  /** The Drive screen: classic (speed, truck, cards) or glass (the truck beside a big map, a dock below). */
+  layout?: 'classic' | 'glass';
 };
 
 export type SinceCharge = {

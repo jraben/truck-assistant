@@ -35,7 +35,8 @@ export function MapW(props: WP) {
   );
 }
 
-function MapPane({ s }: WP) {
+/** The live map on its own (the Map view, and the Glass Drive layout's right side). */
+export function MapPane({ s }: WP) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const truck = useRef<L.Marker | null>(null);
