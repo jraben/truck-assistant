@@ -48,6 +48,8 @@ export type DriverDrive = {
   overLimitMph: number;                   // tolerance before the warning (default 5)
   /** The Drive screen: classic (speed, truck, cards) or glass (the truck beside a big map, a dock below). */
   layout?: 'classic' | 'glass';
+  /** 1 once this driver has the Glass look (2026-11-22): before that, Classic and the old theme were moved to Glass once. */
+  lookV?: number;
 };
 
 export type SinceCharge = {

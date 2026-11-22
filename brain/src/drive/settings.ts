@@ -84,7 +84,7 @@ export function defaultDrive(): DriveSettings {
   };
 }
 
-export const defaultDriverDrive = (): DriverDrive => ({ speedo: 'auto', overLimitWarn: false, overLimitMph: 5, layout: 'classic' });
+export const defaultDriverDrive = (): DriverDrive => ({ speedo: 'auto', overLimitWarn: false, overLimitMph: 5, layout: 'glass', lookV: 1 });
 
 function num(v: unknown, name: string, min: number, max: number, dflt: number): number {
   if (v === undefined) return dflt;
@@ -200,7 +200,9 @@ export function validateDriverDrive(v: unknown, where = 'drive'): DriverDrive {
     speedo: speedo as DriverDrive['speedo'],
     overLimitWarn: bool(v.overLimitWarn, d.overLimitWarn),
     overLimitMph: num(v.overLimitMph, `${where}.overLimitMph`, 0, 25, d.overLimitMph),
-    layout: v.layout === 'glass' ? 'glass' : v.layout === undefined || v.layout === 'classic' ? 'classic' : (() => { throw new DriveSettingsError(`${where}.layout must be classic or glass`); })(),
+    // Before the Glass look (lookV < 1) Classic was only ever the default, never a choice: it becomes Glass once.
+    layout: v.layout === undefined || v.layout === 'glass' || (v.layout === 'classic' && v.lookV !== 1) ? 'glass' : v.layout === 'classic' ? 'classic' : (() => { throw new DriveSettingsError(`${where}.layout must be classic or glass`); })(),
+    lookV: 1,
   };
 }
 

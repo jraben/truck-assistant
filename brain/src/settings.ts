@@ -9,7 +9,7 @@ import { DEFAULT_LAYOUT, migrateCamsLayout, migrateChargeLayout, migrateRoadTrip
 import { defaultAlertOn } from './charges/peak.ts';
 import { driverPhotoOf } from './drive/driverPhoto.ts';
 import { defaultDrive, defaultDriverDrive, defaultTruck, DriveSettingsError, migrateDriveLayout, validateDrive, validateDriverDrive, validateTruck } from './drive/settings.ts';
-import { defaultThemeSettings, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
+import { defaultThemeSettings, isOldDefaultTheme, migrateTheme, ThemeError, validateThemeSettings } from './themes.ts';
 
 export const RELAY_IDS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'] as const;
 
@@ -498,6 +498,12 @@ export function loadSettings(migrated: Record<string, unknown>): Settings {
     const out = deepMerge({ ...def, layout: undefined }, { ...d, layout: undefined }) as Driver;
     out.layout = isObj(d.layout) ? (structuredClone(d.layout) as unknown as Layout) : def.layout;
     if (d.theme !== undefined) out.theme = migrateTheme(d.theme) as Driver['theme'];
+    // The Glass look (2026-11-22), once per driver (drive.lookV marks it done): the old default theme and the
+    // Classic Drive screen were never picked, only defaults, so they move to Glass. A picked theme stays.
+    if (!(isObj(d.drive) && d.drive.lookV === 1)) {
+      if (isOldDefaultTheme(out.theme)) out.theme = defaultThemeSettings();
+      if (isObj(out.drive) && (out.drive as Record<string, unknown>).layout === 'classic') (out.drive as Record<string, unknown>).layout = 'glass';
+    }
     return out;
   });
   return validate(merged);

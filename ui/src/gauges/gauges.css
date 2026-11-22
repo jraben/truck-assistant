@@ -21,8 +21,9 @@
 .gdial-lbl span { text-transform: none; letter-spacing: 0; font-family: var(--body); }
 
 .gtiles { display: grid; gap: var(--s2); grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; }
-.gtile { background: var(--panel); border: 1px solid var(--hairline); border-left: 4px solid var(--tone, var(--hairline));
-  border-radius: var(--radius); padding: var(--s15) var(--s2); display: grid; gap: var(--s05); min-height: 96px; align-content: start; }
+.gtile { background: var(--panel); border: 1px solid var(--hairline); 
+  border-radius: var(--radius); padding: var(--s15) var(--s2) var(--s15) var(--s3); display: grid; gap: var(--s05); min-height: 96px; align-content: start; position: relative; }
+.gtile::before { content: ''; position: absolute; left: var(--s1); top: var(--s15); bottom: var(--s15); width: 4px; border-radius: 2px; background: var(--tone, transparent); }
 .gtile-lbl { font-size: var(--fs-caption); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
 .gtile-val { font-size: var(--fs-display-sm); font-weight: 700; color: var(--fg); display: flex; align-items: center; gap: var(--s1); }
 .gtile-sub { font-size: var(--fs-caption); color: var(--dim); }
@@ -31,9 +32,11 @@
 .gcompass path { fill: var(--accent); }
 .gcompass path { transition: transform 300ms ease-out; }
 
-.gtires { grid-column: 1 / -1; border-left-color: var(--hairline); min-height: 0; }
+.gtires { grid-column: 1 / -1; min-height: 0; padding-left: var(--s2); }
+.gtires::before { display: none; }
 .gtires-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s1); }
-.gtire { border-radius: var(--radius); background: var(--panel-2); border-left: 4px solid var(--tone); padding: var(--s05) var(--s1); display: flex; align-items: baseline; gap: var(--s05); }
+.gtire { border-radius: var(--radius); background: var(--panel-2); position: relative; padding: var(--s05) var(--s1) var(--s05) var(--s2); display: flex; align-items: baseline; gap: var(--s05); }
+.gtire::before { content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px; width: 4px; border-radius: 2px; background: var(--tone); }
 .gtire b { font-size: var(--fs-section); color: var(--fg); }
 .gtire small, .gtire span { color: var(--dim); font-size: var(--fs-caption); }
 .gtire span { margin-left: auto; }

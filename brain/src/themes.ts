@@ -18,6 +18,8 @@ export type Theme = {
   fonts: { display: string; body: string; mono: string };
   radius: number;                     // corner scale: 0 square .. 2 very round, 1 = default
   glow: number;                       // 0..1 accent glow on active controls, keep it subtle
+  /** 0..1: see-through frosted panels on a soft gradient (the GlassDash look); 0 or absent = solid panels. */
+  glass?: number;
   speedo?: 'digital' | 'ring' | 'sweep' | 'fifty-seven' | 'ribbon' | 'minimal';  // Track A: the speedometer this theme pairs with (a driver's "auto")
 };
 
@@ -31,6 +33,13 @@ export type ThemeSettings = {
 const base = { fonts: { display: 'Saira Semi Condensed', body: 'Inter', mono: 'IBM Plex Mono' }, radius: 1, glow: 0 };
 
 export const PRESETS: Theme[] = [
+  // The GlassDash look: frosted see-through panels on a soft gradient. The defaults since 2026-11-22.
+  { ...base, id: 'glass-night', name: 'Glass Night', colors: {
+    bg: '#070b12', panel: '#141c28', panel2: '#1c2635', line: '#2a3648', fg: '#eef3f8', dim: '#93a1b3',
+    accent: '#4da3ff', accentInk: '#04121f', ok: '#5ad39a', warn: '#f0b54a', bad: '#ff6b66' }, radius: 1.4, glow: 0.35, glass: 1 },
+  { ...base, id: 'glass-day', name: 'Glass Day', colors: {
+    bg: '#dfe7ef', panel: '#ffffff', panel2: '#eef2f6', line: '#c9d3dd', fg: '#111820', dim: '#4d5b69',
+    accent: '#1460b8', accentInk: '#ffffff', ok: '#1d7442', warn: '#8a5600', bad: '#b3261e' }, radius: 1.4, glow: 0.1, glass: 1 },
   { ...base, id: 'night', name: 'Night', colors: {
     bg: '#101417', panel: '#171c20', panel2: '#1f252a', line: '#2c343a', fg: '#e8edf0', dim: '#8d9aa3',
     accent: '#6bb7c4', accentInk: '#0a2227', ok: '#6ccf95', warn: '#e9b44c', bad: '#e66a62' } },
@@ -61,7 +70,13 @@ export const PRESETS: Theme[] = [
     accent: '#16726f', accentInk: '#ffffff', ok: '#2f6b3a', warn: '#8a5300', bad: '#b11f24' }, radius: 1.6, speedo: 'fifty-seven' },
 ];
 
-export const defaultThemeSettings = (): ThemeSettings => ({ active: 'night', auto: { enabled: true, day: 'day', night: 'night' }, custom: [] });
+export const defaultThemeSettings = (): ThemeSettings => ({ active: 'glass-night', auto: { enabled: true, day: 'glass-day', night: 'glass-night' }, custom: [] });
+
+/** The default before the Glass look: a driver still on exactly this is moved to Glass once (validateDriver). */
+export const isOldDefaultTheme = (t: unknown): boolean => {
+  const x = t as ThemeSettings | null;
+  return !!x && typeof x === 'object' && x.active === 'night' && x.auto?.enabled === true && x.auto.day === 'day' && x.auto.night === 'night';
+};
 
 export const allThemes = (t: ThemeSettings): Theme[] => [...PRESETS, ...t.custom];
 export const findTheme = (t: ThemeSettings, id: string): Theme => allThemes(t).find((x) => x.id === id) ?? PRESETS[0];
@@ -116,10 +131,12 @@ export function validateTheme(t: unknown, i: number): Theme {
   for (const k of ['display', 'body', 'mono'] as const) {
     if (!(FONTS[k] as readonly string[]).includes(fonts[k])) throw new ThemeError(`${where}.fonts.${k} must be one of ${FONTS[k].join(', ')}`);
   }
-  const radius = Number(x.radius ?? 1), glow = Number(x.glow ?? 0);
+  const radius = Number(x.radius ?? 1), glow = Number(x.glow ?? 0), glass = Number(x.glass ?? 0);
   if (!(radius >= 0 && radius <= 2)) throw new ThemeError(`${where}.radius must be 0 to 2`);
   if (!(glow >= 0 && glow <= 1)) throw new ThemeError(`${where}.glow must be 0 to 1`);
+  if (!(glass >= 0 && glass <= 1)) throw new ThemeError(`${where}.glass must be 0 to 1`);
   const out: Theme = { id: x.id, name: x.name.trim().slice(0, 40), colors, fonts, radius, glow };
+  if (glass > 0) out.glass = glass;
   if (['digital', 'ring', 'sweep', 'fifty-seven', 'ribbon', 'minimal'].includes(x.speedo)) out.speedo = x.speedo;
   return out;
 }
@@ -142,7 +159,7 @@ export function validateThemeSettings(v: unknown): ThemeSettings {
 
 /** Settings written before themes were objects said 'night' | 'day' | 'auto'. */
 export function migrateTheme(v: unknown): ThemeSettings | unknown {
-  if (v === 'night' || v === 'day') return { ...defaultThemeSettings(), active: v, auto: { enabled: false, day: 'day', night: 'night' } };
+  if (v === 'night' || v === 'day') return { ...defaultThemeSettings(), active: v, auto: { enabled: false, day: 'glass-day', night: 'glass-night' } };
   if (v === 'auto') return defaultThemeSettings();
   return v;
 }

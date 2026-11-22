@@ -303,8 +303,11 @@ describe('drive settings', () => {
     expect(validateTruck({ colors: { lampPlates: 'synthwave' } }).colors.lampPlates).toBe('synthwave');
     expect(() => validateDrive({ tilt: { warnDeg: 30, dangerDeg: 20 } })).toThrow(/dangerDeg/);
     expect(() => validateDriverDrive({ speedo: 'steam' })).toThrow(/speedo/);
-    expect(validateDriverDrive({ speedo: 'fifty-seven', overLimitWarn: true })).toEqual({ speedo: 'fifty-seven', overLimitWarn: true, overLimitMph: 5, layout: 'classic' });
+    expect(validateDriverDrive({ speedo: 'fifty-seven', overLimitWarn: true })).toEqual({ speedo: 'fifty-seven', overLimitWarn: true, overLimitMph: 5, layout: 'glass', lookV: 1 });
     expect(validateDriverDrive({ layout: 'glass' }).layout).toBe('glass');
+    // Classic saved before the Glass look was only the default: it moves to Glass once; picked after, it stays.
+    expect(validateDriverDrive({ layout: 'classic' }).layout).toBe('glass');
+    expect(validateDriverDrive({ layout: 'classic', lookV: 1 }).layout).toBe('classic');
     expect(() => validateDriverDrive({ layout: 'tesla' })).toThrow(/layout/);
   });
 });
@@ -334,5 +337,21 @@ describe('drive layout migration', () => {
     const m = new RangeModel({ city: 4, highway: 3.2 }, null, 20_000);
     for (let i = 0; i <= 20; i++) m.addSample(i * 1000, 60);
     expect(m.mode(20_000, 45)).toBe('highway');
+  });
+});
+
+describe('the Glass look', () => {
+  it('moves a driver on the old default theme to Glass once, and keeps a picked theme', () => {
+    const old = { active: 'night', auto: { enabled: true, day: 'day', night: 'night' }, custom: [] };
+    const a = loadSettings(migrateSettings({ drivers: [{ id: 'jeff', name: 'Jeff', color: '#4fc3d9', theme: old, drive: { layout: 'classic' } }] }));
+    expect(a.drivers[0].theme).toMatchObject({ auto: { enabled: true, day: 'glass-day', night: 'glass-night' } });
+    expect(a.drivers[0].drive).toMatchObject({ layout: 'glass', lookV: 1 });
+    // After the move, choosing the old look again sticks.
+    const b = loadSettings(migrateSettings({ drivers: [{ id: 'jeff', name: 'Jeff', color: '#4fc3d9', theme: old, drive: { layout: 'classic', lookV: 1 } }] }));
+    expect(b.drivers[0].theme).toMatchObject({ auto: { day: 'day', night: 'night' } });
+    expect(b.drivers[0].drive.layout).toBe('classic');
+    // A theme picked before stays.
+    const c = loadSettings(migrateSettings({ drivers: [{ id: 'jeff', name: 'Jeff', color: '#4fc3d9', theme: { ...old, auto: { ...old.auto, enabled: false }, active: 'wopr' } }] }));
+    expect(c.drivers[0].theme.active).toBe('wopr');
   });
 });
