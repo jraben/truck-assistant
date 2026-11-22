@@ -60,7 +60,7 @@
 .camstill img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .camstill-none { position: absolute; inset: 0; display: grid; place-items: center; color: var(--dim); font-size: var(--fs-caption); }
 .camstill-cap { position: absolute; left: var(--s1); bottom: var(--s1); padding: var(--s05) var(--s1); border-radius: var(--radius); font-size: var(--fs-caption);
-  color: #f2f4f5; background: color-mix(in srgb, #101417 62%, transparent); backdrop-filter: blur(6px); }
+  color: #f2f4f5; background: color-mix(in srgb, #0c0f11 62%, transparent); backdrop-filter: blur(6px); }
 .camstill-cap b { font-weight: 600; }
 .camzoom { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s2); padding: var(--s3);
   background: color-mix(in srgb, #0b0d0f 82%, transparent); }

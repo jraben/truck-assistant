@@ -9,3 +9,6 @@ print/*/stl
 firmware/**/.esphome
 firmware/**/.pio
 deploy/image
+# Design skills and redesign screenshots: tooling and PR evidence, not the app
+.claude
+docs/redesign-*
