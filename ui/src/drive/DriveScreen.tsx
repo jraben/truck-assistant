@@ -17,6 +17,7 @@ import { Speedo, SPEEDO_LABELS } from './Speedo.tsx';
 import { TiltPair } from './Tilt.tsx';
 import { TruckRear, TruckSide } from './TruckArt.tsx';
 import { openWeather } from './weatherStore.ts';
+import { GlassDrive } from './GlassDrive.tsx';
 import { GoalDriveCard } from '../components/goal.tsx';
 import { useGoal } from '../lib/data.ts';
 import './drive.css';
@@ -277,10 +278,31 @@ function Banners({ s }: { s: State | null }) {
   );
 }
 
+/** Classic | Glass, saved per driver; shown only when parked (it changes the whole screen). */
+function LayoutToggle() {
+  const { driver } = useActiveDriver();
+  const dd = driverDrive(driver);
+  const cur = dd.layout ?? 'classic';
+  const set = async (layout: 'classic' | 'glass') => {
+    if (!driver || layout === cur) return;
+    try { await putDriver(driver.id, { drive: { ...dd, layout } }); } catch (e) { toast(`Not saved: ${(e as Error).message}`); }
+  };
+  if (!driver) return null;
+  return (
+    <div class="seg quiet layout-toggle" role="group" aria-label="Drive screen layout">
+      {(['classic', 'glass'] as const).map((l) => <button type="button" aria-pressed={cur === l} onClick={() => void set(l)}>{l === 'classic' ? 'Classic' : 'Glass'}</button>)}
+    </div>
+  );
+}
+
 export function DriveScreen({ s, go }: WP) {
   const night = !!s?.drive?.brightness.night;
+  const { driver } = useActiveDriver();
+  const parked = !s?.drive?.lockout.locked;
+  if (driverDrive(driver).layout === 'glass') return <div class={`drive ${night ? 'is-night' : ''}`}><Banners s={s} /><GlassDrive s={s} go={go} toggle={<LayoutToggle />} /></div>;
   return (
     <div class={`drive ${night ? 'is-night' : ''}`}>
+      {parked && <div class="layout-toggle-host"><LayoutToggle /></div>}
       <Banners s={s} />
       <div class="zones">
         <SpeedZone s={s} />

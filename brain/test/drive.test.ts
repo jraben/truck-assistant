@@ -303,7 +303,9 @@ describe('drive settings', () => {
     expect(validateTruck({ colors: { lampPlates: 'synthwave' } }).colors.lampPlates).toBe('synthwave');
     expect(() => validateDrive({ tilt: { warnDeg: 30, dangerDeg: 20 } })).toThrow(/dangerDeg/);
     expect(() => validateDriverDrive({ speedo: 'steam' })).toThrow(/speedo/);
-    expect(validateDriverDrive({ speedo: 'fifty-seven', overLimitWarn: true })).toEqual({ speedo: 'fifty-seven', overLimitWarn: true, overLimitMph: 5 });
+    expect(validateDriverDrive({ speedo: 'fifty-seven', overLimitWarn: true })).toEqual({ speedo: 'fifty-seven', overLimitWarn: true, overLimitMph: 5, layout: 'classic' });
+    expect(validateDriverDrive({ layout: 'glass' }).layout).toBe('glass');
+    expect(() => validateDriverDrive({ layout: 'tesla' })).toThrow(/layout/);
   });
 });
 

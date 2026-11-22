@@ -370,3 +370,63 @@
 .tap-passenger { cursor: pointer; }
 /* moving, passenger mode off: the outlined way in */
 .passenger-ask { border: 2px solid var(--accent); color: var(--fg); font-weight: 600; flex: none; background: transparent; }
+
+/* ---- Classic | Glass switch (parked only) ---- */
+.drive { position: relative; }
+.layout-toggle-host { position: absolute; top: var(--s1); right: var(--s1); z-index: 4; }
+.layout-toggle button { min-width: 5.5em; }
+
+/* ---- The Glass layout (GlassDrive.tsx): truck left third, map right two thirds, dock below ---- */
+.glass { height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(280px, 1fr) 2fr; grid-template-rows: 1fr auto; gap: var(--s15);
+  grid-template-areas: "car map" "dock dock"; }
+.glass .g-car { grid-area: car; min-height: 0; display: grid; grid-template-rows: auto auto auto 1fr auto auto; gap: var(--s1); padding: var(--s2);
+  border-radius: calc(var(--radius) * 1.5); background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--hairline);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.glass .g-speed { display: flex; align-items: baseline; gap: var(--s1); line-height: .9; }
+.glass .g-speed b { font-family: var(--display); font-weight: 700; font-size: clamp(88px, 11vw, 168px); letter-spacing: -.02em; }
+.glass .g-speed b.over { color: var(--bad); }
+.glass .g-unit { color: var(--dim); font-size: var(--fs-title); letter-spacing: .08em; text-transform: uppercase; }
+.glass .g-bar { position: relative; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--fg) 10%, transparent); overflow: visible; }
+.glass .g-bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width .4s ease; }
+.glass .g-bar.ok i { background: var(--ok); } .glass .g-bar.warn i { background: var(--warn); } .glass .g-bar.bad i { background: var(--bad); }
+.glass .g-bar em { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--fg); opacity: .5; }
+.glass .g-gears { display: flex; gap: var(--s15); align-items: center; font-family: var(--display); font-size: var(--fs-title); color: var(--dim); }
+.glass .g-gears .on { color: var(--fg); font-weight: 700; }
+.glass .g-gears .ready { font-size: var(--fs-caption); letter-spacing: .12em; color: var(--ok); border: 1px solid var(--ok); border-radius: var(--radius); padding: 2px 8px; }
+.glass .g-truck { min-height: 0; display: grid; place-items: center; }
+.glass .g-side { width: 100%; }
+.glass .g-side .truck-art { width: 100%; height: auto; }
+.glass .g-chase { position: relative; width: 100%; height: 100%; min-height: 140px; }
+.glass .g-road { position: absolute; inset: 0; width: 100%; height: 100%; }
+.glass .g-road .road { fill: color-mix(in srgb, var(--fg) 7%, transparent); }
+.glass .g-road .edge { stroke: color-mix(in srgb, var(--fg) 35%, transparent); stroke-width: 2; fill: none; }
+.glass .g-road .lane { stroke: var(--fg); stroke-opacity: .55; stroke-width: 3; stroke-dasharray: 14 18; fill: none; }
+@media (prefers-reduced-motion: no-preference) { .glass .g-road .lane.run { animation: lane-run 1s linear infinite; } }
+@keyframes lane-run { to { stroke-dashoffset: -32; } }
+.glass .g-road .sign rect { fill: #fff; stroke: #111; stroke-width: 1.5; }
+.glass .g-road .sign line { stroke: color-mix(in srgb, var(--fg) 45%, transparent); stroke-width: 2; }
+.glass .g-road .sign text { fill: #111; text-anchor: middle; font-family: var(--display); font-weight: 700; }
+.glass .g-road .sign .s1 { font-size: 5px; } .glass .g-road .sign .s2 { font-size: 15px; }
+.glass .g-chase-truck { position: absolute; left: 50%; bottom: 4%; width: 46%; transform: translateX(-50%); }
+.glass .g-chase-truck .truck-art { width: 100%; height: auto; }
+.glass .g-range { all: unset; cursor: pointer; display: flex; align-items: baseline; gap: var(--s05); font-size: var(--fs-body); }
+.glass .g-range b { font-family: var(--display); font-size: var(--fs-title); }
+.glass .g-soc { margin-left: auto; color: var(--dim); }
+.glass .g-toggle { justify-self: start; }
+.glass .g-map { grid-area: map; min-height: 0; border-radius: calc(var(--radius) * 1.5); overflow: hidden; border: 1px solid var(--hairline); }
+.glass .g-map > * { height: 100%; }
+.glass .g-dock { grid-area: dock; display: flex; align-items: center; gap: var(--s2); padding: var(--s1) var(--s15);
+  border-radius: calc(var(--radius) * 1.5); background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--hairline);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.glass .g-np { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--s1); min-width: 0; flex: 1 1 260px; max-width: 420px; min-height: var(--hit); }
+.glass .g-np-art { flex: none; width: 48px; height: 48px; border-radius: var(--radius); overflow: hidden; display: grid; place-items: center; background: var(--panel-2); color: var(--dim); }
+.glass .g-np-art img { width: 100%; height: 100%; object-fit: cover; }
+.glass .g-np-txt { display: grid; min-width: 0; }
+.glass .g-dock-apps { display: flex; gap: var(--s05); margin-left: auto; }
+.glass .g-app { all: unset; cursor: pointer; display: grid; justify-items: center; gap: 2px; min-width: 64px; min-height: var(--hit); padding: 4px 6px; border-radius: var(--radius); color: var(--fg); font-size: var(--fs-caption); }
+.glass .g-app:hover { background: var(--panel-2); }
+.glass .g-app.locked { opacity: .35; }
+@media (max-width: 820px) {
+  .glass { grid-template-columns: 1fr; grid-template-rows: auto 280px auto; grid-template-areas: "car" "map" "dock"; height: auto; }
+  .glass .g-dock { flex-wrap: wrap; } .glass .g-dock-apps { margin-left: 0; flex-wrap: wrap; }
+}
