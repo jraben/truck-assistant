@@ -104,11 +104,12 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
    | Music buttons | Event › Net › **HTTP Request**, port 1821, path **`/slate/media*`** (with the `*`: the brain adds `?cmd=…`) | see 1 below; then Net › HTTP Response 200 |
    | Music to the cockpit | Event › Media › **Music Track Changed** | see 2 below |
 
-   1. **Music buttons**: four Media › **Media Control** actions, each with
+   1. **Music buttons**: five Media › **Media Control** actions, each with
       *Use Notification If Available* ticked (so it reaches the app that is
       playing), each under an If on **`%http_request_path`** (this Tasker has no
       `%http_request_query_cmd`): `~ *toggle*` › Cmd **Toggle Pause**;
-      `~ *play*` › **Play**; `~ *next*` › **Next**; `~ *prev*` › **Previous**.
+      `~ *play*` › **Play**; `~ *pause*` › **Pause** (the cockpit's Pause button);
+      `~ *next*` › **Next**; `~ *prev*` › **Previous**.
       (*Play* is what starts an app after *Play on the tablet* opens it.)
    2. **Music to the cockpit**: Net › **HTTP Request**, POST to the brain's
       `/api/tablet/nowplaying` (in the truck `http://10.42.0.1:8080/api/tablet/nowplaying`;
