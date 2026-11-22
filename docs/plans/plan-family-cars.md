@@ -8,7 +8,7 @@ iPad "car display" with a Bluetooth OBD adapter.
 
 ## Goal
 
-1. **The five family vehicles** (2004 F150, 2002 C5, 1998 Jeep, Josie's Hyundai
+1. **The five family vehicles** (2004 F150, 2002 C5, 1998 Jeep, Josie's 2022 Hyundai
    Tucson, Austin's 2013 Nissan Rogue) report where
    they are, their 12V battery, engine data and fault codes, and Truck Assistant
    shows them, with the Slate, on a **Family cars** page: alerts, fault codes in
@@ -74,7 +74,7 @@ id can post a fake position. So:
 | 2004 F150 | J1850 PWM | Generic OBD-II codes plus Ford P1xxx |
 | 2002 C5 | J1850 VPW | Codes plus GM P1xxx |
 | 1998 Jeep | ISO 9141 / VPW | Early OBD-II; fewest PIDs |
-| Hyundai Tucson (Josie; year to confirm in WOPR) | CAN (ISO 15765-4) from 2008 on | More PIDs: fuel level likely; odometer only 2019+ |
+| 2022 Hyundai Tucson (Josie) | CAN (ISO 15765-4) | The most PIDs of the five: fuel level, and the odometer (`01A6`) may be readable, so maintenance can use real miles. If it's a hybrid, OBD still works; the 12V battery reading matters most (hybrids drain it when parked). |
 | 2013 Nissan Rogue (Austin) | CAN (ISO 15765-4) | Fuel level likely; no odometer PID; Nissan P1xxx codes |
 
 The vLinker MC+ covers all of these protocols. The F150, C5 and Jeep sit on
@@ -154,7 +154,6 @@ Phase 3 doesn't wait for the boards: the Slate already reports into Traccar.
 
 ## Open
 
-- The Tucson's year (WOPR's records on the NAS have it; it decides the protocol and PIDs).
 - Order the two extra kits for the Tucson and Rogue.
 - Have the boards and adapters arrived? The AliExpress orders (3× LILYGO, 3× vLinker MC+) still showed "awaiting delivery" on Nov 21.
 - Is the HA Traccar Server integration finished, and which entities exist?
