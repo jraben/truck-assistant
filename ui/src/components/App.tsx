@@ -16,6 +16,7 @@ import { MEDIA_ICON, TrackBOverlays, withMediaView } from '../media/trackb.tsx';
 import { GaragePrompt, HOME_ICON, withHomeView } from '../home/Home.tsx';
 import { ModeOverlays, PARKED_ICON, TabletHello, withParkedView } from '../parked/Parked.tsx';
 import { foldTrafficIntoMap, MAP_ICON, withMapView } from '../map/MapView.tsx';
+import { GAUGES_ICON, withGaugesView } from '../gauges/logic.ts';
 import { logsStore, mapTabStore } from '../lib/panels.ts';
 import { WoprButton } from '../wopr/WoprUi.tsx';
 import { PROJECT } from '../../../brain/src/project.ts';
@@ -50,6 +51,7 @@ const ICONS: Record<string, string> = {
   home: HOME_ICON,
   parked: PARKED_ICON,
   map: MAP_ICON,
+  gauges: GAUGES_ICON,
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const MIC = 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3';
@@ -96,7 +98,7 @@ export function App({ page }: { page?: AppPage } = {}) {
   const driver = activeDriver(settings, s);
   useTabletGps(!page); // the dash tablet's own GPS, when there's no puck (lib/tabletGps.ts); never from another page
   const base = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
-  const layout = useMemo(() => foldTrafficIntoMap(withMapView(withParkedView(withHomeView(withMediaView(base))))), [base]);
+  const layout = useMemo(() => foldTrafficIntoMap(withGaugesView(withMapView(withParkedView(withHomeView(withMediaView(base)))))), [base]);
   const [view, setView] = useState(() => viewFromHash(layout));
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);

@@ -1,0 +1,54 @@
+/* The Gauges screen. Tokens only (styles.css); tones map to --ok/--warn/--bad/--dim. */
+.gauges { height: 100%; overflow-y: auto; display: grid; gap: var(--s2); padding: var(--s2);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto 1fr; align-content: start; }
+.gauges .tone-ok { --tone: var(--ok); } .gauges .tone-warn { --tone: var(--warn); }
+.gauges .tone-bad { --tone: var(--bad); } .gauges .tone-dim { --tone: var(--dim); }
+
+.gdials { grid-row: 1 / span 2; display: grid; gap: var(--s2); align-content: start; }
+.gdial { background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--radius-lg);
+  padding: var(--s2); display: grid; justify-items: center; position: relative; }
+.gdial svg { width: 100%; max-width: 260px; }
+.gdial .track, .gdial .fill { fill: none; stroke-width: 12; stroke-linecap: round; }
+.gdial .track { stroke: var(--panel-2); }
+.gdial .fill { stroke: var(--tone); transition: d 200ms ease-out; }
+.gdial .tick { fill: var(--dim); font-size: 11px; font-family: var(--body); }
+.gdial .needle { stroke: var(--fg); stroke-width: 3; stroke-linecap: round; transition: transform 300ms ease-out; }
+.gdial .hub { fill: var(--fg); }
+.gdial-read { margin-top: calc(-1 * var(--s5)); display: flex; align-items: baseline; gap: var(--s05); }
+.gdial-read b { font-size: var(--fs-hero); line-height: 1; color: var(--fg); }
+.gdial-read small, .gdial-lbl span { color: var(--dim); }
+.gdial-lbl { font-family: var(--display); font-size: var(--fs-body-sm); letter-spacing: .08em; text-transform: uppercase; color: var(--fg); margin-top: var(--s1); }
+.gdial-lbl span { text-transform: none; letter-spacing: 0; font-family: var(--body); }
+
+.gtiles { display: grid; gap: var(--s2); grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; }
+.gtile { background: var(--panel); border: 1px solid var(--hairline); border-left: 4px solid var(--tone, var(--hairline));
+  border-radius: var(--radius); padding: var(--s15) var(--s2); display: grid; gap: var(--s05); min-height: 96px; align-content: start; }
+.gtile-lbl { font-size: var(--fs-caption); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.gtile-val { font-size: var(--fs-display-sm); font-weight: 700; color: var(--fg); display: flex; align-items: center; gap: var(--s1); }
+.gtile-sub { font-size: var(--fs-caption); color: var(--dim); }
+.gcompass { width: 32px; height: 32px; flex: none; }
+.gcompass circle { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.gcompass path { fill: var(--accent); }
+.gcompass path { transition: transform 300ms ease-out; }
+
+.gtires { grid-column: 1 / -1; border-left-color: var(--hairline); min-height: 0; }
+.gtires-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s1); }
+.gtire { border-radius: var(--radius); background: var(--panel-2); border-left: 4px solid var(--tone); padding: var(--s05) var(--s1); display: flex; align-items: baseline; gap: var(--s05); }
+.gtire b { font-size: var(--fs-section); color: var(--fg); }
+.gtire small, .gtire span { color: var(--dim); font-size: var(--fs-caption); }
+.gtire span { margin-left: auto; }
+
+.gcard { background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--radius-lg); padding: var(--s2) var(--s3); display: grid; gap: var(--s15); align-content: start; }
+.gfault-in input { width: 100%; min-height: var(--hit); font: inherit; font-size: var(--fs-title); letter-spacing: .1em; text-transform: uppercase;
+  background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: var(--radius); padding: 0 var(--s2); }
+.gfault-in input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gfault-out { border-left: 4px solid var(--accent); padding: var(--s1) var(--s2); background: var(--panel-2); border-radius: var(--radius); display: grid; gap: var(--s05); }
+.gfault-out.bad { border-left-color: var(--warn); }
+
+@media (max-width: 1100px) {
+  .gauges { grid-template-columns: 1fr; }
+  .gdials { grid-row: auto; grid-template-columns: 1fr 1fr; }
+  .gtiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gtires-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .gdial .needle, .gdial .fill, .gcompass path { transition: none; } }
