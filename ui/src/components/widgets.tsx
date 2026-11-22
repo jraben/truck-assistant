@@ -13,6 +13,7 @@ import { TRACKB_WIDGETS } from '../media/trackb.tsx';
 import { HOME_WIDGETS } from '../home/Home.tsx';
 import { PARKED_WIDGETS } from '../parked/Parked.tsx';
 import { MAP_WIDGETS } from '../map/MapView.tsx';
+import { GAUGES_WIDGETS } from '../gauges/Gauges.tsx';
 import { CamsView, CamTile } from './cams.tsx';
 import { MaintWidget } from '../ops/Maintenance.tsx';
 import { MileageWidget } from '../ops/Mileage.tsx';
@@ -33,6 +34,7 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   ...HOME_WIDGETS,   // garage, haPanel, homeCams
   ...PARKED_WIDGETS, // parked: watch, games, karaoke, camp, pet, tow, lights
   ...MAP_WIDGETS, // the Map view (offline maps)
+  ...GAUGES_WIDGETS, // the Gauges view: dials, tiles, fault codes
   maintenance: MaintWidget, mileage: MileageWidget,
   roadTrip: RoadTrip, trafficAhead: TrafficAhead,
 };
