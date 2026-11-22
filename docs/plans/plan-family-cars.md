@@ -8,7 +8,8 @@ iPad "car display" with a Bluetooth OBD adapter.
 
 ## Goal
 
-1. **The three family vehicles** (2004 F150, 2002 C5, 1998 Jeep) report where
+1. **The five family vehicles** (2004 F150, 2002 C5, 1998 Jeep, Josie's Hyundai
+   Tucson, Austin's 2013 Nissan Rogue) report where
    they are, their 12V battery, engine data and fault codes, and Truck Assistant
    shows them, with the Slate, on a **Family cars** page: alerts, fault codes in
    plain English, and maintenance by real miles.
@@ -29,11 +30,12 @@ Not in scope: Road Vision-style camera detection (a separate plan, see the end).
 
 ## The hub is Traccar (already running)
 
-All four vehicles land in the **Traccar server on the NAS** (`~/wopr-traccar`,
+All six vehicles land in the **Traccar server on the NAS** (`~/wopr-traccar`,
 web/API `http://192.168.1.219:3952`, device port **5056**, OsmAnd protocol):
 
 ```
-F150 / C5 / Jeep:  OBD ─ vLinker MC+ ─BLE─ LILYGO T-SIM7670G-S3 ─LTE─┐
+F150 / C5 / Jeep / Tucson / Rogue:
+                   OBD ─ vLinker MC+ ─BLE─ LILYGO T-SIM7670G-S3 ─LTE─┐
                                          (own GPS)                    │ OsmAnd HTTP(S)
 Slate:             Truck Assistant (brain/src/traccar.ts) ─hotspot────┤ (5056 only, public)
                                                                       ▼
@@ -72,11 +74,19 @@ id can post a fake position. So:
 | 2004 F150 | J1850 PWM | Generic OBD-II codes plus Ford P1xxx |
 | 2002 C5 | J1850 VPW | Codes plus GM P1xxx |
 | 1998 Jeep | ISO 9141 / VPW | Early OBD-II; fewest PIDs |
+| Hyundai Tucson (Josie; year to confirm in WOPR) | CAN (ISO 15765-4) from 2008 on | More PIDs: fuel level likely; odometer only 2019+ |
+| 2013 Nissan Rogue (Austin) | CAN (ISO 15765-4) | Fuel level likely; no odometer PID; Nissan P1xxx codes |
 
-The vLinker MC+ covers all three protocols. All three sit on **trickle
-chargers** when parked, so parked draw isn't a worry at home.
+The vLinker MC+ covers all of these protocols. The F150, C5 and Jeep sit on
+**trickle chargers** when parked. The Tucson and Rogue are daily drivers
+without one, so the parked check-in keeps to once an hour and the board goes
+fully quiet below 12.0 V, to protect their batteries.
 
-**Pre-2008 vehicles support fewer PIDs.** Fault codes (mode `03`, `07`), the
+**Parts for the Tucson and Rogue:** the tracker order was three sets, so two
+more are needed: 2× vLinker MC+, 2× LILYGO T-SIM7670G-S3 with GPS, 2× 1NCE SIMs,
+2× cases (a new `lid-tucson` / `lid-rogue` in `traccar-nas/case/`).
+
+**The three older vehicles (pre-2008) support fewer PIDs.** Fault codes (mode `03`, `07`), the
 check-engine light (`0101`), RPM, speed, coolant and the adapter's battery
 reading (`AT RV`) work on all three. **Fuel level (`012F`), module voltage
 (`0142`), distance since clear (`0131`) and the odometer (`01A6`) mostly don't**
@@ -110,7 +120,8 @@ PlatformIO/Arduino on the ESP32-S3. ESPHome has no ELM327-over-BLE client.
   P1xxx codes for these three vehicles. Unknown codes show as "maker-specific"
   with a search link. The same reader serves the Slate later.
 - **Family cars page** (a rail view, or under Home):
-  - all four vehicles on the map: last seen, driving or parked, battery;
+  - all six vehicles (the Slate and five family vehicles) on the map: last
+    seen, driving or parked, battery, and fuel where the vehicle has it;
   - a check-engine badge with the code and what it means, and when it appeared;
   - trips and miles per vehicle (the Trips view gains a vehicle filter).
 - **Alerts** (TA's alerts and notifications):
@@ -122,9 +133,10 @@ PlatformIO/Arduino on the ESP32-S3. ESPHome has no ELM327-over-BLE client.
   - optional: a vehicle leaving home between set hours (TA's geofences).
 - **Maintenance by real miles:** TA's Maintenance module (miles or months,
   whichever first) gets one log per vehicle, fed by GPS miles.
-- **Privacy:** these are other people's vehicles. Each driver should know their
-  vehicle reports its location. Settings › Family cars shows who can see what,
-  and each vehicle can be hidden from TA.
+- **Privacy:** Josie and Austin drive their own cars. Each driver should know,
+  and agree, that their car reports its location. Settings › Family cars shows
+  who can see what; each driver gets their own car's alerts; and each vehicle
+  can be hidden from TA or have its history turned off.
 
 ## Phases
 
@@ -134,13 +146,16 @@ PlatformIO/Arduino on the ESP32-S3. ESPHome has no ELM327-over-BLE client.
 | 1 | **Bench:** one vLinker in one vehicle, the LILYGO on USB: BLE, `AT RV`, the supported-PID bitmap, codes, printed to serial | Boards (on order; not confirmed arrived) |
 | 2 | **Firmware → Traccar on the LAN** (`192.168.1.219:5056`), then over LTE through the public HTTPS name | 1NCE SIM, the public route |
 | 3 | **TA: Family cars page and the code table**, reading Traccar; tested with the Slate's own reports and a simulated vehicle | Code only; can start now |
-| 4 | Alerts, maintenance by miles; all three vehicles on the road | — |
+| 4 | Alerts, maintenance by miles; the F150, C5 and Jeep on the road | — |
+| 4b | The Tucson and Rogue, once their two extra kits arrive and Josie and Austin agree | 2 more kits |
 | 5 | **Slate:** the same reader on the truck once its OBD/CAN access is known | Truck data |
 
 Phase 3 doesn't wait for the boards: the Slate already reports into Traccar.
 
 ## Open
 
+- The Tucson's year (WOPR's records on the NAS have it; it decides the protocol and PIDs).
+- Order the two extra kits for the Tucson and Rogue.
 - Have the boards and adapters arrived? The AliExpress orders (3× LILYGO, 3× vLinker MC+) still showed "awaiting delivery" on Nov 21.
 - Is the HA Traccar Server integration finished, and which entities exist?
 - The public route for 5056: an HTTPS reverse-proxy name (preferred) or a port forward.
