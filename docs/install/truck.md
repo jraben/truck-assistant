@@ -305,7 +305,7 @@ added**. It never powers anything of Slate's.
 
 ### 5.1 Mount it
 
-1. Put the board, the Pololu regulator, the diode and the opto module in an
+1. Put the board, the 5 V buck, the diodes and the opto modules in an
    enclosure (a printed ASA box or a small plastic project box), with
    holes for wires.
 2. **Conformal-coat** the board if you can (a spray from any electronics
@@ -317,7 +317,7 @@ added**. It never powers anything of Slate's.
 
 ### 5.2 Power
 
-**12 V from fuse block slot 2, 3 A fuse** → the diode → the Pololu → the
+**12 V from fuse block slot 2, 3 A fuse** → the diode → the 5 V buck → the
 board's 5 V terminal, exactly as on the bench (desk install, step 5.4).
 Ground to the fuse block's negative bus.
 
@@ -369,9 +369,10 @@ The names, and how many watts each draws, go on the settings page:
 
 ### 5.5 Battery voltage and temperature
 
-- **12 V battery voltage:** 1 A fuse → **47 kΩ** → a junction → **10 kΩ** →
-  ground. The junction goes to **GPIO 36**, with a **100 nF** capacitor to
-  ground. (A tiny bit of soldering on a scrap of perfboard.)
+- **12 V battery voltage:** 1 A fuse → the **voltage sensor module**'s
+  screw terminal VCC; its GND terminal → ground. The module's **S** pin goes
+  to **GPIO 36** and its **−** pin to the board's GND (female jumper wires,
+  no soldering).
 - **Cabin temperature (SHT31):** on a 30 cm lead so it sits away from the
   relays' warmth, out of direct sun.
 

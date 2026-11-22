@@ -71,11 +71,11 @@ Prices are approximate (Nov 2026). Links are searches, not endorsed listings.
 |---|---|---|---|---|
 | 1 | ESP32 Relay Board x8 (ESP32-WROOM-32E, direct-GPIO, *not* Modbus/LCTech) | The truck box | 20 | [Amazon](https://www.amazon.com/s?k=ESP32+8+channel+relay+board+ESP32-WROOM) / [AliExpress](https://www.aliexpress.us/w/wholesale-esp32-relay-x8.html) |
 | 2 | 8-channel PC817 optocoupler module, 12V input / 3.3V output (or 2× 4-channel) | 12V sense isolation, all 8 used (ch 8: left turn signal) | 8 | [Amazon](https://www.amazon.com/s?k=PC817+8+channel+optocoupler+module+12V+3.3V) |
-| 3 | Pololu D36V28F5 5V 2.8A buck (4.5–50 V in) | Clean 5V that survives 12V transients | 16 | [Pololu](https://www.pololu.com/product/3782) |
-| 4 | SMBJ24A TVS diode (24V standoff, ~39V clamp), plus a 1N5822 / SS54 Schottky or a P-FET for reverse polarity | Transient + reverse-battery protection | 2 | [DigiKey](https://www.digikey.com/en/products/result?keywords=SMBJ24A) |
+| 3 | 5V 3A buck with screw terminals, 10–60 V in (bought: Amazon B0D41KJSMW). A Pololu D36V28F5 also works, but its pins need soldering. | Clean 5V that survives 12V transients | 16 | [Amazon](https://www.amazon.com/dp/B0D41KJSMW) / [Pololu](https://www.pololu.com/product/3782) |
+| 4 | TVS diode (24–30V standoff, ~40V clamp) plus a Schottky for reverse polarity. **No-solder:** through-hole P6KE30A + 1N5822; their wire legs clamp into WAGO levers. The surface-mount SMBJ24A + SS54 need soldering. | Transient + reverse-battery protection | 2 | [DigiKey](https://www.digikey.com/en/products/result?keywords=P6KE30A) |
 | 5 | SHT31 breakout (GY-SHT31-D), **or** BME280 (not BMP280) | Cabin temp/humidity | 6 | [Amazon](https://www.amazon.com/s?k=SHT31+breakout) |
 | 6 | MPU-6050 breakout (GY-521) | Pitch/roll | 4 | [Amazon](https://www.amazon.com/s?k=GY-521+MPU6050) |
-| 7 | 47kΩ + 10kΩ 1% resistors, 100 nF ceramic, BAT54S dual Schottky | 12V battery divider | 1 | any |
+| 7 | "DC 0–25V voltage detection module" (30kΩ/7.5kΩ divider, screw terminal, pins already fitted; bought: HiLetgo B01HTC4XKY 5-pack) | 12V battery sense, no soldering | 1 | [Amazon](https://www.amazon.com/dp/B01HTC4XKY) |
 | 8 | Add-a-circuit fuse taps + inline ATO/ATC holders; fuses 1A, 3A, 5A, 10A, 20A, 30A | One fuse per run | 15 | auto parts store |
 | 9 | 2× 12V 40A automotive relays (Bosch-style, with suppression diode) + sockets | Compressor and inverter loads | 15 | auto parts store |
 | 10 | BLE TPMS external-cap set of 4 ("TPMS BLE", ZEEPIN/TP630 type, app "TPMS II" or similar) | Optional TPMS | 25–45 | [AliExpress](https://www.aliexpress.us/w/wholesale-ble-tpms-external-sensor.html) |
@@ -95,15 +95,15 @@ Nothing in this build back-feeds Slate's own wiring.
 ### Power
 
 ```
-12V battery (+) ── 3A fuse ──┬── Schottky/P-FET (reverse) ──┬── Pololu D36V28F5 VIN ── 5V ──▶ board 5V terminal
-                             │                              └── SMBJ24A to GND (cathode to +)
+12V battery (+) ── 3A fuse ──┬── Schottky/P-FET (reverse) ──┬── 5V 3A buck VIN ── 5V ──▶ board 5V terminal
+                             │                              └── TVS to GND (cathode/stripe to +)
 12V battery (−) / chassis ───┴──────────────────────────────────── buck GND ── board GND
 ```
 
 - **Feed the board's 5V input from your own buck**, not the board's 7–30 V input.
   The board's regulator isn't specified for automotive transients.
 - Budget: 6 relay coils at about 70 mA each, plus the ESP32 at up to 250 mA,
-  is about 0.7 A. The 2.8 A buck has headroom.
+  is about 0.7 A. The 3 A buck has headroom.
 - **Parasitic draw:** about 1–1.5 W around the clock (the ESP32 keeps Wi-Fi on).
   That's roughly 3 Ah a day from the 12V battery. Whether the Slate tops up its
   12V battery from the pack while parked is **unknown**. Until that's known, see
@@ -126,7 +126,7 @@ Nothing in this build back-feeds Slate's own wiring.
 | turn_left | GPIO39 (VN) | header | PC817 ch 8 | input-only, same as ignition; the cockpit shows the left camera |
 | turn_right | GPIO5 | header | extra 1–2 ch PC817 module | internal pull-up; the right camera |
 | I2C SDA / SCL | GPIO21 / GPIO22 | header | SHT31 0x44, MPU-6050 0x68 | 3V3 power; keep the leads under 30 cm |
-| 12V battery sense | GPIO36 (VP) | header | 47k/10k divider | ADC1 |
+| 12V battery sense | GPIO36 (VP) | header | 0–25V voltage sensor module (30k/7.5k) | ADC1 |
 | status LED | GPIO23 | onboard | — | blinks on errors |
 
 ### Relay outputs: coil vs load
@@ -157,15 +157,25 @@ Nothing in this build back-feeds Slate's own wiring.
   OFF (rides through dips), and reverse holds 300 ms (LED lamps, bulb-check
   pulses).
 
-### 12V battery divider
+### 12V battery sense
 
-- **Circuit:** battery + → 1A fuse → 47kΩ → node → 10kΩ → GND. The node goes
-  to GPIO36, with a 100 nF cap from node to GND.
-- **Clamp:** a BAT54S from the node to 3V3 and GND clamps spikes. The 47k
-  already limits a 40V transient to under 1 mA.
-- **Range:** ratio (47 + 10) / 10 = **5.7**, so 16 V reads as 2.81 V at the pin.
-  That's inside the ESP32's 12 dB attenuation range, which tops out near 3.1 V.
-- **Draw:** about 0.2 mA continuous.
+- **Part:** a "DC 0–25V voltage detection module". It's a 30kΩ / 7.5kΩ
+  divider on a small board with a screw terminal and pins already fitted, so
+  there's nothing to solder.
+- **Wiring:** battery + → 1A fuse → the module's screw terminal **VCC**;
+  terminal **GND** → ground. Module pin **S** → GPIO36, pin **−** → ESP GND.
+  The module's **+** pin isn't used: leave it unconnected.
+- **Range:** ratio (30 + 7.5) / 7.5 = **5.0**, so 14.4 V reads as 2.88 V at
+  the pin. The ESP32's 12 dB range tops out near 3.1 V, so readings stop
+  rising at about **15.5 V**. A healthy 12V system never gets there; a
+  reading stuck near 15.5 V means "at least that".
+- **Protection:** the module has no clamp diode or filter capacitor. The 30k
+  top resistor keeps a 40V spike to about 1 mA into the ESP32's own input
+  protection, and the firmware's moving average does the filtering.
+- **Draw:** about 0.35 mA continuous.
+- **Older plan:** 47k/10k 1% resistors, a 100 nF cap and a BAT54S clamp
+  (ratio 5.7). Better protected, but it needs soldering. If you build that
+  instead, set `vbat_divider_ratio` back to `"5.7"`.
 
 ### Fuse summary
 
@@ -173,7 +183,7 @@ Nothing in this build back-feeds Slate's own wiring.
 |---|---|
 | Truck box power | 3A |
 | Each sense tap (five switch, ignition, reverse) | 1A |
-| Battery divider | 1A |
+| Battery sense module | 1A |
 | Each direct relay load | sized to load and wire, ≤5A |
 | Automotive relay coil feeds | 2A |
 | Compressor / inverter load side | per the device manual and wire gauge (typically 30A) |

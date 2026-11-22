@@ -580,8 +580,9 @@ slate-truck Wi-Fi.
 - **"ESP32 Relay Board x8"** with an ESP32-WROOM-32E. Not the "LCTech" /
   "Modbus" look-alike: check the printing on the board.
 - A **3.3 V USB-serial adapter** (CP2102 or CH340) and four jumper wires
-- A **Pololu D36V28F5** 5 V regulator, an **SS54** diode and an **SMBJ24A**
-  TVS diode
+- A **5 V 3 A buck converter** with screw terminals (10–60 V in), a
+  **1N5822** diode and a **P6KE30A** TVS diode (through-hole: their legs go
+  into WAGO levers, no soldering)
 - Optional for now: SHT31 (temperature), MPU-6050 (tilt), the PC817 opto
   module
 
@@ -638,12 +639,13 @@ below (part A) on the bench, fed from the same 12 V bench supply:
 
 ![Truck box wiring](img/truckbox-wiring.svg)
 
-- Bench **+12 V** → **3 A fuse** → **SS54 diode** (the end with the stripe
-  points away from the supply) → **Pololu VIN**.
-- The **SMBJ24A** from the diode's output to ground (striped end to the
+- Bench **+12 V** → **3 A fuse** → **1N5822 diode** (the end with the
+  stripe points away from the supply) → the buck's **IN+**.
+- The **P6KE30A** from the diode's output to ground (striped end to the
   positive side).
-- **Pololu 5V out** → the board's **5V** terminal. **Pololu GND** and supply
-  **−** → the board's **GND**.
+- The buck's **5V OUT+** → the board's **5V** terminal. The buck's **GND**
+  and supply **−** → the board's **GND**.
+- Join wires with WAGO 221 levers; nothing here needs soldering.
 - **Don't use the board's own "7–30 V" input**: its regulator isn't made for
   a vehicle's voltage spikes.
 

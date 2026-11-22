@@ -83,11 +83,11 @@ Per `firmware/truckbox/README.md`, which has the pin table and wiring.
 |---|---|---|---|---|---|
 | "ESP32 Relay Board x8" (ESP32-WROOM-32E, direct-GPIO relays; **not** the LCTech/Modbus 74HC595 board) | Relays, sense inputs, sensors, MQTT | 20 | Required | B | [ESPHome devices](https://devices.esphome.io/devices/esp32e-relay-x8) (generic board, no single maker) |
 | 8-ch PC817 opto module, 12V in / 3.3V out | Read-only sense: Five Switch ×5, ignition, reverse | 8 | Required | B | — |
-| Pololu D36V28F5 5V 2.8A buck | Clean 5V that survives 12V transients | 16 | Required | B | [pololu.com](https://www.pololu.com/product/3782) |
-| SMBJ24A TVS + SS54 Schottky (or a P-FET) | Transient and reverse-battery protection | 2 | Required | B | — |
+| 5V 3A buck, screw terminals, 10–60V in (Pololu D36V28F5 also works but needs soldering) | Clean 5V that survives 12V transients | 16 | Required | B | [pololu.com](https://www.pololu.com/product/3782) |
+| TVS + Schottky: through-hole P6KE30A + 1N5822 (no solder), or SMBJ24A + SS54 | Transient and reverse-battery protection | 2 | Required | B | — |
 | SHT31 breakout (GY-SHT31-D) **or** BME280 (not BMP280) | Cabin temperature and humidity | 6 | Required | B | [sensirion.com](https://sensirion.com/) (main site) / [bosch-sensortec.com](https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/) |
 | MPU-6050 breakout (GY-521) | Pitch and roll for the tilt view | 4 | Required | B | [invensense.tdk.com](https://invensense.tdk.com/products/motion-tracking/6-axis/mpu-6050/) |
-| 47k + 10k 1% resistors, 100 nF, BAT54S | 12V battery voltage divider | 1 | Required | B | — |
+| "DC 0–25V voltage sensor" module (30k/7.5k divider, no solder) | 12V battery voltage sense | 1 | Required | B | — |
 | Ambient light sensor, BH1750 or VEML7700 breakout (I²C) | Auto brightness and night dim (Track A). Not yet in `truckbox.yaml`. | 5 | Optional (auto brightness) | B | [rohm.com](https://www.rohm.com/) / [vishay.com](https://www.vishay.com/) (main sites) |
 | 3.3V USB-serial adapter (CP2102 / CH340) | First flash. The board has no USB. | 6 | Required once | B | — |
 | BLE TPMS external valve-cap set of 4 (ZEEPIN / TP630 type) | Tire pressure. **The decoder is unverified on real sensors.** | 35 (25–45) | Optional (TPMS) | F | — |
