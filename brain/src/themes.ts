@@ -29,8 +29,9 @@ export type ThemeSettings = {
   custom: Theme[];
 };
 
-// Inter for body text in every preset: one clear, modern reading face; Saira stays for the big numbers.
-const base = { fonts: { display: 'Saira Semi Condensed', body: 'Inter', mono: 'IBM Plex Mono' }, radius: 1, glow: 0 };
+// IBM Plex Sans for body text in every preset (bundled, so it works offline in the cab): an
+// engineered reading face that sits better beside Saira's instrument numerals than Inter did.
+const base = { fonts: { display: 'Saira Semi Condensed', body: 'IBM Plex Sans', mono: 'IBM Plex Mono' }, radius: 1, glow: 0 };
 
 export const PRESETS: Theme[] = [
   // The GlassDash look: frosted see-through panels on a soft gradient. The defaults since 2026-11-22.
@@ -40,12 +41,17 @@ export const PRESETS: Theme[] = [
   { ...base, id: 'glass-day', name: 'Glass Day', colors: {
     bg: '#dfe7ef', panel: '#ffffff', panel2: '#eef2f6', line: '#c9d3dd', fg: '#111820', dim: '#4d5b69',
     accent: '#1460b8', accentInk: '#ffffff', ok: '#1d7442', warn: '#8a5600', bad: '#b3261e' }, radius: 1.4, glow: 0.1, glass: 1 },
+  // Night and Day, redesigned 2026-11-22 ("Signal"): a charcoal cab at night and a
+  // daylight-white one by day, both with ONE signal-orange accent, the colour of
+  // a cockpit warning flag, so the active control is the first thing the eye
+  // finds at a glance. Warn moves to yellow so it never reads as the accent.
+  // fg/bg 16.8:1 and 15.8:1; accent ink 7.9:1 and 5.5:1.
   { ...base, id: 'night', name: 'Night', colors: {
-    bg: '#101417', panel: '#171c20', panel2: '#1f252a', line: '#2c343a', fg: '#e8edf0', dim: '#8d9aa3',
-    accent: '#6bb7c4', accentInk: '#0a2227', ok: '#6ccf95', warn: '#e9b44c', bad: '#e66a62' } },
+    bg: '#0c0f11', panel: '#13171a', panel2: '#1a1f23', line: '#262d32', fg: '#eef0ee', dim: '#94a0a6',
+    accent: '#ff8f4a', accentInk: '#2a1100', ok: '#5fd394', warn: '#f2cf4a', bad: '#f0625a' }, radius: 0.85 },
   { ...base, id: 'day', name: 'Day', colors: {
-    bg: '#f2f4f6', panel: '#fbfcfd', panel2: '#eceff2', line: '#d5dbe0', fg: '#161b1f', dim: '#56636c',
-    accent: '#16697a', accentInk: '#ffffff', ok: '#1d7442', warn: '#8a5600', bad: '#b3261e' } },
+    bg: '#eef0f0', panel: '#ffffff', panel2: '#e6e9ea', line: '#cfd5d8', fg: '#131719', dim: '#4f5b62',
+    accent: '#b3480d', accentInk: '#ffffff', ok: '#1d7442', warn: '#7a5a00', bad: '#b3261e' }, radius: 0.85 },
   { ...base, id: 'toolbox-red', name: 'Toolbox Red', colors: {
     bg: '#110b0b', panel: '#1b1212', panel2: '#251818', line: '#3d2828', fg: '#f5ecec', dim: '#ab9393',
     accent: '#d42a2d', accentInk: '#ffffff', ok: '#5fd08a', warn: '#f2b33d', bad: '#ff9f43' }, glow: 0.15 },
