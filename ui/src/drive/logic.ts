@@ -62,7 +62,7 @@ export function estimateDriveKw(mph: number, accelMps2: number): number {
  * The scene inside the power ring, one per preset theme; a theme of the owner's
  * own gets the road. Pure (tested).
  */
-export const RING_MOTIFS = ['night', 'day', 'toolbox', 'synthwave', 'forest', 'tarpit', 'radar', 'sketch', 'atomic', 'road'] as const;
+export const RING_MOTIFS = ['night', 'day', 'toolbox', 'synthwave', 'forest', 'tarpit', 'radar', 'sketch', 'atomic', 'glass-night', 'glass-day', 'road'] as const;
 export type RingMotif = (typeof RING_MOTIFS)[number];
 export function ringMotif(themeId: string | undefined): RingMotif {
   switch (themeId) {
@@ -75,6 +75,8 @@ export function ringMotif(themeId: string | undefined): RingMotif {
     case 'wopr': return 'radar';
     case 'clean-slate': return 'sketch';
     case 'bel-air': return 'atomic';
+    case 'glass-night': return 'glass-night';
+    case 'glass-day': return 'glass-day';
     default: return 'road';
   }
 }

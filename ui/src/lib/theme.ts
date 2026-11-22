@@ -50,6 +50,15 @@ export function themeVars(t: Theme): Record<string, string> {
   v['--mono'] = STACK[t.fonts.mono] ?? SYSTEM.mono;
   v['--r'] = String(t.radius);
   v['--glow'] = String(t.glow);
+  // Glass: panels become see-through (the gradient behind shows) and styles.css frosts them.
+  const g = t.glass ?? 0;
+  v['--glass'] = String(g);
+  v['--panel-solid'] = t.colors.panel;
+  if (g > 0) {
+    const light = isLight(t.colors.bg);
+    v['--panel'] = `color-mix(in srgb, ${t.colors.panel} ${Math.round(100 - g * (light ? 30 : 38))}%, transparent)`;
+    v['--panel-2'] = `color-mix(in srgb, ${t.colors.panel2} ${Math.round(100 - g * 25)}%, transparent)`;
+  }
   return v;
 }
 
@@ -68,6 +77,7 @@ export function paintTheme(t: Theme) {
   for (const [k, v] of Object.entries(themeVars(t))) root.style.setProperty(k, v);
   root.style.colorScheme = isLight(t.colors.bg) ? 'light' : 'dark';
   root.dataset.theme = t.id;
+  if (t.glass) root.dataset.glass = '1'; else delete root.dataset.glass;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.colors.panel);
 }
 

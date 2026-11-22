@@ -181,6 +181,20 @@ function Scene({ m, over, u }: { m: RingMotif; over: boolean; u: string }) {
         <g class="swing" style={late(2)}><path class="k-a" opacity=".8" d="M236 330 q24 -16 46 0 q-24 -8 -40 10Z" /></g>
       </g>
     );
+    // Glass: a road running to a glowing horizon with three lanes, like the GlassDash chase view; moon or sun above.
+    case 'glass-night': case 'glass-day': return (
+      <g>
+        {m === 'glass-night'
+          ? <>{STARS.slice(0, 7).map(([x, y, r], i) => <circle class="k-f tw" cx={x} cy={y} r={r * 0.8} style={late(i * 0.5)} />)}<circle class="k-f" cx="282" cy="96" r="16" opacity=".8" /></>
+          : <><circle class="k-w" cx="200" cy="104" r="22" opacity=".85" /><g class="drift"><circle class="k-p" cx="110" cy="128" r="11" /><circle class="k-p" cx="124" cy="121" r="14" /></g></>}
+        <rect class="k-a" x="20" y="232" width="360" height="6" rx="3" opacity=".45" />
+        <path class="k-bg" d="M186 236 L214 236 L340 372 L60 372Z" />
+        <line class="s-f" stroke-width="2.5" opacity=".7" x1="188" y1="236" x2="72" y2="372" />
+        <line class="s-f" stroke-width="2.5" opacity=".7" x1="212" y1="236" x2="328" y2="372" />
+        <line class="s-f mov dash" stroke-width="3" stroke-dasharray="10 12" x1="195" y1="236" x2="155" y2="372" />
+        <line class="s-f mov dash" stroke-width="3" stroke-dasharray="10 12" x1="205" y1="236" x2="245" y2="372" />
+      </g>
+    );
     default: return (
       <g>
         <path class="k-l" d="M30 300 L96 236 L136 270 L188 214 L246 280 L292 242 L370 300Z" />
