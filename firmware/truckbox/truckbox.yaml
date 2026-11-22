@@ -62,9 +62,11 @@ substitutions:
   pin_scl: GPIO22
 
   # 12V battery divider into an ADC1 pin (ADC2 is unusable while Wi-Fi is on).
-  # 47k top / 10k bottom: (47+10)/10 = 5.7. 16 V in -> 2.81 V at the pin.
+  # "DC 0-25V voltage sensor" module: 30k top / 7.5k bottom: (30+7.5)/7.5 = 5.0.
+  # 14.4 V in -> 2.88 V at the pin; readings flatten above about 15.5 V.
+  # A hand-built 47k/10k divider is 5.7 instead.
   pin_vbat: GPIO36
-  vbat_divider_ratio: "5.7"
+  vbat_divider_ratio: "5.0"
 
   # Tilt: which IMU axis points FORWARD, LEFT and UP once mounted, and its sign.
   imu_address: "0x68"
