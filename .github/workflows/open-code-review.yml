@@ -1,0 +1,60 @@
+# AI code review on pull requests: Alibaba Open Code Review (OCR), pinned.
+# https://github.com/alibaba/open-code-review
+#
+# Posts inline review comments and one sticky summary. Reviews when a PR is
+# opened, reopened or marked ready, and on demand when an owner/collaborator
+# comments "/open-code-review" on a PR. Not run on every push, to keep cost down.
+#
+# SETUP (once per repo): Settings -> Secrets and variables -> Actions ->
+#   New repository secret  OCR_LLM_AUTH_TOKEN = an Anthropic API key.
+# Until that secret exists the job does nothing and passes, so it never blocks
+# a merge. It is not a required check.
+#
+# Model: Claude Sonnet 5.5 via the Anthropic Messages API. OCR only reads the
+# diff and repo files; it never executes code from the PR, which is why
+# pull_request_target (needed for the secret) is safe here.
+
+name: Open Code Review
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: |
+      (github.event_name == 'pull_request_target' && !github.event.pull_request.draft)
+      || (
+        github.event_name == 'issue_comment'
+        && github.event.issue.pull_request
+        && github.event.comment.user.type != 'Bot'
+        && (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR' || github.event.comment.author_association == 'MEMBER')
+        && startsWith(github.event.comment.body, '/open-code-review')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_KEY: ${{ secrets.OCR_LLM_AUTH_TOKEN != '' }}
+    steps:
+      - name: No key yet
+        if: env.HAS_KEY != 'true'
+        run: echo "OCR_LLM_AUTH_TOKEN is not set; skipping the review. See the setup note at the top of this file."
+      - name: Open Code Review
+        if: env.HAS_KEY == 'true'
+        uses: alibaba/open-code-review@e74f2c6bd4422bd1e12d257d1725bcce1d6b9ddd # main @ 2026-11-22
+        with:
+          llm_url: https://api.anthropic.com/v1/messages
+          llm_auth_token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+          llm_model: claude-sonnet-5-5
+          llm_use_anthropic: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
