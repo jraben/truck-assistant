@@ -882,3 +882,8 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 .allapps-pop .slot > button svg { width: 28px; height: 28px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .allapps-lbl { font-size: var(--fs-caption); color: var(--fg); text-align: center; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app.docked.moving .allapps-pop .park-only { opacity: .35; }
+.dock-vol { display: inline-flex; align-items: center; gap: 2px; color: var(--fg); }
+.dock-vol button { width: 44px; height: 48px; display: grid; place-items: center; border: 0; background: none; color: var(--fg); border-radius: 12px; }
+.dock-vol button:active { background: var(--panel-2); }
+.dock-vol svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.dock-vol .spk { width: 26px; height: 26px; }

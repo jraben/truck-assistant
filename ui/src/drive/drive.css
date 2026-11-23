@@ -460,3 +460,14 @@
 :root[data-glass] .glass .g-map > .card { border-radius: 0; border: 0; }
 :root[data-glass] .drive .glass .g-car { padding: var(--s15) var(--s2) var(--s15); }
 :root[data-glass] .glass .g-map .leaflet-right { right: 6px; }
+/* Chase road: asphalt darker near the camera, the limit on a red-ring roundel. */
+.glass .g-road .asph-far { stop-color: color-mix(in srgb, var(--fg) 10%, var(--g-col, var(--panel))); }
+.glass .g-road .asph-near { stop-color: color-mix(in srgb, var(--fg) 4%, #1d1e21); }
+:root[data-theme="glass-day"] .glass .g-road .asph-near { stop-color: #c9ccd2; }
+:root[data-theme="glass-day"] .glass .g-road .asph-far { stop-color: #e7e8ec; }
+.glass .g-road .road { fill: url(#g-asphalt); }
+.glass .g-road .roundel line { stroke: color-mix(in srgb, var(--fg) 40%, transparent); stroke-width: 2.5; }
+.glass .g-road .roundel .r-ring { fill: #fff; stroke: #e3261b; stroke-width: 5; }
+.glass .g-road .roundel .r-face { fill: #fff; }
+.glass .g-road .roundel text { font-family: var(--body); font-weight: 700; font-size: 14px; fill: #111; }
+.glass .g-chase-truck { filter: drop-shadow(0 10px 14px rgb(0 0 0 / .35)); }

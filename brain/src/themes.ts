@@ -38,10 +38,10 @@ export const PRESETS: Theme[] = [
   // panels and the system face: white on light grey by day, iOS charcoal by night, one blue accent.
   { id: 'glass-night', name: 'Glass Night', fonts: { display: 'System', body: 'System', mono: 'System' }, colors: {
     bg: '#141416', panel: '#232326', panel2: '#2c2c2f', line: '#3a3a3c', fg: '#f5f5f7', dim: '#98989f',
-    accent: '#2f6fe4', accentInk: '#ffffff', ok: '#30d158', warn: '#ffd60a', bad: '#ff453a' }, radius: 1.2, glow: 0, glass: 1 },
+    accent: '#2f6bff', accentInk: '#ffffff', ok: '#30d158', warn: '#ffd60a', bad: '#ff453a' }, radius: 1.2, glow: 0, glass: 1 },
   { id: 'glass-day', name: 'Glass Day', fonts: { display: 'System', body: 'System', mono: 'System' }, colors: {
     bg: '#f2f2f7', panel: '#ffffff', panel2: '#ececf0', line: '#d1d1d6', fg: '#1c1c1e', dim: '#636366',
-    accent: '#2f6fe4', accentInk: '#ffffff', ok: '#248a3d', warn: '#8a5a00', bad: '#d70015' }, radius: 1.2, glow: 0, glass: 1 },
+    accent: '#2f6bff', accentInk: '#ffffff', ok: '#248a3d', warn: '#8a5a00', bad: '#d70015' }, radius: 1.2, glow: 0, glass: 1 },
   // Night and Day, redesigned 2026-11-22 ("Signal"): a charcoal cab at night and a
   // daylight-white one by day, both with ONE signal-orange accent, the colour of
   // a cockpit warning flag, so the active control is the first thing the eye

@@ -32,7 +32,8 @@ export function intentUrl(url: string, pkg: string): string {
 /** A private LAN or Tailscale address, the only places a tablet in the truck can be. Pure. */
 export const okTabletIp = (ip: string) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)\d{1,3}\.\d{1,3}(\.\d{1,3})?$/.test(ip.replace(/^::ffff:/, ''));
 
-export const MEDIA_CMDS = ['toggle', 'play', 'pause', 'next', 'prev'] as const;
+/** volup / voldown: the dock's ‹ 🔊 › (Tasker: Audio › Media Volume, deploy/android/README.md). */
+export const MEDIA_CMDS = ['toggle', 'play', 'pause', 'next', 'prev', 'volup', 'voldown'] as const;
 export type MediaCmd = (typeof MEDIA_CMDS)[number];
 
 /** What a music app on the tablet is playing, as Tasker last said. */

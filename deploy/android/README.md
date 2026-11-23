@@ -111,6 +111,10 @@ truck 12V (ignition-switched) ── USB-C PD car charger (45 W)
       `~ *play*` › **Play**; `~ *pause*` › **Pause** (the cockpit's Pause button);
       `~ *next*` › **Next**; `~ *prev*` › **Previous**.
       (*Play* is what starts an app after *Play on the tablet* opens it.)
+      Two more branches for the dock's volume buttons ‹ 🔊 › (Glass themes):
+      `~ *volup*` › Audio › **Media Volume** `%VOLM+1`, and `~ *voldown*` ›
+      **Media Volume** `%VOLM-1` (tick *Do Maths*). Put them above the others:
+      the matches use wildcards, and neither word contains another's.
    2. **Music to the cockpit**: Net › **HTTP Request**, POST to the brain's
       `/api/tablet/nowplaying` (in the truck `http://10.42.0.1:8080/api/tablet/nowplaying`;
       on the desk the NAS copy, `https://ta.jeffraben.com/api/tablet/nowplaying`),

@@ -36,7 +36,9 @@ export function MapW(props: WP) {
 }
 
 /** The live map on its own (the Map view, and the Glass Drive layout's right side). */
-export function MapPane({ s }: WP) {
+export function MapPane({ s, props }: WP) {
+  /** The Glass Drive look: a status pill and round buttons (recentre, close-up, +, −) instead of Leaflet's zoom. */
+  const glass = !!props?.glass;
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const truck = useRef<L.Marker | null>(null);
@@ -56,7 +58,7 @@ export function MapPane({ s }: WP) {
     base.on('tileload', () => setFailed(false));
     base.addTo(m);
     void addOfflineAreas(m, dark);
-    L.control.zoom({ position: 'bottomright' }).addTo(m);
+    if (!glass) L.control.zoom({ position: 'bottomright' }).addTo(m);
     m.on('dragstart', () => setFollow(false));
     const ro = new ResizeObserver(() => m.invalidateSize());
     ro.observe(el.current);
@@ -88,8 +90,26 @@ export function MapPane({ s }: WP) {
       <div class="mapv-bar">
         <span class={`pill mapv-status ${area ? 'ok' : failed ? 'bad' : ''}`}>{status}</span>
         {!area && gps && <a class="pill" href="/settings#maps">Download this area</a>}
-        {!follow && gps && <button type="button" class="btn sm primary" onClick={() => setFollow(true)}>Re-centre</button>}
+        {!glass && !follow && gps && <button type="button" class="btn sm primary" onClick={() => setFollow(true)}>Re-centre</button>}
       </div>
+      {glass && <>
+        <div class="mapv-pill">
+          <span class="mp-dot" aria-hidden="true" />
+          <span class="ellip">{s?.driver?.name ? `${s.driver.name}'s truck` : 'My truck'}</span>
+          {!gps && <span class="mp-badge">NO GPS</span>}
+          <span class="num">{new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+        </div>
+        <div class="mapv-ctl" role="group" aria-label="Map controls">
+          <button type="button" aria-label="Re-centre on the truck" aria-pressed={follow} onClick={() => { setFollow(true); if (gps) map.current?.setView([gps.lat, gps.lon], map.current.getZoom()); }}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="2.5" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+          </button>
+          <button type="button" aria-label="Close up on the truck" onClick={() => { setFollow(true); if (gps) map.current?.setView([gps.lat, gps.lon], 17); }}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15h18v-3l-2-5H5l-2 5zM6 15v2M18 15v2M7 12h1M16 12h1" /></svg>
+          </button>
+          <button type="button" aria-label="Zoom in" onClick={() => map.current?.zoomIn()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+          <button type="button" aria-label="Zoom out" onClick={() => map.current?.zoomOut()}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
+        </div>
+      </>}
     </div>
   );
 }

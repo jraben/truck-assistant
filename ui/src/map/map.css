@@ -17,3 +17,15 @@
 .mapv-pane { flex: 1; min-height: 0; overflow: auto; }
 .mapv-pane[hidden] { display: none; }
 .mapv-pane > .mapv { height: 100%; }
+/* Glass Drive: the status pill and round control stack over the map (GlassDash reference). */
+.mapv-pill { position: absolute; top: var(--s15); right: var(--s15); z-index: 500; display: inline-flex; align-items: center; gap: var(--s1);
+  min-height: 36px; padding: 0 var(--s15); border-radius: 999px; background: var(--panel); color: var(--fg);
+  font-size: var(--fs-caption); font-weight: 600; box-shadow: 0 4px 16px rgb(0 0 0 / .18); max-width: 60%; }
+.mapv-pill .mp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.mapv-pill .mp-badge { font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 6px; border-radius: 6px; background: var(--warn); color: #111; }
+.mapv-ctl { position: absolute; top: calc(var(--s15) + 48px); right: var(--s15); z-index: 500; display: grid; border-radius: 16px; overflow: hidden;
+  background: var(--panel); box-shadow: 0 4px 16px rgb(0 0 0 / .18); }
+.mapv-ctl button { width: 48px; height: 48px; display: grid; place-items: center; border: 0; background: none; color: var(--fg); }
+.mapv-ctl button + button { border-top: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); }
+.mapv-ctl button[aria-pressed="true"] { color: var(--accent); }
+.mapv-ctl svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

@@ -6,6 +6,7 @@
 // against the limit, instead of a dial. Calm at speed: the dock's apps that lock
 // while moving are dimmed, the map never asks for anything.
 import type { ComponentChildren } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
 import type { State } from '../../../brain/src/types.ts';
 import { V, whyGps, whySoc } from '../components/common.tsx';
 import { useStore } from '../lib/brain.ts';
@@ -20,27 +21,36 @@ import { TruckRear, TruckSide } from './TruckArt.tsx';
 import { laneSeconds, speedBar } from './glassLogic.ts';
 import { compassPoint } from '../gauges/logic.ts';
 
-/** The truck from behind on a road: lanes that run with the speed, and the limit sign at the side. */
+/** The truck from behind on a road: lanes that run with the speed, a blue path ahead, the
+ *  limit on a red-ring roundel beside it, brake lamps lit while slowing. */
 function ChaseView({ s, limit }: { s: State | null; limit: number | null }) {
   const { settings } = useActiveDriver();
   const t = truckOf(settings);
-  const sec = laneSeconds(s?.speedMph ?? null);
+  const mph = s?.speedMph ?? null;
+  const sec = laneSeconds(mph);
+  const prev = useRef<number | null>(null);
+  const braking = mph !== null && prev.current !== null && mph < prev.current - 0.8;
+  useEffect(() => { prev.current = mph; }, [mph]);
   return (
     <div class="g-chase" aria-hidden="true">
       <svg viewBox="0 0 300 220" class="g-road" preserveAspectRatio="xMidYMax meet">
-        <path d="M120 40 L180 40 L300 220 L0 220 Z" class="road" />
-        <path d="M124 40 L60 220 M176 40 L240 220" class="edge" />
+        <defs>
+          <linearGradient id="g-asphalt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="asph-far" /><stop offset="1" class="asph-near" /></linearGradient>
+          <linearGradient id="g-carpet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f6bff" stop-opacity="0" /><stop offset="1" stop-color="#2f6bff" stop-opacity=".45" /></linearGradient>
+        </defs>
+        <path d="M118 40 L182 40 L300 220 L0 220 Z" fill="url(#g-asphalt)" class="road" />
+        <path d="M140 40 L160 40 L208 220 L92 220 Z" fill="url(#g-carpet)" />
+        <path d="M121 40 L52 220 M179 40 L248 220" class="edge" />
         <path d="M150 40 L150 220" class={`lane ${sec ? 'run' : ''}`} style={sec ? { animationDuration: `${sec}s` } : undefined} />
         {limit !== null && (
-          <g class="sign" transform="translate(236 46)">
-            <line x1="14" y1="40" x2="14" y2="78" />
-            <rect width="28" height="40" rx="3" />
-            <text x="14" y="11" class="s1">SPEED</text><text x="14" y="17" class="s1">LIMIT</text>
-            <text x="14" y="34" class="s2">{limit}</text>
+          <g class="roundel" transform="translate(262 70)">
+            <line x1="0" y1="16" x2="0" y2="62" />
+            <circle r="17" class="r-ring" /><circle r="12.5" class="r-face" />
+            <text y="5" text-anchor="middle">{limit}</text>
           </g>
         )}
       </svg>
-      <div class="g-chase-truck"><TruckRear t={t} id="glass-rear" /></div>
+      <div class="g-chase-truck"><TruckRear t={t} id="glass-rear" braking={braking} /></div>
     </div>
   );
 }
@@ -155,7 +165,7 @@ export function GlassDrive({ s, go, toggle }: WP & { toggle: ComponentChildren }
         <NowPlayingCard s={s} go={go} />
         {!moving && <div class="g-toggle">{toggle}</div>}
       </section>
-      <section class="g-map" aria-label="Map"><MapPane s={s} go={go} props={{ type: 'map' }} /></section>
+      <section class="g-map" aria-label="Map"><MapPane s={s} go={go} props={{ type: 'map', glass: true }} /></section>
       <Dock s={s} go={go} />
     </div>
   );

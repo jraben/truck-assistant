@@ -19,6 +19,7 @@ import { foldTrafficIntoMap, MAP_ICON, withMapView } from '../map/MapView.tsx';
 import { GAUGES_ICON, withGaugesView } from '../gauges/logic.ts';
 import { logsStore, mapTabStore } from '../lib/panels.ts';
 import { WoprButton } from '../wopr/WoprUi.tsx';
+import { tabletCmd } from '../media/tabletMedia.ts';
 import { PROJECT } from '../../../brain/src/project.ts';
 import { LogsPanel } from '../ops/OpsSettings.tsx';
 import { DueCard } from '../ops/Maintenance.tsx';
@@ -248,7 +249,12 @@ export function App({ page }: { page?: AppPage } = {}) {
                 {s?.drive?.lockout.passenger ? <PassengerPill /> : s?.drive?.lockout.locked ? <PassengerAsk /> : null}
                 <PickupPill s={s} />
                 <HealthButton s={s} connected={link.connected} open={healthOpen} onClick={() => { setHealthOpen(!healthOpen); setNetOpen(false); }} />
-                <span class="clock num">{clock}</span>
+                <span class="dock-vol" role="group" aria-label="Volume">
+                  <button type="button" aria-label="Volume down" onClick={() => void tabletCmd('voldown')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg></button>
+                  <svg class="spk" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /></svg>
+                  <button type="button" aria-label="Volume up" onClick={() => void tabletCmd('volup')}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg></button>
+                </span>
+                {!(cur.id === 'drive' && !page) && <span class="clock num">{clock}</span>}
               </>}
           </div>
         </footer>
