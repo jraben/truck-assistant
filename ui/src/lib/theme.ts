@@ -50,15 +50,13 @@ export function themeVars(t: Theme): Record<string, string> {
   v['--mono'] = STACK[t.fonts.mono] ?? SYSTEM.mono;
   v['--r'] = String(t.radius);
   v['--glow'] = String(t.glow);
-  // Glass: panels become see-through (the gradient behind shows) and styles.css frosts them.
-  const g = t.glass ?? 0;
-  v['--glass'] = String(g);
+  // Glass: the GlassDash frame (App docks, styles.css :root[data-glass]).
+  v['--glass'] = String(t.glass ?? 0);
   v['--panel-solid'] = t.colors.panel;
-  if (g > 0) {
-    const light = isLight(t.colors.bg);
-    v['--panel'] = `color-mix(in srgb, ${t.colors.panel} ${Math.round(100 - g * (light ? 30 : 38))}%, transparent)`;
-    v['--panel-2'] = `color-mix(in srgb, ${t.colors.panel2} ${Math.round(100 - g * 25)}%, transparent)`;
-  }
+  // The Drive column and its tiles: white column with grey tiles by day, the page colour with charcoal tiles by night.
+  const lightBg = isLight(t.colors.bg);
+  v['--g-col'] = lightBg ? t.colors.panel : t.colors.bg;
+  v['--g-tile'] = lightBg ? t.colors.panel2 : t.colors.panel;
   return v;
 }
 

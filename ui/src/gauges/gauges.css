@@ -55,3 +55,10 @@
   .gtires-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .gdial .needle, .gdial .fill, .gcompass path { transition: none; } }
+/* Glass themes: the reference's dials (a blue arc, a red needle) and quiet tiles (colour only when something is off). */
+:root[data-glass] .gauges .gdial.tone-ok .fill { stroke: var(--accent); }
+:root[data-glass] .gauges .gdial .needle { stroke: var(--bad); }
+:root[data-glass] .gauges .gdial .hub { fill: var(--fg); }
+:root[data-glass] .gauges .gtile.tone-ok::before, :root[data-glass] .gauges .gtire.tone-ok::before { background: transparent; }
+:root[data-glass] .gauges .gtile-lbl { font-size: 11px; font-weight: 600; letter-spacing: .14em; }
+:root[data-glass] .gauges .gdial-read b { font-weight: 500; }

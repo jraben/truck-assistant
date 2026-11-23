@@ -790,36 +790,100 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 .tbat-key .gap::before { border-top: 2px dashed var(--dim); height: 0; vertical-align: 3px; }
 .tbat-rates { margin: 0; padding-left: 1.2em; display: grid; gap: 2px; }
 
-/* ── Glass (the GlassDash look): themes with glass > 0 set data-glass on <html>.
-   --panel is already see-through (lib/theme.ts); here the gradient behind it, the frost,
-   and the soft edges. Anything that floats over content gets a solid-enough frost to read. */
-:root[data-glass] body {
-  background:
-    radial-gradient(1100px 620px at 12% -8%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 62%),
-    radial-gradient(900px 560px at 108% 112%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
-    radial-gradient(700px 420px at 70% 30%, color-mix(in srgb, var(--fg) 4%, transparent), transparent 70%),
-    var(--bg);
-  background-attachment: fixed;
+/* ── Glass (the GlassDash look): themes with glass > 0 set data-glass on <html> and the
+   app runs "docked": no top bar or left rail, one dock along the bottom, flat clean
+   panels (white on light grey by day, iOS charcoal by night), one blue accent. */
+:root[data-glass] { --panel: var(--panel-solid); }
+:root[data-glass] body { background: var(--bg); }
+:root[data-glass] .card, :root[data-glass] .gdial, :root[data-glass] .gtile, :root[data-glass] .gcard {
+  border: 0; box-shadow: none; }
+:root[data-glass] .modal, :root[data-glass] .picker, :root[data-glass] .netpanel {
+  border: 0; box-shadow: 0 12px 40px rgb(0 0 0 / .28); }
+
+.app.docked { --rail: 0px; --strip: 0px; --dock: 76px; grid-template-columns: 1fr; grid-template-rows: 1fr var(--dock); }
+.app.docked > .stage { grid-column: 1; grid-row: 1; padding: var(--s15) var(--s15) 0; }
+.app.docked > .versionbar:not(.inline) { display: none; }
+.app.docked .banners { top: var(--s15); }
+.dock { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s2);
+  padding: 0 var(--s2); background: var(--bg); min-width: 0; }
+.dock-l, .dock-r { display: flex; align-items: center; gap: var(--s15); min-width: 0; }
+.dock-car { display: grid; place-items: center; width: 64px; height: 48px; border-radius: 14px; color: var(--fg); }
+.dock-car svg { width: 46px; height: 24px; fill: currentColor; }
+.dock-car svg circle { fill: var(--bg); stroke: currentColor; stroke-width: 2.5; }
+.dock-car.on { background: var(--panel-2); }
+.dock .wxstrip { min-height: 48px; padding: 0 var(--s1); border: 0; background: none; }
+.dock .wxstrip .wxplace, .dock .wxstrip .wxhl, .dock .wxstrip .wxwind { display: none; }
+.dock .wxstrip b { font-family: var(--body); font-weight: 500; font-size: var(--fs-body); }
+.dock .clock { font-family: var(--body); font-weight: 600; font-size: var(--fs-body); color: var(--fg); white-space: nowrap; }
+.dock .pill.health { background: none; border: 0; }
+
+/* The app tiles: rounded squares with white glyphs, each screen its own colour. */
+.rail.dockrail { flex-direction: row; justify-content: center; align-items: center; gap: var(--s1); padding: 0; border: 0; background: none;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none; min-width: 0; }
+.rail.dockrail::-webkit-scrollbar { display: none; }
+.rail.dockrail .slot { flex: none; min-height: 0; }
+.rail.dockrail .slot > a, .rail.dockrail .slot > button { width: 48px; height: 48px; min-height: 0; padding: 0; border-radius: 13px; border: 0;
+  background: var(--tile, #8e8e93); color: #fff; flex-direction: column; box-shadow: none; }
+.rail.dockrail .slot > a svg, .rail.dockrail .slot > button svg { width: 26px; height: 26px; stroke: #fff; stroke-width: 2; }
+.rail.dockrail .rl { display: none; }
+.rail.dockrail [aria-current="page"], .rail.dockrail .slot.on > a, .rail.dockrail .slot.on > button {
+  background: var(--tile, #8e8e93); color: #fff; outline: 3px solid var(--fg); outline-offset: 3px; box-shadow: none; }
+.rail.dockrail .slot[data-id="@driver"] { position: static; margin: 0 0 0 var(--s1); background: none; }
+.rail.dockrail .slot[data-id="@driver"] > button { background: none; }
+.rail.dockrail .voice { border: 0; }
+.rail.dockrail .slot[data-id="map"], .allapps-pop .slot[data-id="map"] { --tile: #34c759; }
+.rail.dockrail .slot[data-id="gauges"], .allapps-pop .slot[data-id="gauges"] { --tile: #0a84ff; }
+.rail.dockrail .slot[data-id="carplay"], .allapps-pop .slot[data-id="carplay"] { --tile: #1c1c1e; }
+.rail.dockrail .slot[data-id="media"], .allapps-pop .slot[data-id="media"] { --tile: #ff375f; }
+.rail.dockrail .slot[data-id="home"], .allapps-pop .slot[data-id="home"] { --tile: #ff9f0a; }
+.rail.dockrail .slot[data-id="parked"], .allapps-pop .slot[data-id="parked"] { --tile: #bf5af2; }
+.rail.dockrail .slot[data-id="control"], .allapps-pop .slot[data-id="control"] { --tile: #5e5ce6; }
+.rail.dockrail .slot[data-id="charge"], .allapps-pop .slot[data-id="charge"] { --tile: #30b0c7; }
+.rail.dockrail .slot[data-id="roadtrip"], .allapps-pop .slot[data-id="roadtrip"] { --tile: #ff453a; }
+.rail.dockrail .slot[data-id="trips"], .allapps-pop .slot[data-id="trips"] { --tile: #64a0ff; }
+.rail.dockrail .slot[data-id="cams"], .allapps-pop .slot[data-id="cams"] { --tile: #48484a; }
+.rail.dockrail .slot[data-id="traffic"], .allapps-pop .slot[data-id="traffic"] { --tile: #ff9500; }
+.rail.dockrail .slot[data-id="@wopr"], .allapps-pop .slot[data-id="@wopr"] { --tile: linear-gradient(135deg, #5e5ce6, #0a84ff); }
+.rail.dockrail .slot[data-id="@wopr"] > * { background: linear-gradient(135deg, #5e5ce6, #0a84ff); color: #fff; }
+.rail.dockrail .slot[data-id="@sim"], .rail.dockrail .slot[data-id="@settings"], .allapps-pop .slot[data-id="@settings"] { --tile: #8e8e93; }
+.app.docked.moving .rail.dockrail .park-only { opacity: .35; }
+@media (max-width: 900px) {
+  .dock { grid-template-columns: minmax(0, 1fr) auto; }
+  .dock-l { display: none; }
 }
-:root[data-glass] .card, :root[data-glass] .gdial, :root[data-glass] .gtile, :root[data-glass] .gcard,
-:root[data-glass] .modal, :root[data-glass] .picker, :root[data-glass] .netpanel, :root[data-glass] .set-results {
-  border-color: color-mix(in srgb, var(--fg) 11%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 9%, transparent), 0 10px 30px color-mix(in srgb, #000 22%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
-}
-:root[data-glass] .strip, :root[data-glass] .rail {
-  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
-  border-color: color-mix(in srgb, var(--fg) 8%, transparent);
-}
-:root[data-glass] .rail > .slot[data-id="@driver"], :root[data-glass] .savebar {
-  background: color-mix(in srgb, var(--panel-solid) 88%, transparent);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
-}
-/* The selected rail item and pressed buttons glow softly, like lit glass. */
-:root[data-glass] .rail [aria-current="page"], :root[data-glass] .rail .cur, :root[data-glass] [aria-pressed="true"] {
-  box-shadow: 0 0 calc(18px * var(--glow)) color-mix(in srgb, var(--accent) 70%, transparent);
-}
-@media (prefers-reduced-transparency: reduce) {
-  :root[data-glass] { --panel: var(--panel-solid); }
-  :root[data-glass] * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
-}
+/* Dock fit: centred when there's room, scrolls from the first tile when there isn't. */
+.rail.dockrail { justify-content: flex-start; gap: 6px; }
+.rail.dockrail > .slot:first-child { margin-left: auto; }
+.rail.dockrail > .slot:last-child { margin-right: auto; }
+.rail.dockrail .slot > a, .rail.dockrail .slot > button { width: 44px; height: 44px; border-radius: 12px; }
+.rail.dockrail .slot > a svg, .rail.dockrail .slot > button svg { width: 24px; height: 24px; }
+.rail.dockrail .slot[data-id="@wopr"] span:not(.sr), .rail.dockrail .slot[data-id="@wopr"] small { display: none; }
+.dock .pill.health .hico { display: none; }
+.dock .pill.health { gap: 6px; padding: 0 var(--s05); }
+.dock .wxstrip .dimtxt { display: none; }
+.dock .wxstrip:has(.dimtxt)::after { content: '—°'; color: var(--dim); font-weight: 500; }
+/* Leaflet's zoom: round white buttons in a column, like the reference's map controls. */
+:root[data-glass] .leaflet-control-zoom { border: 0 !important; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 16px rgb(0 0 0 / .14); }
+:root[data-glass] .leaflet-control-zoom a { width: 40px !important; height: 40px !important; line-height: 40px !important; border: 0 !important;
+  background: var(--panel) !important; color: var(--fg) !important; font-weight: 400; }
+/* The reference's frame: the dock is one plain bar, the Drive screen runs edge to edge. */
+.app.docked > .dock { background: var(--bg); border-top: 1px solid color-mix(in srgb, var(--fg) 6%, transparent); }
+:root[data-glass]:not([data-theme="glass-day"]) .app.docked > .dock { background: #000; }
+.app.docked.on-drive > .stage { padding: 0; }
+.app.docked.on-drive > .stage .grid { gap: 0; padding: 0; }
+.rail.dockrail .slot.allapps { position: relative; --tile: #3a3a3c; }
+.rail.dockrail .slot.allapps > button svg { fill: #fff; stroke: none; }
+.allapps-pop { position: fixed; bottom: calc(var(--dock, 76px) + 8px); left: 50%; transform: translateX(-50%); z-index: 70;
+  display: grid; grid-template-columns: repeat(4, 84px); gap: var(--s2) var(--s1); padding: var(--s2); border-radius: 22px;
+  background: var(--panel); box-shadow: 0 16px 48px rgb(0 0 0 / .35); }
+.allapps-pop .slot { display: grid; justify-items: center; gap: 6px; }
+.allapps-pop .slot > button, .allapps-pop .slot > a { width: 56px; height: 56px; border-radius: 15px; border: 0; display: grid; place-items: center;
+  background: var(--tile, #8e8e93); color: #fff; }
+.allapps-pop .slot > button svg { width: 28px; height: 28px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.allapps-lbl { font-size: var(--fs-caption); color: var(--fg); text-align: center; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app.docked.moving .allapps-pop .park-only { opacity: .35; }
+.dock-vol { display: inline-flex; align-items: center; gap: 2px; color: var(--fg); }
+.dock-vol button { width: 44px; height: 48px; display: grid; place-items: center; border: 0; background: none; color: var(--fg); border-radius: 12px; }
+.dock-vol button:active { background: var(--panel-2); }
+.dock-vol svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.dock-vol .spk { width: 26px; height: 26px; }
