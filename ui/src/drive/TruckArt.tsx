@@ -173,12 +173,13 @@ export function TruckSide({ t, id = 'ts', bedLightsOn = false, children }: { t: 
  *  braking: the tail lamps lit bright, as when the truck slows. */
 export function TruckRear({ t, id = 'tr', braking = false }: { t: TruckLook; id?: string; braking?: boolean }) {
   const c = t.colors;
+  // Tail and brake lamps in the tailgate itself: a wide lamp across each upper corner.
   const tail = (x: number) => (
     <g>
-      {braking && <rect x={x - 4} y="90" width="17" height="38" rx="4" fill="#ff2a1f" opacity=".55" filter={`url(#${id}-glow)`} />}
-      <rect x={x} y="94" width="9" height="30" rx="2" fill={`url(#${id}-tail)`} />
-      <rect x={x + 1.5} y="96" width="2" height="26" rx="1" fill="#fff" opacity={braking ? 0.5 : 0.25} />
-      <rect x={x} y="110" width="9" height="1" fill="#000" opacity=".3" />
+      {braking && <rect x={x - 5} y="96" width="40" height="18" rx="6" fill="#ff2a1f" opacity=".55" filter={`url(#${id}-glow)`} />}
+      <rect x={x} y="100" width="30" height="10" rx="2.5" fill={`url(#${id}-tail)`} />
+      <rect x={x + 2} y="101.5" width="26" height="2" rx="1" fill="#fff" opacity={braking ? 0.5 : 0.25} />
+      <rect x={x + 14.5} y="100" width="1" height="10" fill="#000" opacity=".3" />
     </g>
   );
   return (
@@ -211,7 +212,7 @@ export function TruckRear({ t, id = 'tr', braking = false }: { t: TruckLook; id?
       <path d="M44 96 L176 96" stroke="#fff" stroke-opacity=".15" stroke-width="1" transform="translate(0 1)" />
       <rect x="100" y="100" width="20" height="5" rx="2.5" fill={mix(c.body, INK, 55)} />
       {hasLogo(t) && <text x="110" y="126" text-anchor="middle" class="truck-logo" fill={c.logo}>SLATE</text>}
-      {tail(32)}{tail(179)}
+      {tail(48)}{tail(142)}
       {/* bumper with its step, the licence plate, hitch receiver */}
       <path d="M24 148 L196 148 L196 162 Q196 166 192 166 L28 166 Q24 166 24 162 Z" fill={`url(#${id}-trim)`} />
       <path d="M26 149.5 L194 149.5" stroke="#fff" stroke-opacity=".18" stroke-width="1" />
