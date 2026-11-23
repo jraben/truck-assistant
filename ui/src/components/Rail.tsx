@@ -33,8 +33,12 @@ const EDGE_PX = 36;
 
 type Gesture = { id: string; pid: number; x: number; y: number; timer: number; dragging: boolean };
 
-export function Rail({ entries, editing, onEdit, onReorder, locked, parkLocked, onParkLocked }: {
+export function Rail({ entries: all, editing, onEdit, onReorder, locked, parkLocked, onParkLocked, horizontal, maxTiles }: {
   entries: RailEntry[];
+  /** The GlassDash dock: one row of app tiles along the bottom instead of the left column. */
+  horizontal?: boolean;
+  /** Dock only: this many tiles, then an "All apps" grid holding the rest (arranging shows them all). */
+  maxTiles?: number;
   /** At speed: no rearranging. */
   locked?: boolean;
   /** Driving, passenger mode off: a parked-only tool asks "Are you the passenger?" first (onParkLocked), then opens. */
@@ -44,6 +48,13 @@ export function Rail({ entries, editing, onEdit, onReorder, locked, parkLocked, 
   onEdit: (on: boolean) => void;
   onReorder: (order: string[]) => void;
 }) {
+  const [more, setMore] = useState(false);
+  const cut = !editing && horizontal && maxTiles && all.length > maxTiles + 1;
+  const pinned = all.filter((e) => e.id === '@driver');
+  const rest = all.filter((e) => e.id !== '@driver');
+  const entries = cut ? [...rest.slice(0, maxTiles), ...pinned] : all;
+  const extra = cut ? rest.slice(maxTiles) : [];
+
   const nav = useRef<HTMLElement>(null);
   const g = useRef<Gesture | null>(null);
   const swallowClick = useRef(false);
@@ -151,7 +162,7 @@ export function Rail({ entries, editing, onEdit, onReorder, locked, parkLocked, 
   };
 
   return (
-    <nav ref={nav} class={`rail ${editing ? 'editing' : ''}`} aria-label={editing ? 'Views: drag to rearrange' : 'Views'}
+    <nav ref={nav} class={`rail ${horizontal ? 'dockrail' : ''} ${editing ? 'editing' : ''}`} aria-label={editing ? 'Views: drag to rearrange' : 'Views'}
       onPointerMove={move} onPointerUp={end} onPointerCancel={end} onLostPointerCapture={() => { if (g.current?.dragging) end(); }}
       onContextMenu={(e) => e.preventDefault()}
       onClickCapture={(e) => { if (editing || swallowClick.current) { e.preventDefault(); e.stopPropagation(); swallowClick.current = false; } }}>
@@ -174,6 +185,26 @@ export function Rail({ entries, editing, onEdit, onReorder, locked, parkLocked, 
           </div>
         );
       })}
+      {extra.length > 0 && (
+        <div class="slot allapps" data-id="@all">
+          <button type="button" aria-label="All apps" aria-expanded={more} onClick={() => setMore(!more)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h3v3H5zM10.5 5h3v3h-3zM16 5h3v3h-3zM5 10.5h3v3H5zM10.5 10.5h3v3h-3zM16 10.5h3v3h-3zM5 16h3v3H5zM10.5 16h3v3h-3zM16 16h3v3h-3z" /></svg>
+          </button>
+          {more && (
+            <div class="allapps-pop" role="menu" aria-label="All apps" onClick={() => setMore(false)}>
+              {extra.map((x) => {
+                const open = () => { if (x.href && !x.href.startsWith('#')) window.location.href = x.href; else x.onTap?.(); };
+                return (
+                  <div class={`slot ${x.current ? 'on' : ''} ${x.parkOnly ? 'park-only' : ''}`} data-id={x.id}>
+                    {x.live ?? <button type="button" role="menuitem" aria-label={x.label} onClick={() => { if (x.parkOnly && parkLocked && onParkLocked) onParkLocked(open); else open(); }}>{x.icon}</button>}
+                    <span class="allapps-lbl">{x.short ?? x.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

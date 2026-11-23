@@ -34,13 +34,14 @@ export type ThemeSettings = {
 const base = { fonts: { display: 'Saira Semi Condensed', body: 'IBM Plex Sans', mono: 'IBM Plex Mono' }, radius: 1, glow: 0 };
 
 export const PRESETS: Theme[] = [
-  // The GlassDash look: frosted see-through panels on a soft gradient. The defaults since 2026-11-22.
-  { ...base, id: 'glass-night', name: 'Glass Night', colors: {
-    bg: '#070b12', panel: '#141c28', panel2: '#1c2635', line: '#2a3648', fg: '#eef3f8', dim: '#93a1b3',
-    accent: '#4da3ff', accentInk: '#04121f', ok: '#5ad39a', warn: '#f0b54a', bad: '#ff6b66' }, radius: 1.4, glow: 0.35, glass: 1 },
-  { ...base, id: 'glass-day', name: 'Glass Day', colors: {
-    bg: '#dfe7ef', panel: '#ffffff', panel2: '#eef2f6', line: '#c9d3dd', fg: '#111820', dim: '#4d5b69',
-    accent: '#1460b8', accentInk: '#ffffff', ok: '#1d7442', warn: '#8a5600', bad: '#b3261e' }, radius: 1.4, glow: 0.1, glass: 1 },
+  // The GlassDash look (2026-11-22): a docked frame (no top bar or rail, one dock below), flat clean
+  // panels and the system face: white on light grey by day, iOS charcoal by night, one blue accent.
+  { id: 'glass-night', name: 'Glass Night', fonts: { display: 'System', body: 'System', mono: 'System' }, colors: {
+    bg: '#141416', panel: '#232326', panel2: '#2c2c2f', line: '#3a3a3c', fg: '#f5f5f7', dim: '#98989f',
+    accent: '#2f6fe4', accentInk: '#ffffff', ok: '#30d158', warn: '#ffd60a', bad: '#ff453a' }, radius: 1.2, glow: 0, glass: 1 },
+  { id: 'glass-day', name: 'Glass Day', fonts: { display: 'System', body: 'System', mono: 'System' }, colors: {
+    bg: '#f2f2f7', panel: '#ffffff', panel2: '#ececf0', line: '#d1d1d6', fg: '#1c1c1e', dim: '#636366',
+    accent: '#2f6fe4', accentInk: '#ffffff', ok: '#248a3d', warn: '#8a5a00', bad: '#d70015' }, radius: 1.2, glow: 0, glass: 1 },
   // Night and Day, redesigned 2026-11-22 ("Signal"): a charcoal cab at night and a
   // daylight-white one by day, both with ONE signal-orange accent, the colour of
   // a cockpit warning flag, so the active control is the first thing the eye

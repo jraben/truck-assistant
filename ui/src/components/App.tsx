@@ -202,9 +202,19 @@ export function App({ page }: { page?: AppPage } = {}) {
   const cols = Math.max(1, ...cur.widgets.map((w) => w.col + w.w - 1));
   const rows = Math.max(1, ...cur.widgets.map((w) => w.row + w.h - 1));
 
+  // Glass themes use the GlassDash frame: no top bar or left rail, one dock along the bottom
+  // (the car for Drive, the weather, the screens as app tiles, then status and the clock).
+  const docked = !!shown.current?.glass;
+  const clock = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const railEl = (
+    <Rail entries={order.filter((id) => !(docked && id === 'drive')).map((id) => byId.get(id)!)} editing={editing} onEdit={setEditing} onReorder={(next) => reorder(docked && order.includes('drive') ? ['drive', ...next] : next)}
+      locked={!!s?.drive?.lockout.bigTargets} horizontal={docked} maxTiles={8}
+      parkLocked={!!s?.drive?.lockout.locked && !s.drive.lockout.passenger} onParkLocked={askPassengerThen} />
+  );
+
   return (
-    <div class={`app ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive?.lockout.passenger ? 'passenger' : ''} ${s?.drive?.lockout.locked ? 'moving' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
-      <header class="strip" ref={stripRef}>
+    <div class={`app ${docked ? 'docked' : ''} ${docked && cur.id === 'drive' && !page ? 'on-drive' : ''} ${s?.drive?.lockout.bigTargets ? 'at-speed' : ''} ${s?.drive?.lockout.passenger ? 'passenger' : ''} ${s?.drive?.lockout.locked ? 'moving' : ''} ${s?.drive && s.drive.heat.level !== 'ok' ? 'calm' : ''}`}>
+      {!docked && <header class="strip" ref={stripRef}>
         <span class="brand"><img class="brand-mark" src="/icon.svg" alt="" /><span class="brand-name">{PROJECT.shortName}</span></span>
         {editing
           ? <span class="rail-edit"><b>Arrange icons</b><button type="button" class="btn sm" onClick={resetOrder}>Reset</button><button type="button" class="btn sm primary" onClick={() => setEditing(false)}>Done</button></span>
@@ -217,11 +227,32 @@ export function App({ page }: { page?: AppPage } = {}) {
         <PickupPill s={s} />
         <span class="sp" />
         <WeatherStrip s={s} />
-        <span class="clock num">{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-      </header>
+        <span class="clock num">{clock}</span>
+      </header>}
 
-      <Rail entries={order.map((id) => byId.get(id)!)} editing={editing} onEdit={setEditing} onReorder={reorder} locked={!!s?.drive?.lockout.bigTargets}
-        parkLocked={!!s?.drive?.lockout.locked && !s.drive.lockout.passenger} onParkLocked={askPassengerThen} />
+      {docked ? (
+        <footer class="dock">
+          <div class="dock-l">
+            <a class={`dock-car ${cur.id === 'drive' && !page ? 'on' : ''}`} href={page ? '/#drive' : '#drive'} aria-label="Drive"
+              aria-current={cur.id === 'drive' && !page ? 'page' : undefined}
+              onClick={(e) => { if (!page) { e.preventDefault(); go('drive'); } }}>
+              <svg viewBox="0 0 48 24" aria-hidden="true"><path d="M4 17c0-3 1-5 4-6l6-5c2-1.5 4-2 7-2h6c3 0 5 1 7 3l4 4c4 .5 6 2.5 6 6v1H4z" /><circle cx="13" cy="18" r="3.5" /><circle cx="36" cy="18" r="3.5" /></svg>
+            </a>
+            <WeatherStrip s={s} />
+          </div>
+          {railEl}
+          <div class="dock-r">
+            {editing
+              ? <span class="rail-edit"><button type="button" class="btn sm" onClick={resetOrder}>Reset</button><button type="button" class="btn sm primary" onClick={() => setEditing(false)}>Done</button></span>
+              : <>
+                {s?.drive?.lockout.passenger ? <PassengerPill /> : s?.drive?.lockout.locked ? <PassengerAsk /> : null}
+                <PickupPill s={s} />
+                <HealthButton s={s} connected={link.connected} open={healthOpen} onClick={() => { setHealthOpen(!healthOpen); setNetOpen(false); }} />
+                <span class="clock num">{clock}</span>
+              </>}
+          </div>
+        </footer>
+      ) : railEl}
 
       {page ? <main class="stage page-stage">{page.node}</main> : <main class="stage">
         <div class="grid" style={{ '--cols': cols, '--rows': rows } as Record<string, number>}>
