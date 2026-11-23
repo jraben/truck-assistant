@@ -130,13 +130,16 @@ export function GlassDrive({ s, go, toggle }: WP & { toggle: ComponentChildren }
   const moving = (mph ?? 0) >= 3 || !!s?.drive?.lockout.locked;
   const soc = s?.soc ?? null;
   const range = s?.drive?.range.current ?? s?.rangeMi ?? null;
-  const gear = s?.gear ?? null;
+  // Until the CAN bus is wired only reverse is known: otherwise D while moving, P while stopped with the power on.
+  const gearKnown = s?.gear ?? null;
+  const gear = gearKnown ?? (s?.reverse ? 'R' : mph !== null && mph >= 2 ? 'D' : s?.ignition ? 'P' : null);
+  const gearWhy = gearKnown ? undefined : 'Worked out from speed (only reverse is wired until the CAN bus is)';
   const kw = mph === null ? null : Math.round(estimateDriveKw(mph, 0));
   return (
     <div class={`glass ${moving ? 'moving' : 'parked'}`}>
       <section class="g-car" aria-label="Speed and truck">
         <div class="g-top">
-          <span class="g-gears" aria-label={gear ? `Gear ${gear}` : 'Gear unknown'}>
+          <span class="g-gears" aria-label={gear ? `Gear ${gear}` : 'Gear unknown'} title={gearWhy}>
             {(['P', 'R', 'N', 'D'] as const).map((g) => <span class={gear === g ? 'on' : ''}>{g}</span>)}
             {s?.ignition === true && <span class="ready">READY</span>}
           </span>
@@ -159,7 +162,7 @@ export function GlassDrive({ s, go, toggle }: WP & { toggle: ComponentChildren }
         <div class="g-caption">MY TRUCK</div>
         <div class="g-stats">
           <Stat label="TRIP" icon="M4 19 9 5M20 19 15 5M12 7v2M12 12v2M12 17v2">{s?.trip ? <>{s.trip.miles.toFixed(1)}<small> mi</small></> : <V v={null} why="No trip yet: it starts when you drive" />}</Stat>
-          <Stat label="GEAR" icon="M6 4v16M18 4v16M6 12h12">{gear ?? <V v={null} why="Only reverse is wired" />}</Stat>
+          <Stat label="GEAR" icon="M6 4v16M18 4v16M6 12h12">{gear ? <span title={gearWhy}>{gear}</span> : <V v={null} why="Only reverse is wired" />}</Stat>
           <Stat label="RANGE" icon="M13 2 4 14h7l-1 8 9-12h-7z">{range === null ? <V v={null} why={whySoc(s)} /> : <>{Math.round(range)}<small> mi</small></>}</Stat>
         </div>
         <NowPlayingCard s={s} go={go} />

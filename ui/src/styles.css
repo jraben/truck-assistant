@@ -802,7 +802,10 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 
 .app.docked { --rail: 0px; --strip: 0px; --dock: 76px; grid-template-columns: 1fr; grid-template-rows: 1fr var(--dock); }
 .app.docked > .stage { grid-column: 1; grid-row: 1; padding: var(--s15) var(--s15) 0; }
-.app.docked > .versionbar:not(.inline) { display: none; }
+/* The version, small and centred along the bottom edge of the dock, under the app tiles. */
+.app.docked > .versionbar:not(.inline) { position: fixed; left: 50%; transform: translateX(-50%); bottom: 1px; z-index: 41;
+  margin: 0; font-size: 10px; line-height: 1.2; padding: 0 6px; background: none; color: var(--dim); opacity: .85; }
+.app.docked > .versionbar:not(.inline) .vb-chip { font-size: 10px; padding: 0 6px; }
 .app.docked .banners { top: var(--s15); }
 .dock { grid-column: 1; grid-row: 2; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s2);
   padding: 0 var(--s2); background: var(--bg); min-width: 0; }
@@ -856,6 +859,7 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 .rail.dockrail > .slot:first-child { margin-left: auto; }
 .rail.dockrail > .slot:last-child { margin-right: auto; }
 .rail.dockrail .slot > a, .rail.dockrail .slot > button { width: 44px; height: 44px; border-radius: 12px; }
+.app.docked .dock { padding-bottom: 10px; }
 .rail.dockrail .slot > a svg, .rail.dockrail .slot > button svg { width: 24px; height: 24px; }
 .rail.dockrail .slot[data-id="@wopr"] span:not(.sr), .rail.dockrail .slot[data-id="@wopr"] small { display: none; }
 .dock .pill.health .hico { display: none; }

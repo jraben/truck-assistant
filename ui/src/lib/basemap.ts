@@ -14,6 +14,9 @@ export function mapsInfo(fresh = false): Promise<MapsView | null> {
   return info;
 }
 
+/** A calmer online map for the Glass look (CARTO's light / dark styles on OpenStreetMap data). */
+export const cleanUrl = (dark: boolean) => `https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`;
+export const cleanLayer = (dark: boolean) => L.tileLayer(cleanUrl(dark), { maxZoom: 19, subdomains: 'abcd', attribution: `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>` });
 export const osmLayer = (attribution = OSM_ATTRIBUTION) => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution });
 
 /**

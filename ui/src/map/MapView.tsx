@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { MapsView } from '../../../brain/src/maps/service.ts';
 import type { WP } from '../components/drive.tsx';
-import { addOfflineAreas, areaAt, osmLayer } from '../lib/basemap.ts';
+import { addOfflineAreas, areaAt, cleanLayer, cleanUrl, osmLayer } from '../lib/basemap.ts';
 import { mapTabStore } from '../lib/panels.ts';
 import { useStore } from '../lib/brain.ts';
 import { TrafficAhead } from '../components/traffic.tsx';
@@ -52,8 +52,15 @@ export function MapPane({ s, props }: WP) {
     const dark = !isLight(cssVar('--bg') || '#000000');
     const m = L.map(el.current, { zoomControl: false, attributionControl: true, center: gps ? [gps.lat, gps.lon] : [39.5, -98.35], zoom: gps ? 15 : 4, maxZoom: 19 });
     m.getContainer().classList.toggle('dark', dark);
-    const base = osmLayer();
-    (base.options as L.TileLayerOptions).className = 'osm-base';
+    // Glass: the calm light/dark map, swapped when the theme flips at sunset; otherwise OSM (inverted at night).
+    const base = glass ? cleanLayer(dark) : osmLayer();
+    (base.options as L.TileLayerOptions).className = glass ? 'clean-base' : 'osm-base';
+    const mo = glass ? new MutationObserver(() => {
+      const d = !isLight(cssVar('--bg') || '#000000');
+      base.setUrl(cleanUrl(d));
+      m.getContainer().classList.toggle('dark', d);
+    }) : null;
+    mo?.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     base.on('tileerror', () => setFailed(true));
     base.on('tileload', () => setFailed(false));
     base.addTo(m);
@@ -63,7 +70,7 @@ export function MapPane({ s, props }: WP) {
     const ro = new ResizeObserver(() => m.invalidateSize());
     ro.observe(el.current);
     map.current = m;
-    return () => { ro.disconnect(); m.remove(); map.current = null; truck.current = null; };
+    return () => { mo?.disconnect(); ro.disconnect(); m.remove(); map.current = null; truck.current = null; };
   }, []);
 
   // The truck: an arrow pointing where it's heading; the map follows until someone drags it.
@@ -88,8 +95,9 @@ export function MapPane({ s, props }: WP) {
     <div class="card mapv">
       <div class="mapv-map" ref={el} />
       <div class="mapv-bar">
-        <span class={`pill mapv-status ${area ? 'ok' : failed ? 'bad' : ''}`}>{status}</span>
-        {!area && gps && <a class="pill" href="/settings#maps">Download this area</a>}
+        {/* Glass: say something only when there is something wrong (no GPS, or no map at all here). */}
+        {(!glass || !gps || (failed && !area)) && <span class={`pill mapv-status ${area ? 'ok' : failed ? 'bad' : ''}`}>{status}</span>}
+        {!area && gps && (!glass || failed) && <a class="pill" href="/settings#maps">Download this area</a>}
         {!glass && !follow && gps && <button type="button" class="btn sm primary" onClick={() => setFollow(true)}>Re-centre</button>}
       </div>
       {glass && <>
