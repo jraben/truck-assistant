@@ -49,8 +49,9 @@ function Defs({ id, t }: { id: string; t: TruckLook }) {
       <radialGradient id={`${id}-tyre`} cx=".5" cy=".5" r=".5">
         <stop offset=".62" stop-color="#2a2b2e" /><stop offset=".8" stop-color="#1a1b1d" /><stop offset=".93" stop-color="#232427" /><stop offset="1" stop-color="#0e0f10" />
       </radialGradient>
-      <radialGradient id={`${id}-rim`} cx=".38" cy=".32" r=".75">
-        <stop offset="0" stop-color="#6b6e74" /><stop offset=".55" stop-color="#34363a" /><stop offset="1" stop-color="#1b1c1f" />
+      {/* Black painted steel: near-black with a soft satin sheen, never silver. */}
+      <radialGradient id={`${id}-rim`} cx=".4" cy=".35" r=".8">
+        <stop offset="0" stop-color="#3a3c40" /><stop offset=".5" stop-color="#1e1f22" /><stop offset="1" stop-color="#101113" />
       </radialGradient>
       <radialGradient id={`${id}-well`} cx=".5" cy=".75" r=".7">
         <stop offset="0" stop-color="#050506" /><stop offset="1" stop-color="#1a1b1d" />
@@ -69,26 +70,37 @@ function Defs({ id, t }: { id: string; t: TruckLook }) {
   );
 }
 
-/** 17" black steel wheel with Slate's single-colour ring decal (wheelDecal), in a rubber tyre. */
+/** Slate's stock 17" black steel wheel (no hubcap): a stamped face with a raised outer
+ *  barrel, a ring of round vent holes, the dished centre with exposed lug nuts, and the
+ *  owner's single-colour ring decal (wheelDecal) on the face. */
 function Wheel({ cx, cy, t, id }: { cx: number; cy: number; t: TruckLook; id: string }) {
   const c = t.colors;
-  const holes = [0, 60, 120, 180, 240, 300].map((a) => {
-    const r = (a * Math.PI) / 180;
-    const x = cx + 12.5 * Math.cos(r), y = cy + 12.5 * Math.sin(r);
-    return <ellipse cx={x} cy={y} rx="2.6" ry="3.6" transform={`rotate(${a + 90} ${x} ${y})`} fill="#08090a" />;
+  const at = (n: number, r: number, off = 0) => Array.from({ length: n }, (_, i) => {
+    const a = ((i * 360) / n + off) * Math.PI / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
   });
   return (
     <g>
+      {/* tyre: rubber with a sidewall, and the tread's edge */}
       <circle cx={cx} cy={cy} r="33" fill={`url(#${id}-tyre)`} />
-      <circle cx={cx} cy={cy} r="30" fill="none" stroke="#3a3b3f" stroke-width=".8" opacity=".7" />
-      <path d={`M${cx - 26} ${cy - 16} A30 30 0 0 1 ${cx + 6} ${cy - 30}`} fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="3" stroke-linecap="round" />
-      <circle cx={cx} cy={cy} r="22.5" fill={`url(#${id}-rim)`} />
-      <circle cx={cx} cy={cy} r="22.5" fill="none" stroke="#0b0c0d" stroke-width="1.2" />
-      <circle cx={cx} cy={cy} r="18.5" fill="none" stroke={c.wheelDecal} stroke-width="3.4" />
-      {holes}
-      <circle cx={cx} cy={cy} r="7" fill="#45474c" stroke="#121315" stroke-width="1" />
-      {[0, 72, 144, 216, 288].map((a) => { const r = (a * Math.PI) / 180; return <circle cx={cx + 4 * Math.cos(r)} cy={cy + 4 * Math.sin(r)} r=".9" fill="#9a9ca1" />; })}
-      <path d={`M${cx - 15} ${cy - 13} A20 20 0 0 1 ${cx + 2} ${cy - 20}`} fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="2" stroke-linecap="round" />
+      <circle cx={cx} cy={cy} r="30.5" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="1" />
+      <path d={`M${cx - 26} ${cy - 16} A30 30 0 0 1 ${cx + 6} ${cy - 30}`} fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="3" stroke-linecap="round" />
+      {/* steel barrel lip and the stamped face */}
+      <circle cx={cx} cy={cy} r="23" fill="#0c0d0e" />
+      <circle cx={cx} cy={cy} r="22" fill={`url(#${id}-rim)`} />
+      <circle cx={cx} cy={cy} r="21.2" fill="none" stroke="#000" stroke-opacity=".6" stroke-width="1" />
+      <circle cx={cx} cy={cy} r="20.2" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="1" />
+      {/* the ring decal */}
+      <circle cx={cx} cy={cy} r="18" fill="none" stroke={c.wheelDecal} stroke-width="2.6" />
+      {/* round vent holes stamped through the face */}
+      {at(8, 13.2, 22.5).map(([x, y]) => <><circle cx={x} cy={y} r="2.9" fill="#030304" /><path d={`M${x - 2.2} ${y - 1.4} A2.9 2.9 0 0 1 ${x + 1.6} ${y - 2.4}`} fill="none" stroke="#fff" stroke-opacity=".12" stroke-width=".6" /></>)}
+      {/* dished centre: a raised ring, the hub, and exposed lug nuts */}
+      <circle cx={cx} cy={cy} r="9" fill="#17181a" stroke="#000" stroke-opacity=".6" stroke-width=".8" />
+      <circle cx={cx} cy={cy} r="8.2" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width=".6" />
+      {at(6, 5.8, 0).map(([x, y]) => <><circle cx={x} cy={y} r="1.35" fill="#5b5e63" /><circle cx={x - .35} cy={y - .35} r=".45" fill="#b9bcc0" /></>)}
+      <circle cx={cx} cy={cy} r="2.6" fill="#0a0a0b" stroke="#3a3c40" stroke-width=".6" />
+      {/* the satin catch-light across the top of the face */}
+      <path d={`M${cx - 16} ${cy - 13} A20.5 20.5 0 0 1 ${cx + 3} ${cy - 20.3}`} fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="1.6" stroke-linecap="round" />
     </g>
   );
 }
