@@ -323,6 +323,12 @@ function ThemePicker({ driver, shown, onClose }: { driver: Driver; shown: Theme;
   return (
     <div class="card picker" role="dialog" aria-label="Theme">
       <div class="row between"><span class="lbl">Theme · {driver.name}</span><button class="btn sm" type="button" onClick={onClose}>Close</button></div>
+      {/* One tap to the GlassDash look that switches itself at sunset and sunrise. */}
+      {!(ts.auto.enabled && ts.auto.day === 'glass-day' && ts.auto.night === 'glass-night') && (
+        <button type="button" class="item glassauto" onClick={() => void save({ auto: { enabled: true, day: 'glass-day', night: 'glass-night' } })}>
+          <Swatch t={allThemes(ts).find((x) => x.id === 'glass-night') ?? shown} /><span><b>Glass · follows the sun</b> <span class="dimtxt" style="font-size:var(--fs-caption)">Glass Day by day, Glass Night after sunset</span></span>
+        </button>
+      )}
       <button type="button" class={`item ${ts.auto.enabled ? 'sel' : ''}`} onClick={() => void save({ auto: { ...ts.auto, enabled: true } })}>
         <Swatch t={shown} /><span><b>Auto</b> <span class="dimtxt" style="font-size:var(--fs-caption)">sunrise/sunset · {allThemes(ts).find((x) => x.id === ts.auto.day)?.name} / {allThemes(ts).find((x) => x.id === ts.auto.night)?.name}</span></span>
       </button>
