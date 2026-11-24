@@ -29,3 +29,10 @@
 .mapv-ctl button + button { border-top: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); }
 .mapv-ctl button[aria-pressed="true"] { color: var(--accent); }
 .mapv-ctl svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* Glass: the status pills stay left of the truck pill and the round controls, and on a
+   narrow map they drop below the pill instead of running under it. */
+.mapv:has(.mapv-pill) .mapv-bar { right: calc(var(--s15) + 64px); }
+@media (max-width: 700px) {
+  .mapv:has(.mapv-pill) .mapv-bar { top: calc(var(--s15) + 46px); }
+  .mapv-pill { max-width: calc(100% - 2 * var(--s15)); }
+}

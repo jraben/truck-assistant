@@ -4,7 +4,7 @@
 // Video, apps and lights stop the moment the truck moves; the brain enforces
 // it too (brain/src/parked.ts, modes.ts, parkedRoutes.ts).
 import { useEffect, useRef, useState } from 'preact/hooks';
-import Hls from 'hls.js';
+import type Hls from 'hls.js';
 import type { Layout } from '../../../brain/src/types.ts';
 import { api, stateStore, toast, useStore } from '../lib/brain.ts';
 import type { WP } from '../components/drive.tsx';
@@ -143,13 +143,17 @@ function VideoPlayer({ item, onClose }: { item: VideoItem; onClose: () => void }
     let hls: Hls | null = null, session = '', alive = true;
     const v = ref.current!;
     const report = (state: 'playing' | 'paused' | 'stopped') => session && void api('/api/media/plex/video/timeline', { method: 'POST', body: JSON.stringify({ key: item.key, state, timeMs: v.currentTime * 1000 + (item.viewOffsetMs ?? 0), durationMs: item.durationMs ?? 0, session }) }).catch(() => {});
-    api<{ url: string; session: string }>('/api/media/plex/video/start', { method: 'POST', body: JSON.stringify({ key: item.key, offsetMs: item.viewOffsetMs ?? 0 }) }).then((s) => {
+    // hls.js (the biggest library in the app) loads only when a video is first played, not at start-up.
+    Promise.all([
+      api<{ url: string; session: string }>('/api/media/plex/video/start', { method: 'POST', body: JSON.stringify({ key: item.key, offsetMs: item.viewOffsetMs ?? 0 }) }),
+      import('hls.js').then((m) => m.default),
+    ]).then(([s, HlsCls]) => {
       if (!alive) return;
       session = s.session;
-      if (Hls.isSupported()) {
-        hls = new Hls({ maxBufferLength: 30 });
+      if (HlsCls.isSupported()) {
+        hls = new HlsCls({ maxBufferLength: 30 });
         hls.loadSource(s.url); hls.attachMedia(v);
-        hls.on(Hls.Events.ERROR, (_e, d) => { if (d.fatal) setErr(`Plex stream failed (${d.details})`); });
+        hls.on(HlsCls.Events.ERROR, (_e, d) => { if (d.fatal) setErr(`Plex stream failed (${d.details})`); });
       } else v.src = s.url;
       void v.play().catch(() => {});
     }, (e: Error) => setErr(e.message));

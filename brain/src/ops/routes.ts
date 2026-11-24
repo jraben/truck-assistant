@@ -262,7 +262,8 @@ const optTag = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : u
 function loginLook(brain: Brain): LoginLook | undefined {
   try {
     const ts = brain.activeDriver().theme ?? defaultThemeSettings();
-    const id = ts.auto.enabled ? (isDaytime(new Date(), null) ? ts.auto.day : ts.auto.night) : ts.active;
+    const g = brain.getState().gps;
+    const id = ts.auto.enabled ? (isDaytime(new Date(), g?.fix ? { lat: g.lat, lon: g.lon } : null) ? ts.auto.day : ts.auto.night) : ts.active;
     return findTheme(ts, id);
   } catch { return undefined; }
 }

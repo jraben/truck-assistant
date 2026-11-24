@@ -119,7 +119,7 @@ function NowPlayingCard({ s, go }: { s: State | null; go: WP['go'] }) {
   );
 }
 
-export function GlassDrive({ s, go, toggle }: WP & { toggle: ComponentChildren }) {
+export function GlassDrive({ s, go }: WP) {
   const { driver, settings } = useActiveDriver();
   const dd = driverDrive(driver);
   const t = truckOf(settings);
@@ -166,7 +166,6 @@ export function GlassDrive({ s, go, toggle }: WP & { toggle: ComponentChildren }
           <Stat label="RANGE" icon="M13 2 4 14h7l-1 8 9-12h-7z">{range === null ? <V v={null} why={whySoc(s)} /> : <>{Math.round(range)}<small> mi</small></>}</Stat>
         </div>
         <NowPlayingCard s={s} go={go} />
-        {!moving && <div class="g-toggle">{toggle}</div>}
       </section>
       <section class="g-map" aria-label="Map"><MapPane s={s} go={go} props={{ type: 'map', glass: true }} /></section>
       <Dock s={s} go={go} />

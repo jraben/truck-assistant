@@ -215,6 +215,12 @@ export function DriveSection({ settings }: { settings: Settings }) {
           return (
             <div class="item row wrap" style="gap:var(--s15)">
               <b style="min-width:90px">{dr.name}</b>
+              <label class="f" style="min-width:170px"><span>Drive screen</span>
+                <select value={dd.layout ?? 'glass'} onChange={(e) => void saveDriver(dr.id, { layout: (e.target as HTMLSelectElement).value as 'classic' | 'glass' }, dd)}>
+                  <option value="glass">Glass: truck beside a big map</option>
+                  <option value="classic">Classic: speed, truck and cards</option>
+                </select>
+              </label>
               <label class="f" style="min-width:170px"><span>Speedometer</span>
                 <select value={dd.speedo} onChange={(e) => void saveDriver(dr.id, { speedo: (e.target as HTMLSelectElement).value as DriverDrive['speedo'] }, dd)}>
                   <option value="auto">Theme's pick</option>
@@ -227,7 +233,7 @@ export function DriveSection({ settings }: { settings: Settings }) {
           );
         })}
       </div>
-      <p class="help">"Theme's pick" follows the theme: Bel Air brings the '57 speedometer, the rest use Digital. The limit is OpenStreetMap's, so it can be missing or out of date.</p>
+      <p class="help">The Drive screen's layout used to be switched on the Drive screen itself; it lives here now. "Theme's pick" follows the theme: Bel Air brings the '57 speedometer, the rest use Digital. The limit is OpenStreetMap's, so it can be missing or out of date.</p>
     </section>
   );
 }
