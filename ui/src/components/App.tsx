@@ -206,10 +206,14 @@ export function App({ page }: { page?: AppPage } = {}) {
   // Glass themes use the GlassDash frame: no top bar or left rail, one dock along the bottom
   // (the car for Drive, the weather, the screens as app tiles, then status and the clock).
   const docked = !!shown.current?.glass;
+  // The dock shows as many tiles as fit: 8 on a tablet, fewer on a phone (the rest go in All apps).
+  const [vw, setVw] = useState(() => (typeof window === 'undefined' ? 1280 : window.innerWidth));
+  useEffect(() => { const f = () => setVw(window.innerWidth); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
+  const tiles = vw < 480 ? 4 : vw < 700 ? 5 : vw < 1000 ? 6 : 8;
   const clock = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const railEl = (
     <Rail entries={order.filter((id) => !(docked && id === 'drive')).map((id) => byId.get(id)!)} editing={editing} onEdit={setEditing} onReorder={(next) => reorder(docked && order.includes('drive') ? ['drive', ...next] : next)}
-      locked={!!s?.drive?.lockout.bigTargets} horizontal={docked} maxTiles={8}
+      locked={!!s?.drive?.lockout.bigTargets} horizontal={docked} maxTiles={tiles}
       parkLocked={!!s?.drive?.lockout.locked && !s.drive.lockout.passenger} onParkLocked={askPassengerThen} />
   );
 
