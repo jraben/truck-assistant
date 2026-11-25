@@ -142,6 +142,8 @@ export type Settings = {
   /** What the dash tablet does when the truck turns off (Tasker reads GET /api/tablet/sleep). */
   tabletSleep: TabletSleep;
   keys: { afdc?: string; openChargeMap?: string; placesFeed?: string; googlePlaces?: string; /** NASA FIRMS MAP_KEY (fire hotspots). */ firms?: string; /** FlightAware AeroAPI (airport pickup: gate, bags, delays; paid, optional). */ flightAware?: string; /** 511 developer keys by state id (traffic/states.ts). */ traffic511?: Record<string, string> };
+  /** The family's cars on the Traccar server (read-only user, LAN). Password masked in the API. */
+  familyCars: FamilyCarsSettings;
   homeAssistant: { bridge: boolean; homeChargerEnergyEntity?: string; homeChargerPowerEntity?: string; url: string | null; token?: string };
   homeRate: {
     flatPerKwh: number | null;
@@ -369,3 +371,5 @@ export type Layout = {
 };
 
 export type Health = { ok: boolean; version: string; mqtt: string; gps: string; ha: string; uptimeS: number };
+
+export type FamilyCarsSettings = { url: string | null; user: string | null; password?: string };

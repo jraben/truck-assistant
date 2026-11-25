@@ -88,6 +88,7 @@ export function defaultSettings(): Settings {
     tabletSleep: { minutes: 2, never: false, minBattery: 30 },
     keys: {},
     homeAssistant: { bridge: true, url: null },
+    familyCars: { url: null, user: null },
     homeRate: { flatPerKwh: null, tou: [], fixedPerSession: 0, demandPerKw: null },
     homeLocation: null,
     compareVehicle: customVehicle(22),
@@ -126,7 +127,9 @@ export function maskSettings(s: Settings): Settings {
   if (s.keys.traffic511) keys.traffic511 = Object.fromEntries(Object.entries(s.keys.traffic511).map(([st, v]) => [st, maskKey(v) ?? ""]));
   const homeAssistant = { ...s.homeAssistant };
   if (homeAssistant.token) homeAssistant.token = maskKey(homeAssistant.token); else delete homeAssistant.token;
-  return { ...s, keys, homeAssistant, homeWifi: maskWifi(s.homeWifi), drivers: s.drivers.map(maskDriver) };
+  const familyCars = { ...s.familyCars };
+  if (familyCars.password) familyCars.password = maskKey(familyCars.password); else delete familyCars.password;
+  return { ...s, keys, homeAssistant, familyCars, homeWifi: maskWifi(s.homeWifi), drivers: s.drivers.map(maskDriver) };
 }
 
 /** A Wi-Fi patch: a masked or missing password keeps the stored one (same network); "" clears it; null removes the network. */
@@ -241,7 +244,17 @@ export function mergeSettings(base: Settings, patch: unknown): Settings {
     delete ha.token;
     p.homeAssistant = ha;
   }
+  let carPw = base.familyCars?.password;
+  if (isObj(p.familyCars) && 'password' in p.familyCars) {
+    const t = p.familyCars.password;
+    if (t === null || t === '') carPw = undefined;
+    else if (typeof t === 'string' && !t.includes(MASK)) carPw = t;
+    const fc = { ...p.familyCars };
+    delete fc.password;
+    p.familyCars = fc;
+  }
   const next = deepMerge({ ...base, keys: undefined, drivers: undefined }, p) as Settings;
+  if (carPw) next.familyCars.password = carPw; else delete next.familyCars.password;
   next.keys = keys;
   next.drivers = structuredClone(base.drivers);
   if (token) next.homeAssistant.token = token; else delete next.homeAssistant.token;
@@ -419,6 +432,15 @@ export function validate(s: Settings): Settings {
   if (s.stackWatts === undefined || s.stackWatts === null) s.stackWatts = defaultSettings().stackWatts;
   num(s.stackWatts, 'stackWatts', 0, 300);
   s.stackWatts = Math.round(s.stackWatts);
+  const fc = s.familyCars;
+  if (!isObj(fc)) s.familyCars = { url: null, user: null };
+  else {
+    const u = typeof fc.url === 'string' ? fc.url.trim() : '';
+    if (u && !/^https?:\/\/[^\s/]+/i.test(u)) throw new SettingsError('familyCars.url must start with http:// or https:// (e.g. http://192.168.1.219:3952)');
+    fc.url = u || null;
+    fc.user = typeof fc.user === 'string' && fc.user.trim() ? fc.user.trim() : null;
+    if (typeof fc.password !== 'string' || !fc.password) delete fc.password;
+  }
   const ha = s.homeAssistant;
   if (!isObj(ha) || typeof ha.bridge !== 'boolean') throw new SettingsError('homeAssistant.bridge must be true or false');
   const ent = ha.homeChargerEnergyEntity as string | null | undefined;

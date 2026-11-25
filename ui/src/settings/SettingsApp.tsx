@@ -14,6 +14,7 @@ import { CompareVehicles } from './CompareVehicles.tsx';
 import { VehicleSection } from './VehicleSection.tsx';
 import { GasSection, ImportSection, PlacesSection } from './HaSections.tsx';
 import { DriveSection } from './DriveSection.tsx';
+import { FamilyCarsSection } from './FamilyCarsSection.tsx';
 import { MapsSection } from './MapsSection.tsx';
 import { PassengerSetting } from '../drive/Passenger.tsx';
 import { NavSection } from './NavSection.tsx';
@@ -29,12 +30,13 @@ import { chipLabel, readSections, searchSections, type SectionEntry } from './se
 const RELAYS = ['relay_1', 'relay_2', 'relay_3', 'relay_4', 'relay_5', 'relay_6'];
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-type Draft = Omit<Settings, 'keys' | 'drivers'>;
+// familyCars is saved by its own section (FamilyCarsSection), never by the main Save.
+type Draft = Omit<Settings, 'keys' | 'drivers' | 'familyCars'>;
 type Secrets = { afdc: string; openChargeMap: string; placesFeed: string; googlePlaces: string; haToken: string; homeWifi: string };
 const NO_SECRETS: Secrets = { afdc: '', openChargeMap: '', placesFeed: '', googlePlaces: '', haToken: '', homeWifi: '' };
 
 const toDraft = (s: Settings): Draft => {
-  const { keys: _k, drivers: _d, ...rest } = structuredClone(s);
+  const { keys: _k, drivers: _d, familyCars: _f, ...rest } = structuredClone(s);
   delete rest.homeAssistant.token;
   if (rest.homeWifi) delete rest.homeWifi.password;
   return rest;
@@ -439,6 +441,7 @@ export function SettingsApp({ embedded = false }: { embedded?: boolean } = {}) {
 
       <PassengerSetting />
       <DriveSection settings={settings} />
+      <FamilyCarsSection settings={settings} />
       <MapsSection />
       <NavSection />
       <RoutingSection />
