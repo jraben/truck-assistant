@@ -179,6 +179,14 @@ describe('now playing', () => {
     np = mergeMedia(np, { type: 1, media: { MediaSongName: 'Next' } }, 5000);
     expect(np).toMatchObject({ title: 'Next', artist: 'Artist', positionMs: null, art: null, durationMs: null });
   });
+  it('keeps the title when the dongle resends blank names (only the artist used to survive)', () => {
+    let np = mergeMedia(emptyNowPlaying(), { type: 1, media: { MediaSongName: 'Song', MediaArtistName: 'Artist', MediaAlbumName: 'Album', MediaSongDuration: 200000 } }, 1000);
+    np = mergeMedia(np, { type: 1, media: { MediaSongName: '', MediaArtistName: 'Artist', MediaAlbumName: '', MediaSongPlayTime: 9000 } }, 2000);
+    expect(np).toMatchObject({ title: 'Song', artist: 'Artist', album: 'Album', durationMs: 200000, positionMs: 9000 });
+    // A real new song still clears what it names as blank.
+    np = mergeMedia(np, { type: 1, media: { MediaSongName: 'Other', MediaArtistName: 'Band', MediaAlbumName: '' } }, 3000);
+    expect(np).toMatchObject({ title: 'Other', artist: 'Band', album: null, positionMs: null });
+  });
   it('ignores junk', () => {
     const e = emptyNowPlaying();
     expect(mergeMedia(e, null)).toBe(e);

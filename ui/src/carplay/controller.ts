@@ -258,6 +258,14 @@ class CarPlayController {
   // ---- now playing ------------------------------------------------------------
 
   private onMedia(payload: unknown) {
+    // The last 8 song packets as the dongle sent them (names only, no artwork), for a title that
+    // still goes missing in the truck: window.__carplayMedia in the tablet's console, or chrome://inspect.
+    const pm = (payload as { type?: number; media?: Record<string, unknown> } | null);
+    if (pm?.type === 1 && pm.media) {
+      const w = window as unknown as { __carplayMedia?: unknown[] };
+      (w.__carplayMedia ??= []).push({ at: new Date().toISOString(), ...pm.media });
+      if (w.__carplayMedia.length > 8) w.__carplayMedia.shift();
+    }
     this.nowPlaying = mergeMedia(this.nowPlaying, payload);
     const np = this.nowPlaying;
     nowPlayingStore.set(np.title || np.artist ? { ...np } : null);

@@ -41,6 +41,7 @@ import { registerVehiclePhoto } from './drive/photo.ts';
 import { registerDriverPhotos } from './drive/driverPhoto.ts';
 import { mountOps } from './ops/routes.ts';
 import { registerGoalRoutes } from './goal/routes.ts';
+import { FamilyCars } from './cars/familyCars.ts';
 
 const optStr = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const srcOf = (v: unknown) => (v === 'phone' || v === 'truck' ? v : null);
@@ -418,6 +419,9 @@ export async function buildServer(brain: Brain): Promise<FastifyInstance> {
     if (e instanceof HaError) return reply.code(e.status && e.status >= 400 && e.status < 600 ? e.status : 502).send({ error: e.message });
     throw e;
   };
+  // The family's cars, read from Traccar (docs/plans/plan-family-cars.md). ?refresh=1 skips the 30 s cache.
+  const familyCars = new FamilyCars(() => brain.settings.get().familyCars ?? { url: null, user: null });
+  app.get('/api/cars', async (req) => familyCars.report((req.query as { refresh?: string }).refresh === '1'));
   app.get('/api/ha/panel', async (_req, reply) => { try { return await haPanel.view(); } catch (e) { return haFail(e, reply); } });
   app.put('/api/ha/panel', async (req, reply) => { try { return haPanel.save(req.body); } catch (e) { return haFail(e, reply); } });
   app.get('/api/ha/garage', async (_req, reply) => { try { return await haPanel.garage(); } catch (e) { return haFail(e, reply); } });

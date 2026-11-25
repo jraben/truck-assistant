@@ -28,15 +28,21 @@ export function mergeMedia(prev: NowPlaying, payload: unknown, now = Date.now())
   if (p.type !== 1 || !p.media || typeof p.media !== 'object') return prev;
   const m = p.media;
   const next = { ...prev };
-  const title = 'MediaSongName' in m ? str(m.MediaSongName) : undefined;
+  // Many dongles resend the packet with blank names ("") while a song plays (with the position, or
+  // the artist alone). A blank never means "no song": it keeps what we already know, so the title
+  // isn't wiped while the artist survives (the "CarPlay shows only the artist" bug).
+  const title = 'MediaSongName' in m ? str(m.MediaSongName) ?? undefined : undefined;
   if (title !== undefined && title !== prev.title) {
     // A new song: forget the old position, duration and cover until the dongle sends the new ones.
     next.title = title;
     next.durationMs = null; next.positionMs = null; next.positionAt = null; next.art = null;
   }
-  if ('MediaArtistName' in m) next.artist = str(m.MediaArtistName);
-  if ('MediaAlbumName' in m) next.album = str(m.MediaAlbumName);
-  if ('MediaAPPName' in m) next.app = str(m.MediaAPPName);
+  // A new song clears an artist or album the new packet doesn't name; blanks otherwise keep the old ones.
+  const fresh = title !== undefined && title !== prev.title;
+  const keep = (key: string, old: string | null) => { const v = key in m ? str(m[key]) : null; return v ?? (fresh && key in m ? null : old); };
+  next.artist = keep('MediaArtistName', prev.artist);
+  next.album = keep('MediaAlbumName', prev.album);
+  next.app = keep('MediaAPPName', prev.app);
   if ('MediaSongDuration' in m) next.durationMs = num(m.MediaSongDuration);
   if ('MediaSongPlayTime' in m) { next.positionMs = num(m.MediaSongPlayTime); next.positionAt = next.positionMs === null ? null : now; }
   return next;
