@@ -41,6 +41,7 @@ export type RemoteSettings = {
     guides: GuideSettings;
     autoRear: boolean;              // switch to the rear camera on reverse
     autoSide: boolean;              // show the left/right camera while that turn signal is on
+    mirrorScreen: boolean;          // the optional Mirror screen (a bar display over the mirror): off unless turned on
     trailMph: number;               // trail view: the front camera shows at or under this speed (3-25)
     defaultLayout: 'grid' | 'single';
   };
@@ -115,6 +116,7 @@ export type CamStatus = {
   guides: GuideSettings;
   autoRear: boolean;
   autoSide: boolean;
+  mirrorScreen: boolean;
   trailMph: number;
   defaultLayout: 'grid' | 'single';
 };

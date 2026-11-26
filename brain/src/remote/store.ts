@@ -54,7 +54,7 @@ export function defaultCameras(sim: boolean): CameraConfig[] {
 
 export function defaultRemote(sim: boolean): RemoteSettings {
   return {
-    cams: { cameras: defaultCameras(sim), guides: structuredClone(DEFAULT_GUIDES), autoRear: true, autoSide: true, trailMph: 10, defaultLayout: 'grid' },
+    cams: { cameras: defaultCameras(sim), guides: structuredClone(DEFAULT_GUIDES), autoRear: true, autoSide: true, mirrorScreen: false, trailMph: 10, defaultLayout: 'grid' },
     dashcam: { enabled: true, segmentSec: 60, capGb: sim ? 1 : 64, preSec: 60, postSec: 30, parkedMotion: true, sceneThreshold: 0.12 },
     alerts: {
       rules: Object.fromEntries(ALERT_KINDS.map((k) => [k, defaultRule(k)])) as Record<AlertKind, AlertRule>,
@@ -132,6 +132,8 @@ export function validateRemote(s: RemoteSettings): RemoteSettings {
   if (!Array.isArray(g.bands) || g.bands.length !== 3) throw new RemoteSettingsError('guides.bands must be three numbers');
   g.bands.forEach((b, i) => num(b, `guides.bands[${i}]`, 0, 1));
   bool(c.autoRear, 'cams.autoRear'); bool(c.autoSide, 'cams.autoSide');
+  if (c.mirrorScreen === undefined) c.mirrorScreen = false; // saved before the Mirror screen existed
+  bool(c.mirrorScreen, 'cams.mirrorScreen');
   c.trailMph = Math.round(num(c.trailMph, 'cams.trailMph', 3, 25));
   if (c.defaultLayout !== 'grid' && c.defaultLayout !== 'single') throw new RemoteSettingsError('cams.defaultLayout must be grid or single');
   const d = s.dashcam;

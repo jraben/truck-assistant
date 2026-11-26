@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Slate Cockpit mirror
+Comment=The optional Mirror screen on the bar display over the rear-view mirror (off unless turned on in Settings > Cameras)
+Exec=/opt/slate-cockpit/deploy/pi/kiosk-mirror.sh
+X-GNOME-Autostart-enabled=true

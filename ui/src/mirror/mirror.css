@@ -1,0 +1,36 @@
+/* The Mirror screen: a 1920×720 bar over the rear-view mirror. Black, edge to edge. */
+body.mirrorpage { margin: 0; background: #000; overflow: hidden; }
+.mirror { position: fixed; inset: 0; background: #000; color: #fff; user-select: none; cursor: pointer; }
+.mirror.dark { background: #000; }
+.mr-row { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr; gap: 6px; }
+.mr-row.has-l { grid-template-columns: 1fr 2fr; }
+.mr-row.has-r { grid-template-columns: 2fr 1fr; }
+.mr-row.has-l.has-r { grid-template-columns: 1fr 2fr 1fr; }
+.mr-rear, .mr-side { position: relative; min-width: 0; overflow: hidden; }
+.mr-side { animation: mr-in 180ms ease-out; }
+.mr-side.l { box-shadow: inset 0 0 0 3px #ffb020; } .mr-side.r { box-shadow: inset 0 0 0 3px #ffb020; }
+.mirror .camplayer { position: absolute; inset: 0; border-radius: 0; }
+.mirror .camplayer .camname, .mirror .camplayer .latency { display: none; }
+.mr-none { display: grid; place-items: center; color: #98989f; font: 500 22px var(--body); }
+.mr-hud { position: absolute; top: 14px; display: flex; align-items: baseline; gap: 8px; padding: 6px 14px; border-radius: 14px;
+  background: rgb(0 0 0 / .45); font-family: var(--body); text-shadow: 0 1px 2px rgb(0 0 0 / .6); pointer-events: none; }
+.mr-hud.l { left: 16px; } .mr-hud.r { right: 16px; font-size: 22px; font-weight: 600; }
+.mr-hud b { font-size: 44px; font-weight: 500; line-height: 1; }
+.mr-hud small { font-size: 13px; letter-spacing: .14em; color: #c7c7cc; }
+.mr-gear { margin-left: 6px; font-size: 22px; font-weight: 700; } .mr-gear.r { color: #ff453a; }
+.mr-arrow { position: absolute; top: 50%; transform: translateY(-50%); font-size: 64px; color: #30d158; animation: mr-blink .8s steps(1) infinite;
+  text-shadow: 0 0 12px rgb(48 209 88 / .7); pointer-events: none; }
+.mr-arrow.l { left: 18px; } .mr-arrow.r { right: 18px; }
+.mr-flip { position: absolute; right: 14px; bottom: 12px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgb(0 0 0 / .45); color: #fff; font-size: 22px; }
+.mr-flip[aria-pressed="false"] { opacity: .55; }
+.mirror.dark .mr-flip { opacity: .15; }
+@keyframes mr-blink { 50% { opacity: .15; } }
+@keyframes mr-in { from { transform: translateX(var(--from, 0)); opacity: 0; } }
+.mr-side.l { --from: -40px; } .mr-side.r { --from: 40px; }
+@media (prefers-reduced-motion: reduce) { .mr-side, .mr-arrow { animation: none; } }
+.mirror.embedded { position: relative; inset: auto; width: 100%; height: 100%; border-radius: var(--radius-lg); overflow: hidden; }
+.cell:has(> .mirror.embedded), .mirror.embedded { min-height: 0; }
+/* A mirror is edge to edge: the picture fills its pane (cropping the top and bottom), never letterboxed. */
+.mirror .camplayer video, .mirror .camplayer canvas, .mirror .camplayer img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+.mr-side { background: #000; }
+.mirror .camvideo, .mirror .camvideo video { object-fit: cover !important; }

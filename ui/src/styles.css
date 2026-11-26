@@ -837,6 +837,7 @@ body.portal:has(.app), body.truckpage:has(.app) { overflow: hidden; }
 .rail.dockrail .slot[data-id="map"], .allapps-pop .slot[data-id="map"] { --tile: #34c759; }
 .rail.dockrail .slot[data-id="gauges"], .allapps-pop .slot[data-id="gauges"] { --tile: #0a84ff; }
 .rail.dockrail .slot[data-id="family"], .allapps-pop .slot[data-id="family"] { --tile: #ff6b3d; }
+.rail.dockrail .slot[data-id="mirror"], .allapps-pop .slot[data-id="mirror"] { --tile: #64d2ff; }
 .rail.dockrail .slot[data-id="carplay"], .allapps-pop .slot[data-id="carplay"] { --tile: #1c1c1e; }
 .rail.dockrail .slot[data-id="media"], .allapps-pop .slot[data-id="media"] { --tile: #ff375f; }
 .rail.dockrail .slot[data-id="home"], .allapps-pop .slot[data-id="home"] { --tile: #ff9f0a; }

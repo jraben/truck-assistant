@@ -94,6 +94,8 @@ chmod +x "$APP/deploy/pi/kiosk.sh"
 HOME_DIR=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
 install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$HOME_DIR/.config/autostart"
 install -m 0644 -o "$KIOSK_USER" -g "$KIOSK_USER" "$APP/deploy/pi/slate-kiosk.desktop" "$HOME_DIR/.config/autostart/slate-kiosk.desktop"
+# The optional Mirror screen: starts with the desktop and exits at once unless it is switched on.
+install -m 0644 -o "$KIOSK_USER" -g "$KIOSK_USER" "$APP/deploy/pi/slate-mirror.desktop" "$HOME_DIR/.config/autostart/slate-mirror.desktop"
 # labwc (Wayland, Bookworm+) reads its own autostart file.
 if [ -d "$HOME_DIR/.config/labwc" ] || command -v labwc >/dev/null; then
   install -d -o "$KIOSK_USER" -g "$KIOSK_USER" "$HOME_DIR/.config/labwc"
