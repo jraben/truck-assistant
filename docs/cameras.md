@@ -341,3 +341,25 @@ Power, wiring, adhesives
 - 3M VHB 5952 datasheet: https://tbpconverting.com/wp-content/uploads/2026/01/Data-Sheet_3M™-VHB™-Tape-5952.pdf ; 3M VHB LSE datasheet: https://multimedia.3m.com/mws/media/1746365O/3m-vhb-tape-lse-tds.pdf ; LSE-110WF: https://www.3m.com/3M/en_US/p/d/b5005036160/ ; VHB 5925 (application temperature): https://multimedia.3m.com/mws/media/2366505O/3m-vhb-tape-5925.pdf
 - Slate panels, PP composite: https://compositesworld.com/news/the-new-slate-truck-costs-less-than-20000-uses-pp-composite-body-panels , https://www.edmunds.com/slate/truck/
 - Factory camera (NTSC 75 Ω, forum claim): `docs/forum-findings.md` § 6
+
+---
+
+## The Mirror screen (optional)
+
+A 12.3" 1920×720 touch bar display over (or strapped to) the rear-view mirror, as a digital
+mirror: the rear camera full width and flipped like a mirror, the side camera sliding in on that
+turn signal, speed, gear and the clock at the edges. Tap to cycle: rear → rear + both sides →
+off (black glass, woken by reverse or a signal). ⇋ turns the mirror flip off for a camera that
+already flips itself. Compare the Wolfbox FlexPilot (`ref/flexpilot/notes.md` on the
+`ref/glassdash-screens` branch): no trigger inputs and no video output, so it can't join TA.
+
+- **Off unless switched on:** Settings › Cameras › *Mirror screen (optional)*. On, it also appears
+  on the dash as a Mirror screen.
+- **On the bar display:** the Pi's second HDMI port and USB for touch. `deploy/pi/kiosk-mirror.sh`
+  (autostarted by `slate-mirror.desktop`) opens `http://localhost:8080/?mirror` on the last
+  display xrandr lists, or `SLATE_MIRROR_OUTPUT`. Map the touch input to it once with
+  `xinput map-to-output`.
+- **Cameras:** the ones with the rear, left and right roles. 720p is plenty: each fills a third
+  to all of a 1920×720 panel, and the Pi can record four 720p cameras at once.
+- **Wireless cameras** work too, as long as they offer an RTSP stream: add them as an RTSP camera
+  (Settings › Cameras). They still need 12 V at the camera, and add 200–500 ms of delay over Wi-Fi.

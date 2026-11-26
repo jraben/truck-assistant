@@ -18,6 +18,7 @@ import { ModeOverlays, PARKED_ICON, TabletHello, withParkedView } from '../parke
 import { foldTrafficIntoMap, MAP_ICON, withMapView } from '../map/MapView.tsx';
 import { GAUGES_ICON, withGaugesView } from '../gauges/logic.ts';
 import { FAMILY_ICON, withFamilyView } from '../cars/views.ts';
+import { MIRROR_ICON, withMirrorView } from '../mirror/logic.ts';
 import { logsStore, mapTabStore } from '../lib/panels.ts';
 import { WoprButton } from '../wopr/WoprUi.tsx';
 import { tabletCmd } from '../media/tabletMedia.ts';
@@ -55,6 +56,7 @@ const ICONS: Record<string, string> = {
   map: MAP_ICON,
   gauges: GAUGES_ICON,
   family: FAMILY_ICON,
+  mirror: MIRROR_ICON,
 };
 const GEAR = 'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z';
 const MIC = 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3';
@@ -101,7 +103,9 @@ export function App({ page }: { page?: AppPage } = {}) {
   const driver = activeDriver(settings, s);
   useTabletGps(!page); // the dash tablet's own GPS, when there's no puck (lib/tabletGps.ts); never from another page
   const base = driver?.layout?.views?.length ? driver.layout : DEFAULT_LAYOUT;
-  const layout = useMemo(() => foldTrafficIntoMap(withFamilyView(withGaugesView(withMapView(withParkedView(withHomeView(withMediaView(base))))))), [base]);
+  // The Mirror screen joins the rail only while Settings › Cameras › Mirror screen is on.
+  const mirrorOn = !!useStore(camStatusStore)?.mirrorScreen;
+  const layout = useMemo(() => withMirrorView(foldTrafficIntoMap(withFamilyView(withGaugesView(withMapView(withParkedView(withHomeView(withMediaView(base))))))), mirrorOn), [base, mirrorOn]);
   const [view, setView] = useState(() => viewFromHash(layout));
   const [picker, setPicker] = useState(false);
   const [driverOpen, setDriverOpen] = useState(false);

@@ -15,6 +15,7 @@ import { PARKED_WIDGETS } from '../parked/Parked.tsx';
 import { MAP_WIDGETS } from '../map/MapView.tsx';
 import { GAUGES_WIDGETS } from '../gauges/Gauges.tsx';
 import { FAMILY_WIDGETS } from '../cars/FamilyCars.tsx';
+import { MIRROR_WIDGETS } from '../mirror/MirrorScreen.tsx';
 import { CamsView, CamTile } from './cams.tsx';
 import { MaintWidget } from '../ops/Maintenance.tsx';
 import { MileageWidget } from '../ops/Mileage.tsx';
@@ -37,6 +38,7 @@ export const WIDGETS: Record<string, ComponentType<WP>> = {
   ...MAP_WIDGETS, // the Map view (offline maps)
   ...GAUGES_WIDGETS, // the Gauges view: dials, tiles, fault codes
   ...FAMILY_WIDGETS, // the Family cars view (Traccar)
+  ...MIRROR_WIDGETS, // the optional Mirror screen
   maintenance: MaintWidget, mileage: MileageWidget,
   roadTrip: RoadTrip, trafficAhead: TrafficAhead,
 };
